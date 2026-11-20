@@ -74,11 +74,6 @@ build:
     # ./dist/all/assets.zip
     BUILD +assets
 
-build-spn:
-    BUILD +go-build --CMDS="hub" --GOOS="linux"   --GOARCH="amd64"
-    BUILD +go-build --CMDS="hub" --GOOS="linux"   --GOARCH="arm64"
-    # TODO: Add other platforms
-
 go-ci:
     BUILD +go-build --GOOS="linux"   --GOARCH="amd64"
     BUILD +go-build --GOOS="linux"   --GOARCH="arm64"
@@ -160,7 +155,7 @@ mod-tidy:
     SAVE ARTIFACT --keep-ts --if-exists go.sum AS LOCAL go.sum
 
 # go-build runs 'go build ./cmds/...', saving artifacts locally.
-# If --CMDS is not set, it defaults to building portmaster-start, portmaster-core and hub
+# If --CMDS is not set, it defaults to building portmaster-core
 go-build:
     FROM +go-base
 
@@ -203,29 +198,6 @@ go-build:
 
     SAVE ARTIFACT --keep-ts "/tmp/build/" ./output
 
-spn-image:
-    # Use minimal image as base.
-    FROM alpine
-
-    # Copy the static executable.
-    COPY (+go-build/output/portmaster-start --GOARCH=amd64 --GOOS=linux --CMDS=portmaster-start) /init/portmaster-start
-
-    # Copy the init script
-    COPY spn/tools/container-init.sh /init.sh
-
-    # Run the hub.
-    ENTRYPOINT ["/init.sh"]
-
-    # Get version.
-    LET version = "$(/init/portmaster-start version --short | tr ' ' -)"
-    RUN echo "Version: ${version}"
-
-    # Save dev image
-    SAVE IMAGE "spn:latest"
-    SAVE IMAGE "spn:${version}"
-    SAVE IMAGE "ghcr.io/safing/spn:latest"
-    SAVE IMAGE "ghcr.io/safing/spn:${version}"
-
 # Test one or more go packages.
 # Test are always run as -short, as "long" tests require a full desktop system.
 # Run `earthly +go-test` to test all packages
@@ -262,7 +234,7 @@ go-lint:
     RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${golangci_lint_version}
     RUN golangci-lint run -c ./.golangci.yml --timeout 15m --show-stats
 
-# Builds portmaster-start, portmaster-core, hub and notifier for all supported platforms
+# Builds portmaster-core and the other commands for all supported platforms
 go-release:
     FROM ${work_image}
     ARG --required architectures

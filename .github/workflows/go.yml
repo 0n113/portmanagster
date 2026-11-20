@@ -12,7 +12,6 @@ on:
       - 'cmds/**'
       - 'runtime/**'
       - 'service/**'
-      - 'spn/**'
     branches:
       - main
       - no-spn-no-telemetry
@@ -32,7 +31,6 @@ on:
       - 'cmds/**'
       - 'runtime/**'
       - 'service/**'
-      - 'spn/**'
     branches:
       - main
       - development

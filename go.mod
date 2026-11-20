@@ -11,9 +11,7 @@ require (
 	github.com/aead/serpent v0.0.0-20160714141033-fba169763ea6
 	github.com/agext/levenshtein v1.2.3
 	github.com/armon/go-radix v1.0.0
-	github.com/awalterschulze/gographviz v2.0.3+incompatible
 	github.com/bluele/gcache v0.0.2
-	github.com/brianvoe/gofakeit v3.18.0+incompatible
 	github.com/cilium/ebpf v0.22.0
 	github.com/coreos/go-iptables v0.8.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
@@ -43,10 +41,7 @@ require (
 	github.com/miekg/dns v1.1.72
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-server-timing v1.0.1
-	github.com/mr-tron/base58 v1.2.0
 	github.com/oschwald/maxminddb-golang v1.13.1
-	github.com/r3labs/diff/v3 v3.0.2
-	github.com/rot256/pblind v0.0.0-20250826112722-8244c3966ed3
 	github.com/rubenv/sql-migrate v1.8.1
 	github.com/safing/jess v0.3.5
 	github.com/safing/structures v1.2.0
@@ -79,6 +74,7 @@ require (
 require (
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
+	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/sergeymakinen/go-bmp v1.0.0 // indirect
 	github.com/stephenafamo/sqlparser v0.0.0-20250521201114-5cfed001272d // indirect
 )
