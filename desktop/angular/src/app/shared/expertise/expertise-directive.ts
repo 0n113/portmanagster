@@ -8,7 +8,8 @@ import { ExpertiseService } from './expertise.service';
 // match the required expertise.
 export type ExpertiseLevelOverwrite<T> = (lvl: ExpertiseLevelNumber, data: T) => boolean;
 @Directive({
-  selector: '[appExpertiseLevel]',
+    selector: '[appExpertiseLevel]',
+    standalone: false
 })
 export class ExpertiseDirective<T> implements OnInit, OnDestroy {
   private allowedValue: ExpertiseLevelNumber = ExpertiseLevelNumber.user;
@@ -59,7 +60,7 @@ export class ExpertiseDirective<T> implements OnInit, OnDestroy {
     }
 
     if (hide) {
-      if (!!this.view) {
+      if (this.view) {
         this.view.destroy();
         this.viewContainer.clear();
         this.view = null;
@@ -67,7 +68,7 @@ export class ExpertiseDirective<T> implements OnInit, OnDestroy {
       return
     }
 
-    if (!!this.view) {
+    if (this.view) {
       this.view.markForCheck();
       return;
     }

@@ -3,9 +3,10 @@ import { ExpertiseLevel } from '@safing/portmaster-api';
 import { ExpertiseService } from './expertise.service';
 
 @Component({
-  selector: 'app-expertise',
-  templateUrl: './expertise-switch.html',
-  styleUrls: ['./expertise-switch.scss']
+    selector: 'app-expertise',
+    templateUrl: './expertise-switch.html',
+    styleUrls: ['./expertise-switch.scss'],
+    standalone: false
 })
 export class ExpertiseComponent {
   /** @private provide the expertise-level enums to the template */

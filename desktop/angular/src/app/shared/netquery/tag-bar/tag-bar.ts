@@ -11,26 +11,27 @@ export interface SfngTagbarValue {
 }
 
 @Component({
-  selector: 'sfng-netquery-tagbar',
-  templateUrl: 'tag-bar.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: [
-    `
+    selector: 'sfng-netquery-tagbar',
+    templateUrl: 'tag-bar.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    styles: [
+        `
     :host {
       @apply flex flex-row gap-3 w-auto items-center text-xxs flex-wrap;
     }
     `
-  ],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => SfngNetqueryTagbarComponent),
-      multi: true
-    }
-  ],
-  animations: [
-    fadeInListAnimation
-  ]
+    ],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => SfngNetqueryTagbarComponent),
+            multi: true
+        }
+    ],
+    animations: [
+        fadeInListAnimation
+    ],
+    standalone: false
 })
 export class SfngNetqueryTagbarComponent implements ControlValueAccessor {
   @HostBinding('@fadeInList')
@@ -109,7 +110,7 @@ export class SfngNetqueryTagbarComponent implements ControlValueAccessor {
 
     console.log(this.values);
 
-    let cpy: SfngTagbarValue[] = [];
+    const cpy: SfngTagbarValue[] = [];
 
     this.values.forEach(val => {
       if (val.key === key) {

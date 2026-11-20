@@ -3,7 +3,7 @@ import { FormatWidth, formatDate, getLocaleDateFormat, getLocaleId } from "@angu
 import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, EventEmitter, Input, LOCALE_ID, OnDestroy, OnInit, Output, QueryList, TemplateRef, TrackByFunction, ViewChildren, inject, isDevMode } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, Router } from "@angular/router";
-import { BandwidthChartResult, ChartResult, Condition, Database, GreaterOrEqual, IPScope, LessOrEqual, Netquery, NetqueryConnection, OrderBy, PossilbeValue, Query, QueryResult, Select, Verdict } from "@safing/portmaster-api";
+import { BandwidthChartResult, ChartResult, Condition, Database, GreaterOrEqual, IPScope, LessOrEqual, Netquery, NetqueryConnection, OrderBy, PossilbeValue, Query, QueryResult, Verdict } from "@safing/portmaster-api";
 import { Datasource, DynamicItemsPaginator, SelectOption } from "@safing/ui";
 import { BehaviorSubject, Observable, Subject, combineLatest, forkJoin, interval, merge, of, timer } from "rxjs";
 import { catchError, filter, map, share, skip, startWith, switchMap, take, takeUntil } from "rxjs/operators";
@@ -98,14 +98,14 @@ interface QuickDateSetting {
  */
 
 @Component({
-  // eslint-disable-next-line @angular-eslint/component-selector
-  selector: 'sfng-netquery-viewer',
-  templateUrl: './netquery.component.html',
-  providers: [
-    NetqueryHelper,
-  ],
-  styles: [
-    `
+    // eslint-disable-next-line @angular-eslint/component-selector
+    selector: 'sfng-netquery-viewer',
+    templateUrl: './netquery.component.html',
+    providers: [
+        NetqueryHelper,
+    ],
+    styles: [
+        `
     :host {
       @apply flex flex-col gap-3 pr-3 min-h-full;
     }
@@ -114,11 +114,12 @@ interface QuickDateSetting {
       @apply inline-block text-xxs uppercase rounded-sm bg-gray-500 bg-opacity-25 font-mono border-gray-500 border px-0.5;
     }
     `
-  ],
-  animations: [
-    fadeInAnimation
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush
+    ],
+    animations: [
+        fadeInAnimation
+    ],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {

@@ -3,9 +3,10 @@ import { ScopeTranslation } from '@safing/portmaster-api';
 import { parseDomain } from '../../utils';
 
 @Component({
-  selector: 'sfng-netquery-scope-label',
-  templateUrl: 'scope-label.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'sfng-netquery-scope-label',
+    templateUrl: 'scope-label.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SfngNetqueryScopeLabelComponent implements OnChanges {
   readonly scopeTranslation = ScopeTranslation;
@@ -23,7 +24,7 @@ export class SfngNetqueryScopeLabelComponent implements OnChanges {
   subdomain: string = '';
 
   ngOnChanges(change: SimpleChanges) {
-    if (!!change['scope']) {
+    if (change['scope']) {
       //this.label = change.label.currentValue;
       const result = parseDomain(change.scope.currentValue || '')
 

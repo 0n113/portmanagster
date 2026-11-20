@@ -6,7 +6,7 @@ import { Pipe, PipeTransform } from "@angular/core";
 import { IsDenied, NetqueryConnection } from "@safing/portmaster-api";
 
 // rule.
-let optionKeys = new Set([
+const optionKeys = new Set([
   "filter/blockInternet",
   "filter/blockLAN",
   "filter/blockLocal",
@@ -15,8 +15,9 @@ let optionKeys = new Set([
 ])
 
 @Pipe({
-  name: "canUseRules",
-  pure: true,
+    name: "canUseRules",
+    pure: true,
+    standalone: false
 })
 export class CanUseRulesPipe implements PipeTransform {
   transform(conn: NetqueryConnection): boolean {

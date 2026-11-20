@@ -1,4 +1,4 @@
-import { coerceBooleanProperty, coerceNumberProperty, coerceStringArray } from '@angular/cdk/coercion';
+import { coerceBooleanProperty, coerceNumberProperty } from '@angular/cdk/coercion';
 import { AfterViewInit, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Input, OnChanges, OnInit, SimpleChanges, inject } from '@angular/core';
 import { BandwidthChartResult, ChartResult } from '@safing/portmaster-api';
 import * as d3 from 'd3';
@@ -113,16 +113,17 @@ export interface SeriesData {
 }
 
 @Component({
-  selector: 'sfng-netquery-line-chart',
-  styles: [
-    `
+    selector: 'sfng-netquery-line-chart',
+    styles: [
+        `
     :host {
       @apply block h-full w-full;
     }
     `
-  ],
-  template: '',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    ],
+    template: '',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SfngNetqueryLineChartComponent<D extends SeriesData = any> implements OnChanges, OnInit, AfterViewInit {
   private destroyRef = inject(DestroyRef);
@@ -206,7 +207,7 @@ export class SfngNetqueryLineChartComponent<D extends SeriesData = any> implemen
   }
 
   redraw(event?: Event) {
-    if (!!this.svg) {
+    if (this.svg) {
       this.svg.remove();
     }
 
@@ -238,13 +239,15 @@ export class SfngNetqueryLineChartComponent<D extends SeriesData = any> implemen
     let lastClosestIndex = -1;
 
     if (this.config.showDataPoints) {
+      // d3 binds the DOM element to `this` in the handler below.
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
       const self = this;
       this.svg
         .on("mousemove", function (event: MouseEvent) {
-          let x = d3.pointer(event)[0];
+          const x = d3.pointer(event)[0];
 
-          let closest = self.data.reduce((best, value, idx) => {
-            let absx = Math.abs(self.xScale(new Date(value.timestamp * 1000)) - x);
+          const closest = self.data.reduce((best, value, idx) => {
+            const absx = Math.abs(self.xScale(new Date(value.timestamp * 1000)) - x);
             if (absx < best.value) {
               return { index: idx, value: absx, timestamp: self.data[idx].timestamp }
             }
@@ -360,7 +363,7 @@ export class SfngNetqueryLineChartComponent<D extends SeriesData = any> implemen
       to: this.data[this.data.length - 1]?.timestamp || 0,
     };
 
-    if (!!this.config.time) {
+    if (this.config.time) {
       time.from = coerceDate(this.config.time.from).getTime() / 1000
 
       if (this.config.fromMargin) {
@@ -490,7 +493,7 @@ export class SfngNetqueryLineChartComponent<D extends SeriesData = any> implemen
         .axisBottom(this.xScale)
         .ticks(5)
         .tickFormat((val, idx) => {
-          if (!!this.config.timeFormat) {
+          if (this.config.timeFormat) {
             return this.config.timeFormat(val as any)
           }
           return timeAgo(val as any);
@@ -554,13 +557,13 @@ export class SfngNetqueryLineChartComponent<D extends SeriesData = any> implemen
       .forEach(seriesKey => {
         const config = this.config.series[seriesKey]!;
 
-        let points: [number, number][] = this.preparedData
+        const points: [number, number][] = this.preparedData
           .map(d => [
             this.xScale(new Date(d.timestamp * 1000)),
             this.yScale((d as any)[seriesKey] || 0),
           ])
 
-        let data: [number, number][] = this.preparedData
+        const data: [number, number][] = this.preparedData
           .map(d => [
             this.xScale(new Date(d.timestamp * 1000)),
             this.yScale((d as any)[seriesKey] || 0),

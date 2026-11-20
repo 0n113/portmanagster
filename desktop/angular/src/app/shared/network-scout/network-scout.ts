@@ -27,13 +27,14 @@ const bandwidthSorts: SortTypes[] = [
 ]
 
 @Component({
-  selector: 'app-network-scout',
-  templateUrl: './network-scout.html',
-  styleUrls: ['./network-scout.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [
-    fadeInListAnimation,
-  ]
+    selector: 'app-network-scout',
+    templateUrl: './network-scout.html',
+    styleUrls: ['./network-scout.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    animations: [
+        fadeInListAnimation,
+    ],
+    standalone: false
 })
 export class NetworkScoutComponent implements OnInit {
   private destroyRef = inject(DestroyRef);

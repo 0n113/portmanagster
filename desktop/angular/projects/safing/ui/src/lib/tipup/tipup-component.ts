@@ -5,9 +5,10 @@ import { ActionRunner, Button, SFNG_TIP_UP_ACTION_RUNNER, TipUp } from './transl
 import { TIPUP_TOKEN } from "./utils";
 
 @Component({
-  selector: 'sfng-tipup-container',
-  templateUrl: './tipup.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'sfng-tipup-container',
+    templateUrl: './tipup.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SfngTipUpComponent implements OnInit, TipUp<any> {
   title: string = 'N/A';
@@ -26,7 +27,7 @@ export class SfngTipUpComponent implements OnInit, TipUp<any> {
 
   ngOnInit() {
     const doc = this.tipupService.getTipUp(this.token);
-    if (!!doc) {
+    if (doc) {
       Object.assign(this, doc);
       this.urlText = doc.urlText || 'Read More';
     }
@@ -47,7 +48,7 @@ export class SfngTipUpComponent implements OnInit, TipUp<any> {
     // if we have a nextKey for the button but do not do in-app
     // routing we should be able to open the next tipup as soon
     // as the action finished
-    if (!!btn.nextKey) {
+    if (btn.nextKey) {
       this.tipupService.waitFor(btn.nextKey!)
         .subscribe({
           next: () => {

@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostBinding } from '@angular/core';
 
 @Component({
-  selector: 'app-loading',
-  templateUrl: './loading.html',
-  styleUrls: ['./loading.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-loading',
+    templateUrl: './loading.html',
+    styleUrls: ['./loading.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class LoadingComponent {
   @HostBinding('class.animate')

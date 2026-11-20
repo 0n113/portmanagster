@@ -10,10 +10,11 @@ import { formatDuration } from "../../pipes";
 
 
 @Component({
-  selector: 'sfng-netquery-conn-details',
-  styleUrls: ['./conn-details.scss'],
-  templateUrl: './conn-details.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'sfng-netquery-conn-details',
+    styleUrls: ['./conn-details.scss'],
+    templateUrl: './conn-details.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SfngNetqueryConnectionDetailsComponent implements OnInit, OnDestroy, OnChanges {
   helper = inject(NetqueryHelper)
@@ -61,7 +62,7 @@ export class SfngNetqueryConnectionDetailsComponent implements OnInit, OnDestroy
   bwData: ConnectionBandwidthChartResult[] = [];
 
   ngOnChanges(changes: SimpleChanges) {
-    if (!!changes?.conn) {
+    if (changes?.conn) {
       this.updateConnectionNotice();
       this.loadBandwidthChart();
 

@@ -40,7 +40,8 @@ export interface Pagination<T> {
 
 
 @Directive({
-  selector: '[sfngPageContent]'
+    selector: '[sfngPageContent]',
+    standalone: false
 })
 export class SfngPaginationContentDirective<T = any> {
   constructor(public readonly templateRef: TemplateRef<T>) { }
@@ -52,9 +53,10 @@ export interface PageChangeEvent {
 }
 
 @Component({
-  selector: 'sfng-pagination',
-  templateUrl: './pagination.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'sfng-pagination',
+    templateUrl: './pagination.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SfngPaginationWrapperComponent<T = any> implements OnChanges, OnDestroy {
   private _sub: Subscription = Subscription.EMPTY;
@@ -113,9 +115,9 @@ export class SfngPaginationWrapperComponent<T = any> implements OnChanges, OnDes
  * @returns An array of page numbers to display
  */
 export function generatePageNumbers(current: number, countPages: number): number[] {
-  let delta = 2;
-  let leftRange = current - delta;
-  let rightRange = current + delta + 1;
+  const delta = 2;
+  const leftRange = current - delta;
+  const rightRange = current + delta + 1;
 
   return Array.from({ length: countPages }, (v, k) => k + 1)
     .filter(i => i === 1 || i === countPages || (i >= leftRange && i < rightRange));

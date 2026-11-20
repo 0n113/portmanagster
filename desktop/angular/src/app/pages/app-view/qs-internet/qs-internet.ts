@@ -17,9 +17,10 @@ const interferingSettings = {
 }
 
 @Component({
-  selector: 'app-qs-internet',
-  templateUrl: './qs-internet.html',
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'app-qs-internet',
+    templateUrl: './qs-internet.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class QuickSettingInternetButtonComponent implements OnChanges {
   @Input()
@@ -36,7 +37,7 @@ export class QuickSettingInternetButtonComponent implements OnChanges {
     if ('settings' in changes) {
       this.currentValue = '';
       const defaultActionSetting = this.settings.find(s => s.Key == 'filter/defaultAction') as (StringSetting | undefined);
-      if (!!defaultActionSetting) {
+      if (defaultActionSetting) {
         this.currentValue = getActualValue(defaultActionSetting);
         this.updateInterfering();
       }

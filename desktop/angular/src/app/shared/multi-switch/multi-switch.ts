@@ -1,24 +1,25 @@
 import { ListKeyManager } from '@angular/cdk/a11y';
 import { coerceBooleanProperty } from '@angular/cdk/coercion';
-import { DOCUMENT } from '@angular/common';
-import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChildren, ElementRef, EventEmitter, forwardRef, HostBinding, HostListener, Inject, Input, NgZone, OnDestroy, Output, QueryList, Renderer2, ViewChild } from '@angular/core';
+
+import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChildren, ElementRef, EventEmitter, forwardRef, HostBinding, HostListener, Inject, Input, NgZone, OnDestroy, Output, QueryList, Renderer2, ViewChild, DOCUMENT } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { animationFrameScheduler, fromEvent, Subscription } from 'rxjs';
 import { map, startWith, subscribeOn, take, takeUntil } from 'rxjs/operators';
 import { SwitchItemComponent } from './switch-item';
 
 @Component({
-  selector: 'app-multi-switch',
-  templateUrl: './multi-switch.html',
-  styleUrls: ['./multi-switch.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => MultiSwitchComponent),
-      multi: true,
-    }
-  ]
+    selector: 'app-multi-switch',
+    templateUrl: './multi-switch.html',
+    styleUrls: ['./multi-switch.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => MultiSwitchComponent),
+            multi: true,
+        }
+    ],
+    standalone: false
 })
 export class MultiSwitchComponent<T> implements OnDestroy, AfterViewInit, ControlValueAccessor {
   /** Subscription to all button-select changes */
@@ -71,7 +72,7 @@ export class MultiSwitchComponent<T> implements OnDestroy, AfterViewInit, Contro
     this._disabled = coerceBooleanProperty(v);
 
     // Update all buttons states as well.
-    if (!!this.buttons) {
+    if (this.buttons) {
       this.buttons.forEach(btn => btn.disabled = this.disabled);
     }
   }
@@ -115,7 +116,7 @@ export class MultiSwitchComponent<T> implements OnDestroy, AfterViewInit, Contro
   /** Writes a new value for the multi-line switch */
   writeValue(value: T) {
     this.activeButton = value;
-    if (!!this.buttons) {
+    if (this.buttons) {
       // Set externalWrite to true while we iterate the buttons
       // and eventually call `setActiveItem` so we don't re-emit
       // the active item once the keyManager publishes the change
@@ -250,9 +251,9 @@ export class MultiSwitchComponent<T> implements OnDestroy, AfterViewInit, Contro
           this.updatePosition(offset);
 
           let foundTarget = false;
-          let target = this.findTargetButton(offset);
+          const target = this.findTargetButton(offset);
 
-          if (!!target) {
+          if (target) {
             this.marker!.nativeElement.style.backgroundColor = target.borderColorActive;
 
             this.buttons!.forEach(btn => {
@@ -306,10 +307,10 @@ export class MultiSwitchComponent<T> implements OnDestroy, AfterViewInit, Contro
       if (x >= min && x <= max) {
         newButton = btn;
 
-        if (!!cb) {
+        if (cb) {
           cb(btn, true);
         }
-      } else if (!!cb) {
+      } else if (cb) {
         cb(btn, false);
       }
     });
@@ -325,7 +326,7 @@ export class MultiSwitchComponent<T> implements OnDestroy, AfterViewInit, Contro
       newButton = Array.from(this.buttons!)[0];
     }
 
-    if (!!newButton) {
+    if (newButton) {
       this.keyManager!.setActiveItem(newButton);
     }
   }

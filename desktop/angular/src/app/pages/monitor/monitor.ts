@@ -7,10 +7,11 @@ import { ActionIndicatorService } from 'src/app/shared/action-indicator';
 import { fadeInAnimation, moveInOutListAnimation } from 'src/app/shared/animations';
 
 @Component({
-  templateUrl: './monitor.html',
-  styleUrls: ['../page.scss', './monitor.scss'],
-  providers: [],
-  animations: [fadeInAnimation, moveInOutListAnimation],
+    templateUrl: './monitor.html',
+    styleUrls: ['../page.scss', './monitor.scss'],
+    providers: [],
+    animations: [fadeInAnimation, moveInOutListAnimation],
+    standalone: false
 })
 export class MonitorPageComponent {
   session = inject(SessionDataService);

@@ -40,9 +40,10 @@ export interface SfngTabContentScrollEvent {
  *  </sfng-tab-group>
  */
 @Component({
-  selector: 'sfng-tab-group',
-  templateUrl: './tab-group.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'sfng-tab-group',
+    templateUrl: './tab-group.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SfngTabGroupComponent implements AfterContentInit, AfterViewInit, OnInit {
   @ContentChildren(SfngTabComponent)

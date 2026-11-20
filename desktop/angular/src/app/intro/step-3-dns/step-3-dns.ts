@@ -11,9 +11,10 @@ interface QuickSettingModel extends QuickSetting<any> {
 }
 
 @Component({
-  templateUrl: './step-3-dns.html',
-  styleUrls: ['../step.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    templateUrl: './step-3-dns.html',
+    styleUrls: ['../step.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class Step3DNSComponent implements Step, OnInit {
   private destroyRef = inject(DestroyRef);
@@ -35,7 +36,7 @@ export class Step3DNSComponent implements Step, OnInit {
       return [];
     }
 
-    let val = this.setting.Annotations["safing/portbase:ui:quick-setting"];
+    const val = this.setting.Annotations["safing/portbase:ui:quick-setting"];
     if (val === undefined) {
       return [];
     }

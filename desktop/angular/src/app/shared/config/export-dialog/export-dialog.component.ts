@@ -1,10 +1,11 @@
-import { DOCUMENT } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
   OnInit,
   inject,
+  DOCUMENT
 } from '@angular/core';
 import { SFNG_DIALOG_REF, SfngDialogRef } from '@safing/ui';
 import { ActionIndicatorService } from '../../action-indicator';
@@ -16,10 +17,10 @@ export interface ExportConfig {
 }
 
 @Component({
-  templateUrl: './export-dialog.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: [
-    `
+    templateUrl: './export-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    styles: [
+        `
       :host {
         @apply flex flex-col gap-2 overflow-hidden;
         min-height: 24rem;
@@ -28,7 +29,8 @@ export interface ExportConfig {
         max-width: 40rem;
       }
     `,
-  ],
+    ],
+    standalone: false
 })
 export class ExportDialogComponent implements OnInit {
   readonly dialogRef: SfngDialogRef<

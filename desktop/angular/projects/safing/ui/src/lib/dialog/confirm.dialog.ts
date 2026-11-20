@@ -21,8 +21,9 @@ export interface ConfirmDialogConfig {
 export const CONFIRM_DIALOG_CONFIG = new InjectionToken<ConfirmDialogConfig>('ConfirmDialogConfig');
 
 @Component({
-  templateUrl: './confirm.dialog.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    templateUrl: './confirm.dialog.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SfngConfirmDialogComponent {
   constructor(

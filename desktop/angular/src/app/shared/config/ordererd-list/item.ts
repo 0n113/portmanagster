@@ -2,10 +2,11 @@ import { coerceBooleanProperty } from '@angular/cdk/coercion';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 
 @Component({
-  selector: 'app-ordered-list-item',
-  templateUrl: './item.html',
-  styleUrls: ['./item.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-ordered-list-item',
+    templateUrl: './item.html',
+    styleUrls: ['./item.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class OrderedListItemComponent implements OnInit {
   @Input()

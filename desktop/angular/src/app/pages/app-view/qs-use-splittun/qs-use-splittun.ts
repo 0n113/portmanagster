@@ -10,9 +10,10 @@ const configKeys = {
 } as const;
 
 @Component({
-  selector: 'app-qs-use-splittun',
-  templateUrl: './qs-use-splittun.html',
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'app-qs-use-splittun',
+    templateUrl: './qs-use-splittun.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class QuickSettingUseSplitTunButtonComponent implements OnInit, OnChanges {
   private destroyRef = inject(DestroyRef);

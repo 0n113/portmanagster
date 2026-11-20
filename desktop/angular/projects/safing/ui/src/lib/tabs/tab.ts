@@ -17,7 +17,8 @@ export const TAB_SCROLL_HANDLER = new InjectionToken<(_: Event) => void>('TAB_SC
  * Structural directive (*sfngTabContent) to defined lazy-loaded tab content.
  */
 @Directive({
-  selector: '[sfngTabContent]',
+    selector: '[sfngTabContent]',
+    standalone: false
 })
 export class SfngTabContentDirective<T> {
   portal: TemplatePortal;
@@ -36,9 +37,10 @@ export class SfngTabContentDirective<T> {
  * The content of the tab is lazy-loaded by using the TabContentDirective.
  */
 @Component({
-  selector: 'sfng-tab',
-  template: '<ng-content></ng-content>',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'sfng-tab',
+    template: '<ng-content></ng-content>',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SfngTabComponent implements ListKeyManagerOption {
   @ContentChild(SfngTabContentDirective, { static: false })
@@ -87,46 +89,37 @@ export class SfngTabComponent implements ListKeyManagerOption {
  * move animations.
  */
 @Component({
-  selector: 'sfng-tab-outlet',
-  template: `
+    selector: 'sfng-tab-outlet',
+    template: `
     <div [@moveInOut]="{value: _appAnimate, params: {in: in, out: out}}" class="flex flex-col overflow-auto {{ outletClass }}" (scroll)="onTabContentScroll($event)">
       <ng-template [cdkPortalOutlet]="portal"></ng-template>
     </div>
   `,
-  styles: [
-    `
+    styles: [
+        `
     :host{
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
     `
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [
-    trigger(
-      'moveInOut',
-      [
-        transition(
-          ':enter',
-          [
-            style({ opacity: 0, transform: 'translateX({{ in }})' }),
-            animate('.2s ease-in',
-              style({ opacity: 1, transform: 'translateX(0%)' }))
-          ],
-          { params: { in: '100%' } } // default parameters
-        ),
-        transition(
-          ':leave',
-          [
-            style({ opacity: 1 }),
-            animate('.2s ease-out',
-              style({ opacity: 0, transform: 'translateX({{ out }})' }))
-          ],
-          { params: { out: '-100%' } } // default parameters
-        )
-      ]
-    )]
+    ],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    animations: [
+        trigger('moveInOut', [
+            transition(':enter', [
+                style({ opacity: 0, transform: 'translateX({{ in }})' }),
+                animate('.2s ease-in', style({ opacity: 1, transform: 'translateX(0%)' }))
+            ], { params: { in: '100%' } } // default parameters
+            ),
+            transition(':leave', [
+                style({ opacity: 1 }),
+                animate('.2s ease-out', style({ opacity: 0, transform: 'translateX({{ out }})' }))
+            ], { params: { out: '-100%' } } // default parameters
+            )
+        ])
+    ],
+    standalone: false
 })
 export class TabOutletComponent implements AfterViewInit {
   _appAnimate = false;
@@ -142,7 +135,7 @@ export class TabOutletComponent implements AfterViewInit {
   }
 
   onTabContentScroll(event: Event) {
-    if (!!this.scrollHandler) {
+    if (this.scrollHandler) {
       this.scrollHandler(event)
     }
   }

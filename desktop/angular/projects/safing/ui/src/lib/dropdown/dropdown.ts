@@ -4,18 +4,19 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, Even
 import { fadeInAnimation, fadeOutAnimation } from '../animations';
 
 @Component({
-  selector: 'sfng-dropdown',
-  exportAs: 'sfngDropdown',
-  templateUrl: './dropdown.html',
-  styles: [
-    `
+    selector: 'sfng-dropdown',
+    exportAs: 'sfngDropdown',
+    templateUrl: './dropdown.html',
+    styles: [
+        `
     :host {
       display: block;
     }
     `
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [fadeInAnimation, fadeOutAnimation],
+    ],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    animations: [fadeInAnimation, fadeOutAnimation],
+    standalone: false
 })
 export class SfngDropdownComponent implements OnInit {
   /** The trigger origin used to open the drop-down */
@@ -155,11 +156,11 @@ export class SfngDropdownComponent implements OnInit {
   }
 
   onOutsideClick(event: MouseEvent) {
-    if (!!this.trigger) {
+    if (this.trigger) {
       const triggerEl = this.trigger.elementRef.nativeElement;
 
       let node = event.target;
-      while (!!node) {
+      while (node) {
         if (node === triggerEl) {
           return;
         }
@@ -202,7 +203,7 @@ export class SfngDropdownComponent implements OnInit {
       return;
     }
 
-    if (!!t) {
+    if (t) {
       this.trigger = t;
       const rect = (this.trigger.elementRef.nativeElement as HTMLElement).getBoundingClientRect()
 

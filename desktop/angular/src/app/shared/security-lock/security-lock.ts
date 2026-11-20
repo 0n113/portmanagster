@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, Input, OnInit, inject } from "@angular/core";
 import { SecurityLevel } from "@safing/portmaster-api";
-import { combineLatest } from "rxjs";
 import { StatusService, ModuleStateType, GetModuleState, ControlPauseStateData } from "src/app/services";
 import { fadeInAnimation, fadeOutAnimation } from "../animations";
 
@@ -12,14 +11,15 @@ interface SecurityOption {
 }
 
 @Component({
-  selector: 'app-security-lock',
-  templateUrl: './security-lock.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrls: ['./security-lock.scss'],
-  animations: [
-    fadeInAnimation,
-    fadeOutAnimation
-  ]
+    selector: 'app-security-lock',
+    templateUrl: './security-lock.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    styleUrls: ['./security-lock.scss'],
+    animations: [
+        fadeInAnimation,
+        fadeOutAnimation
+    ],
+    standalone: false
 })
 export class SecurityLockComponent implements OnInit {
   private destroyRef = inject(DestroyRef);

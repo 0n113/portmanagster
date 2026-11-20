@@ -21,15 +21,16 @@ export interface SaveSettingEvent<S extends BaseSetting<any, any> = any> {
 }
 
 @Component({
-  selector: 'app-generic-setting',
-  templateUrl: './generic-setting.html',
-  exportAs: 'appGenericSetting',
-  styleUrls: ['./generic-setting.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [
-    fadeInAnimation,
-    fadeOutAnimation
-  ]
+    selector: 'app-generic-setting',
+    templateUrl: './generic-setting.html',
+    exportAs: 'appGenericSetting',
+    styleUrls: ['./generic-setting.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    animations: [
+        fadeInAnimation,
+        fadeOutAnimation
+    ],
+    standalone: false
 })
 export class GenericSettingComponent<S extends BaseSetting<any, any>> implements OnInit {
   //

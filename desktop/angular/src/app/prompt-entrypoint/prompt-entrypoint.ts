@@ -13,14 +13,13 @@ interface Prompt {
 }
 
 @Component({
-  standalone: true,
-  selector: 'app-root',
-  templateUrl: './prompt.html',
-  imports: [
-    CommonModule,
-    SfngAppIconModule,
-    CountryFlagModule
-  ]
+    selector: 'app-root',
+    templateUrl: './prompt.html',
+    imports: [
+        CommonModule,
+        SfngAppIconModule,
+        CountryFlagModule
+    ]
 })
 export class PromptEntryPointComponent implements OnInit {
   private readonly notificationService = inject(NotificationsService);

@@ -1,9 +1,9 @@
-import { DOCUMENT } from '@angular/common';
-import { Inject, Injectable, Renderer2, inject } from '@angular/core';
+
+import { Inject, Injectable, Renderer2, inject, DOCUMENT } from '@angular/core';
 import { Router } from '@angular/router';
 import { AppProfile, AppProfileService, ConfigService, IPScope, NetqueryConnection, PossilbeValue, QueryResult, Verdict, deepClone, flattenProfileConfig, getAppSetting, setAppSetting } from '@safing/portmaster-api';
 import { BehaviorSubject, Observable, OperatorFunction, Subject, combineLatest } from 'rxjs';
-import { distinctUntilChanged, filter, map, switchMap, take, takeUntil } from 'rxjs/operators';
+import { distinctUntilChanged, map, switchMap, takeUntil } from 'rxjs/operators';
 import { ActionIndicatorService } from '../action-indicator';
 import { objKeys } from '../utils';
 import { SfngSearchbarFields } from './searchbar';

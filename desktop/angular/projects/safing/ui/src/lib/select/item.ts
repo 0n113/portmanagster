@@ -14,8 +14,9 @@ export interface SelectOption<T = any> extends ListKeyManagerOption {
 }
 
 @Component({
-  selector: 'sfng-select-item',
-  template: `<ng-content></ng-content>`,
+    selector: 'sfng-select-item',
+    template: `<ng-content></ng-content>`,
+    standalone: false
 })
 export class SfngSelectItemComponent implements ListKeyManagerOption {
   @HostBinding('class.disabled')
@@ -31,7 +32,8 @@ export class SfngSelectItemComponent implements ListKeyManagerOption {
 }
 
 @Directive({
-  selector: '[sfngSelectValue]',
+    selector: '[sfngSelectValue]',
+    standalone: false
 })
 export class SfngSelectValueDirective<T = any> implements SelectOption<T> {
   @Input('sfngSelectValue')

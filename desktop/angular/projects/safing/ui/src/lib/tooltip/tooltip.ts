@@ -10,7 +10,8 @@ import { SfngTooltipComponent, SFNG_TOOLTIP_CONTENT, SFNG_TOOLTIP_OVERLAY } from
 export type SfngTooltipPosition = 'left' | 'right' | 'bottom' | 'top';
 
 @Directive({
-  selector: '[sfng-tooltip],[snfgTooltip]',
+    selector: '[sfng-tooltip],[snfgTooltip]',
+    standalone: false
 })
 export class SfngTooltipDirective implements OnInit, OnDestroy, OnChanges {
   /** Used to control the visibility of the tooltip */
@@ -75,9 +76,14 @@ export class SfngTooltipDirective implements OnInit, OnDestroy, OnChanges {
   private _offset: number | null = 8;
 
   /** The actual content that should be displayed in the tooltip overlay. */
-  @Input('sfngTooltip')
   @Input('sfng-tooltip')
   tooltipContent: string | TemplateRef<any> | null = null;
+
+  /** Alias of sfng-tooltip. Angular does not allow two aliases on one input. */
+  @Input('sfngTooltip')
+  set tooltipContentAlias(v: string | TemplateRef<any> | null) {
+    this.tooltipContent = v;
+  }
 
   @Input('snfgTooltipPosition')
   position: ConnectedPosition | SfngTooltipPosition | (SfngTooltipPosition | ConnectedPosition)[] | 'any' = 'any';
@@ -89,7 +95,7 @@ export class SfngTooltipDirective implements OnInit, OnDestroy, OnChanges {
           this.createTooltip();
           return;
         }
-        if (!!this.tooltipRef) {
+        if (this.tooltipRef) {
           this.tooltipRef.instance.dispose();
           this.tooltipRef = null;
         }
@@ -112,7 +118,7 @@ export class SfngTooltipDirective implements OnInit, OnDestroy, OnChanges {
   /** Creates the actual tooltip overlay */
   private createTooltip() {
     // there's nothing to do if the tooltip is still active.
-    if (!!this.tooltipRef) {
+    if (this.tooltipRef) {
       return;
     }
 
@@ -178,7 +184,7 @@ export class SfngTooltipDirective implements OnInit, OnDestroy, OnChanges {
       pos = [pos];
     }
 
-    let allowedPositions: ConnectedPosition[] =
+    const allowedPositions: ConnectedPosition[] =
       pos.map(p => {
         if (typeof p === 'string') {
           return this.getAllowedConnectedPosition(p);
@@ -187,7 +193,7 @@ export class SfngTooltipDirective implements OnInit, OnDestroy, OnChanges {
         return p
       });
 
-    let position = this.overlay.position()
+    const position = this.overlay.position()
       .flexibleConnectedTo(this.originRef)
       .withFlexibleDimensions(true)
       .withPush(true)

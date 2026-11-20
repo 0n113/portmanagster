@@ -1,5 +1,5 @@
 import { OverlayModule } from '@angular/cdk/overlay';
-import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { PortmasterAPIModule } from '@safing/portmaster-api';
@@ -12,28 +12,22 @@ import { AuthIntercepter as AuthInterceptor } from './interceptor';
 import { WelcomeModule } from './welcome';
 
 
-@NgModule({
-  declarations: [
-    AppComponent,
-    ExtDomainListComponent,
-    ExtHeaderComponent,
-  ],
-  imports: [
-    BrowserModule,
-    AppRoutingModule,
-    HttpClientModule,
-    PortmasterAPIModule.forRoot(),
-    TabModule,
-    WelcomeModule,
-    OverlayModule,
-  ],
-  providers: [
-    {
-      provide: HTTP_INTERCEPTORS,
-      multi: true,
-      useClass: AuthInterceptor,
-    }
-  ],
-  bootstrap: [AppComponent]
-})
+@NgModule({ declarations: [
+        AppComponent,
+        ExtDomainListComponent,
+        ExtHeaderComponent,
+    ],
+    bootstrap: [AppComponent], imports: [BrowserModule,
+        AppRoutingModule,
+        PortmasterAPIModule.forRoot(),
+        TabModule,
+        WelcomeModule,
+        OverlayModule], providers: [
+        {
+            provide: HTTP_INTERCEPTORS,
+            multi: true,
+            useClass: AuthInterceptor,
+        },
+        provideHttpClient(withInterceptorsFromDi())
+    ] })
 export class AppModule { }

@@ -9,12 +9,13 @@ import { fadeInAnimation, fadeOutAnimation } from '../animations';
 export const OVERLAYREF = new InjectionToken<OverlayRef>('OverlayRef');
 
 @Component({
-  templateUrl: './exit-screen.html',
-  styleUrls: ['./exit-screen.scss'],
-  animations: [
-    fadeInAnimation,
-    fadeOutAnimation,
-  ]
+    templateUrl: './exit-screen.html',
+    styleUrls: ['./exit-screen.scss'],
+    animations: [
+        fadeInAnimation,
+        fadeOutAnimation,
+    ],
+    standalone: false
 })
 export class ExitScreenComponent {
   constructor(

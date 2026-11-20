@@ -1,15 +1,16 @@
 import { AfterContentChecked, ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, Input } from '@angular/core';
 
 @Component({
-  selector: 'app-text-placeholder',
-  template: `
+    selector: 'app-text-placeholder',
+    template: `
     <span class="text-placeholder" *ngIf="loading">
       <div class="background" [style.width]="width" ></div>
     </span>
     <ng-content *ngIf="mode === 'auto' || !loading"></ng-content>
   `,
-  styleUrls: ['./placeholder.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    styleUrls: ['./placeholder.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class PlaceholderComponent implements AfterContentChecked {
   @Input()

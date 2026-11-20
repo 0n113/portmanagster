@@ -36,10 +36,11 @@ interface LocalAppProfile extends AppProfile {
 }
 
 @Component({
-  selector: 'app-settings-overview',
-  templateUrl: './overview.html',
-  styleUrls: ['../page.scss', './overview.scss'],
-  animations: [fadeInAnimation, fadeInListAnimation, moveInOutListAnimation],
+    selector: 'app-settings-overview',
+    templateUrl: './overview.html',
+    styleUrls: ['../page.scss', './overview.scss'],
+    animations: [fadeInAnimation, fadeInListAnimation, moveInOutListAnimation],
+    standalone: false
 })
 export class AppOverviewComponent implements OnInit, OnDestroy {
   private subscription = Subscription.EMPTY;

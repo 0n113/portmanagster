@@ -1,4 +1,3 @@
-import { ComponentPortal } from "@angular/cdk/portal";
 import { HttpErrorResponse } from "@angular/common/http";
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ComponentRef, EventEmitter, OnInit, inject } from "@angular/core";
 import { SFNG_DIALOG_REF, SfngDialogRef, SfngDialogService } from "@safing/ui";
@@ -29,15 +28,16 @@ export type TicketInfo = GithubIssue | PrivateTicket;
 
 
 @Component({
-  templateUrl: './progress-dialog.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: [
-    `
+    templateUrl: './progress-dialog.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    styles: [
+        `
     :host {
       @apply block flex flex-col gap-8 relative;
     }
     `,
-  ]
+    ],
+    standalone: false
 })
 export class SupportProgressDialogComponent implements OnInit {
 

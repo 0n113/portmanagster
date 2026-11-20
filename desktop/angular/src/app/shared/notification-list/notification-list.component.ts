@@ -16,29 +16,23 @@ export interface _Notification<T = any> extends Notification<T> {
 }
 
 @Component({
-  selector: 'app-notification-list',
-  templateUrl: './notification-list.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrls: [
-    './notification-list.component.scss'
-  ],
-  animations: [
-    trigger(
-      'fadeIn',
-      [
-        transition(
-          ':enter',
-          [
-            style({ opacity: 0 }),
-            animate('.2s .2s ease-in',
-              style({ opacity: 1 }))
-          ]
-        ),
-      ]
-    ),
-    moveInOutAnimation,
-    moveInOutListAnimation
-  ]
+    selector: 'app-notification-list',
+    templateUrl: './notification-list.component.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    styleUrls: [
+        './notification-list.component.scss'
+    ],
+    animations: [
+        trigger('fadeIn', [
+            transition(':enter', [
+                style({ opacity: 0 }),
+                animate('.2s .2s ease-in', style({ opacity: 1 }))
+            ]),
+        ]),
+        moveInOutAnimation,
+        moveInOutListAnimation
+    ],
+    standalone: false
 })
 export class NotificationListComponent implements OnInit, OnDestroy {
   readonly types = NotificationType;
@@ -129,7 +123,7 @@ export class NotificationListComponent implements OnInit, OnDestroy {
    * @param notif The notification that has been clicked.
    */
   toggelView(notif: _Notification<any>) {
-    const ref = this.dialog.create(NotificationComponent, {
+    this.dialog.create(NotificationComponent, {
       backdrop: 'light',
       autoclose: true,
       data: notif,

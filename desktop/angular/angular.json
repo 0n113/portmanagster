@@ -42,7 +42,6 @@
               ]
             },
             "scripts": [
-              "node_modules/marked/marked.min.js",
               "node_modules/emoji-toolkit/lib/js/joypixels.min.js",
               "node_modules/prismjs/prism.js",
               "node_modules/prismjs/components/prism-yaml.min.js",
@@ -96,18 +95,18 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
-            "browserTarget": "portmaster:build"
+            "buildTarget": "portmaster:build"
           },
           "configurations": {
             "production": {
-              "browserTarget": "portmaster:build:production"
+              "buildTarget": "portmaster:build:production"
             }
           }
         },
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "portmaster:build"
+            "buildTarget": "portmaster:build"
           }
         },
         "test": {
@@ -269,10 +268,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "portmaster-chrome-extension:build:production"
+              "buildTarget": "portmaster-chrome-extension:build:production"
             },
             "development": {
-              "browserTarget": "portmaster-chrome-extension:build:development"
+              "buildTarget": "portmaster-chrome-extension:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -280,7 +279,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "portmaster-chrome-extension:build"
+            "buildTarget": "portmaster-chrome-extension:build"
           }
         },
         "test": {
@@ -426,10 +425,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "tauri-builtin:build:production"
+              "buildTarget": "tauri-builtin:build:production"
             },
             "development": {
-              "browserTarget": "tauri-builtin:build:development"
+              "buildTarget": "tauri-builtin:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -437,7 +436,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "tauri-builtin:build"
+            "buildTarget": "tauri-builtin:build"
           }
         }
       }
@@ -452,6 +451,30 @@
     },
     "@angular-eslint/schematics:library": {
       "setParserOptionsProject": true
+    },
+    "@schematics/angular:component": {
+      "type": "component"
+    },
+    "@schematics/angular:directive": {
+      "type": "directive"
+    },
+    "@schematics/angular:service": {
+      "type": "service"
+    },
+    "@schematics/angular:guard": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:interceptor": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:module": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:pipe": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:resolver": {
+      "typeSeparator": "."
     }
   }
 }

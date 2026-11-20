@@ -15,9 +15,10 @@ import {
 import { SaveSettingEvent } from 'src/app/shared/config';
 
 @Component({
-  selector: 'app-qs-history',
-  templateUrl: './qs-history.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-qs-history',
+    templateUrl: './qs-history.component.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class QsHistoryComponent implements OnChanges {
   currentValue = false;

@@ -18,9 +18,9 @@ export interface ImportConfig {
 }
 
 @Component({
-  templateUrl: './import-dialog.component.html',
-  styles: [
-    `
+    templateUrl: './import-dialog.component.html',
+    styles: [
+        `
       :host {
         @apply flex flex-col gap-2 overflow-hidden;
         min-height: 24rem;
@@ -29,8 +29,9 @@ export interface ImportConfig {
         max-width: 40rem;
       }
     `,
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    ],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class ImportDialogComponent {
   readonly dialogRef: SfngDialogRef<
@@ -192,7 +193,7 @@ export class ImportDialogComponent {
     reader.onload = (data) => {
       (event.target as any).value = '';
 
-      let content = (data.target as any).result;
+      const content = (data.target as any).result;
       this.updateAndValidate(content);
     };
 

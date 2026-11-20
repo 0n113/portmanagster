@@ -1,8 +1,9 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
 @Pipe({
-  name: 'timeAgo',
-  pure: true
+    name: 'timeAgo',
+    pure: true,
+    standalone: false
 })
 export class TimeAgoPipe implements PipeTransform {
   transform(value: number | Date | string, ticker?: any): string {
@@ -39,7 +40,7 @@ export function timeAgo(value: number | Date | string) {
 
   for (let i = timeCeilings.length - 1; i >= 0; i--) {
     const f = timeCeilings[i];
-    let n = Math.floor(diffInSeconds / f.ceiling);
+    const n = Math.floor(diffInSeconds / f.ceiling);
     if (n > 0) {
       if (i < 1) {
         return `< 1 min ` + suffix;

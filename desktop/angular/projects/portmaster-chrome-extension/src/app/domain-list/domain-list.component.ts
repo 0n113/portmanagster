@@ -11,16 +11,17 @@ interface DomainRequests {
 }
 
 @Component({
-  selector: 'ext-domain-list',
-  templateUrl: './domain-list.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: [
-    `
+    selector: 'ext-domain-list',
+    templateUrl: './domain-list.component.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    styles: [
+        `
     :host {
       @apply flex flex-grow flex-col overflow-auto;
     }
     `
-  ]
+    ],
+    standalone: false
 })
 export class ExtDomainListComponent implements OnInit {
   requests: DomainRequests[] = [];

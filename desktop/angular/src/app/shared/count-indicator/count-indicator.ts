@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, Input, OnChanges } from '@angular/core';
 
 @Component({
-  selector: 'app-count-indicator',
-  templateUrl: './count-indicator.html',
-  styleUrls: ['./count-indicator.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-count-indicator',
+    templateUrl: './count-indicator.html',
+    styleUrls: ['./count-indicator.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class CountIndicatorComponent implements OnChanges {
   @Input()

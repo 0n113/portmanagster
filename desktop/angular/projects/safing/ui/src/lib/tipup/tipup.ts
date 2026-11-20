@@ -2,8 +2,8 @@
 import { coerceBooleanProperty, coerceNumberProperty } from '@angular/cdk/coercion';
 import { ConnectedPosition } from '@angular/cdk/overlay';
 import { _getShadowRoot } from '@angular/cdk/platform';
-import { DOCUMENT } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Directive, ElementRef, HostBinding, HostListener, Inject, Injectable, Injector, Input, NgZone, OnDestroy, Optional, Renderer2, RendererFactory2 } from '@angular/core';
+
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Directive, ElementRef, HostBinding, HostListener, Inject, Injectable, Injector, Input, NgZone, OnDestroy, Optional, Renderer2, RendererFactory2, DOCUMENT } from '@angular/core';
 import { Observable, of, Subject } from 'rxjs';
 import { debounce, debounceTime, filter, map, skip, take, timeout } from 'rxjs/operators';
 import { SfngDialogRef, SfngDialogService } from '../dialog';
@@ -15,7 +15,8 @@ import { Button, HelpTexts, SFNG_TIP_UP_CONTENTS, TipUp } from './translations';
 import { SfngTipUpPlacement, TIPUP_TOKEN } from './utils';
 
 @Directive({
-  selector: '[sfngTipUpTrigger]',
+    selector: '[sfngTipUpTrigger]',
+    standalone: false
 })
 export class SfngsfngTipUpTriggerDirective implements OnDestroy {
   constructor(
@@ -34,7 +35,7 @@ export class SfngsfngTipUpTriggerDirective implements OnDestroy {
    */
   @Input('sfngTipUpTrigger')
   set textKey(s: string) {
-    if (!!this._textKey) {
+    if (this._textKey) {
       this.tipupService.deregister(this._textKey, this);
     }
     this._textKey = s;
@@ -117,7 +118,7 @@ export class SfngsfngTipUpTriggerDirective implements OnDestroy {
 
   @HostListener('click', ['$event'])
   onClick(event?: MouseEvent): Promise<any> {
-    if (!!event) {
+    if (event) {
       // if there's a click event the user actually clicked the element.
       // we only handle this if we're not marked as passive.
       if (this._passive) {
@@ -128,7 +129,7 @@ export class SfngsfngTipUpTriggerDirective implements OnDestroy {
       event.stopPropagation();
     }
 
-    if (!!this.dialogRef) {
+    if (this.dialogRef) {
       this.dialogRef.close();
       return Promise.resolve();
     }
@@ -136,7 +137,7 @@ export class SfngsfngTipUpTriggerDirective implements OnDestroy {
     let anchorElement: ElementRef<any> | HTMLElement | null = this.defaultAnchor || this.elementRef;
     let placement: SfngTipUpPlacement | null = this.placement;
 
-    if (!!this.anchor) {
+    if (this.anchor) {
       if (this.anchor instanceof SfngTipUpAnchorDirective) {
         anchorElement = this.anchor.elementRef;
         placement = this.anchor;
@@ -171,9 +172,8 @@ export class SfngsfngTipUpTriggerDirective implements OnDestroy {
 }
 
 @Component({
-  selector: 'sfng-tipup',
-  template:
-    `<svg viewBox="0 0 24 24"
+    selector: 'sfng-tipup',
+    template: `<svg viewBox="0 0 24 24"
     class="tipup"
     [sfngTipUpTrigger]="key"
     [sfngTipUpDefaultAnchor]="parent"
@@ -187,8 +187,8 @@ export class SfngsfngTipUpTriggerDirective implements OnDestroy {
       <path stroke="#ffff" shape-rendering="geometricPrecision" d="M12 17v-5h-1M11.749 8c-.138 0-.25.112-.249.25 0 .138.112.25.25.25s.25-.112.25-.25-.112-.25-.251-.25"/>
     </g>
   </svg>`,
-  styles: [
-    `
+    styles: [
+        `
       :host {
         display: inline-block;
         width   : 1rem;
@@ -202,8 +202,9 @@ export class SfngsfngTipUpTriggerDirective implements OnDestroy {
         opacity: 1;
       }
       `
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    ],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SfngTipUpIconComponent implements SfngTipUpPlacement {
   @Input()
@@ -314,8 +315,8 @@ export class SfngTipUpService {
     injector?: Injector): SfngDialogRef<SfngTipUpComponent> {
 
     const lastTipUp = this._latestTipUp
-    let closePrevious = () => {
-      if (!!lastTipUp) {
+    const closePrevious = () => {
+      if (lastTipUp) {
         lastTipUp.close();
       }
     }
@@ -349,7 +350,7 @@ export class SfngTipUpService {
       offset *= -1;
     }
 
-    let postitionStrategy = this.dialog.position()
+    const postitionStrategy = this.dialog.position()
       .flexibleConnectedTo(anchor)
       .withPositions(positions)
       .withDefaultOffsetX(offset);
@@ -378,10 +379,10 @@ export class SfngTipUpService {
 
     // construct a CSS selector that targets the clicked origin (sfngTipUpTriggerDirective) from within
     // the anchor. We use that path to highlight the copy of the trigger-directive in the preview.
-    if (!!origin) {
+    if (origin) {
       const originSelector = getCssSelector(origin.elementRef.nativeElement, anchor.nativeElement);
       let target: HTMLElement | null = null;
-      if (!!originSelector) {
+      if (originSelector) {
         target = _preview.querySelector(originSelector);
       } else {
         target = _preview;
@@ -450,17 +451,17 @@ export class SfngTipUpService {
     // the preview and eventually dispatch a click-event on the actual
     // - real - target inside the cloned element.
     preview.onclick = function (event: MouseEvent) {
-      let path = getCssSelector(event.target as HTMLElement, preview);
-      if (!!path) {
+      const path = getCssSelector(event.target as HTMLElement, preview);
+      if (path) {
         // find the target by it's CSS path
-        let actualTarget: HTMLElement | null = element.querySelector<HTMLElement>(path);
+        const actualTarget: HTMLElement | null = element.querySelector<HTMLElement>(path);
 
         // some (SVG) elements don't have a direct click() listener so we need to search
         // the parents upwards to find one that implements click().
         // we're basically searching up until we reach the <html> tag.
         //
         // TODO(ppacher): stop searching at the respective root node.
-        if (!!actualTarget) {
+        if (actualTarget) {
           let iter: HTMLElement = actualTarget;
           while (iter != null) {
             if ('click' in iter && typeof iter['click'] === 'function') {
@@ -480,13 +481,13 @@ export class SfngTipUpService {
       }
     }
 
-    let attach = () => {
+    const attach = () => {
       const parent = this._getPreviewInserationPoint(shadowRoot)
       const cdkOverlayContainer = parent.getElementsByClassName('cdk-overlay-container')[0]
       // if we find a cdkOverlayContainer in our inseration point (which we expect to be there)
       // we insert the preview element right after the overlay-backdrop. This way the tip-up
       // dialog will still be on top of the preview.
-      if (!!cdkOverlayContainer) {
+      if (cdkOverlayContainer) {
         const reference = cdkOverlayContainer.getElementsByClassName("cdk-overlay-backdrop")[0].nextSibling;
         cdkOverlayContainer.insertBefore(preview, reference)
       } else {

@@ -4,9 +4,10 @@ import { Subscription } from 'rxjs';
 import { SfngAccordionComponent } from './accordion';
 
 @Component({
-  selector: 'sfng-accordion-group',
-  templateUrl: './accordion-group.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'sfng-accordion-group',
+    templateUrl: './accordion-group.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SfngAccordionGroupComponent implements OnDestroy {
   /** @private Currently registered accordion components */
@@ -20,7 +21,7 @@ export class SfngAccordionGroupComponent implements OnDestroy {
   set headerTemplate(v: TemplateRef<any> | null) {
     this._headerTemplate = v;
 
-    if (!!this.accordions.length) {
+    if (this.accordions.length) {
       this.accordions.forEach(a => {
         a.headerTemplate = v;
         a.cdr.markForCheck();

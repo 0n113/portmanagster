@@ -36,8 +36,9 @@ export type SfngSearchbarSuggestion<K extends keyof NetqueryConnection> = {
 }
 
 @Directive({
-  selector: '[sfngNetquerySuggestion]',
-  exportAs: 'sfngNetquerySuggestion'
+    selector: '[sfngNetquerySuggestion]',
+    exportAs: 'sfngNetquerySuggestion',
+    standalone: false
 })
 export class SfngNetquerySuggestionDirective<K extends keyof NetqueryConnection> {
   constructor() { }
@@ -65,20 +66,21 @@ export class SfngNetquerySuggestionDirective<K extends keyof NetqueryConnection>
 }
 
 @Component({
-  selector: 'sfng-netquery-searchbar',
-  templateUrl: './searchbar.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [
-    fadeInAnimation,
-    fadeInListAnimation
-  ],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => SfngNetquerySearchbarComponent),
-      multi: true,
-    }
-  ]
+    selector: 'sfng-netquery-searchbar',
+    templateUrl: './searchbar.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    animations: [
+        fadeInAnimation,
+        fadeInListAnimation
+    ],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => SfngNetquerySearchbarComponent),
+            multi: true,
+        }
+    ],
+    standalone: false
 })
 export class SfngNetquerySearchbarComponent implements ControlValueAccessor, OnInit, OnDestroy, AfterViewInit {
   private loadSuggestions$ = new Subject<void>();
@@ -185,7 +187,7 @@ export class SfngNetquerySearchbarComponent implements ControlValueAccessor, OnI
           const queryKeys: (keyof Partial<NetqueryConnection>)[] = [];
 
           // TODO(ppacher): confirm .type is an actually allowed field
-          if (!!parser.lastUnterminatedCondition) {
+          if (parser.lastUnterminatedCondition) {
             fields = [parser.lastUnterminatedCondition.type as keyof NetqueryConnection];
             limit = 0;
           }
@@ -201,7 +203,7 @@ export class SfngNetquerySearchbarComponent implements ControlValueAccessor, OnI
 
             const query: Condition = {
               [queryField]: {
-                $like: `%${!!parser.lastUnterminatedCondition ? parser.lastUnterminatedCondition.value : parseResult.textQuery}%`
+                $like: `%${parser.lastUnterminatedCondition ? parser.lastUnterminatedCondition.value : parseResult.textQuery}%`
               },
             }
 
@@ -233,7 +235,7 @@ export class SfngNetquerySearchbarComponent implements ControlValueAccessor, OnI
               .pipe(
                 this.helper.encodeToPossibleValues(field),
                 map(results => {
-                  let val: SfngSearchbarSuggestion<typeof field> = {
+                  const val: SfngSearchbarSuggestion<typeof field> = {
                     field: field,
                     values: [],
                     start: parser.lastUnterminatedCondition ? parser.lastUnterminatedCondition.start : undefined,
@@ -352,7 +354,7 @@ export class SfngNetquerySearchbarComponent implements ControlValueAccessor, OnI
       orderBy: result.orderBy || undefined,
     }
     if (keys.length > 0 || meta.groupBy?.length || meta.orderBy?.length) {
-      let updatedConditions: ParseResult['conditions'] = {};
+      const updatedConditions: ParseResult['conditions'] = {};
       keys.forEach(key => {
         updatedConditions[key] = this.helper.decodePrettyValues(key as keyof NetqueryConnection, result.conditions[key])
       })

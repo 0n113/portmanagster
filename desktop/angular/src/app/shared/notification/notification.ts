@@ -5,10 +5,11 @@ import { Action, NotificationState, NotificationsService, getNotificationTypeStr
 import { _Notification } from '../notification-list/notification-list.component';
 
 @Component({
-  selector: 'app-notification',
-  templateUrl: './notification.html',
-  styleUrls: ['./notification.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-notification',
+    templateUrl: './notification.html',
+    styleUrls: ['./notification.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class NotificationComponent implements OnInit {
   readonly ref = inject(SFNG_DIALOG_REF);
@@ -24,7 +25,7 @@ export class NotificationComponent implements OnInit {
   @HostBinding('class')
   get hostClass(): string {
     let cls = `notif-${this.state}`;
-    if (!!this.notification) {
+    if (this.notification) {
       cls = `${cls} notif-${getNotificationTypeString(this.notification.Type)}`
     }
     return cls
@@ -33,7 +34,7 @@ export class NotificationComponent implements OnInit {
   state: NotificationState = NotificationState.Invalid;
 
   ngOnInit() {
-    if (!!this.notification) {
+    if (this.notification) {
       this.state = this.notification.State || NotificationState.Invalid;
     } else {
       this.state = NotificationState.Invalid;

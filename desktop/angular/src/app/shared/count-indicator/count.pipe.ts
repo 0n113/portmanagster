@@ -1,8 +1,9 @@
 import { Pipe, PipeTransform } from "@angular/core";
 
 @Pipe({
-  name: 'prettyCount',
-  pure: true
+    name: 'prettyCount',
+    pure: true,
+    standalone: false
 })
 export class PrettyCountPipe implements PipeTransform {
   transform(value: number) {

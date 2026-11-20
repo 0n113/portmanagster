@@ -57,8 +57,9 @@ export function formatDuration(millis: number, skipDays = false, skipMillis = fa
 }
 
 @Pipe({
-  name: 'duration',
-  pure: true
+    name: 'duration',
+    pure: true,
+    standalone: false
 })
 export class DurationPipe implements PipeTransform {
   transform(value: number | [string, string] | [Date, Date] | [number, number], ...args: any[]) {
@@ -87,10 +88,6 @@ export class DurationPipe implements PipeTransform {
       }
 
       value = secondNum - firstNum
-    }
-
-    if (value < second) {
-
     }
 
     const result = formatDuration(value);

@@ -9,12 +9,13 @@ import { SupportType, supportTypes } from './pages';
 import { INTEGRATION_SERVICE } from 'src/app/integration';
 
 @Component({
-  templateUrl: './support.html',
-  styleUrls: ['./support.scss'],
-  animations: [
-    fadeInListAnimation,
-    fadeInAnimation,
-  ]
+    templateUrl: './support.html',
+    styleUrls: ['./support.scss'],
+    animations: [
+        fadeInListAnimation,
+        fadeInAnimation,
+    ],
+    standalone: false
 })
 export class SupportPageComponent implements OnInit {
   // make supportTypes available in the page template.

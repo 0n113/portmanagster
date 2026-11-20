@@ -1,15 +1,14 @@
 import { KeyValue } from "@angular/common";
-import { AfterContentInit, AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, OnInit, QueryList, TrackByFunction, ViewChild, ViewChildren, forwardRef, inject } from "@angular/core";
+import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnInit, QueryList, TrackByFunction, ViewChild, ViewChildren, forwardRef, inject } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { Router } from "@angular/router";
-import { AppProfileService, BandwidthChartResult, ChartResult, Database, Netquery, PortapiService, Verdict } from "@safing/portmaster-api";
+import { BandwidthChartResult, ChartResult, Database, Netquery, PortapiService, Verdict } from "@safing/portmaster-api";
 import { SfngTabGroupComponent } from "@safing/ui";
-import { Observable, catchError, filter, interval, map, repeat, retry, startWith, throwError } from "rxjs";
+import { filter, interval, repeat, startWith } from "rxjs";
 import { DefaultBandwidthChartConfig, SfngNetqueryLineChartComponent } from "src/app/shared/netquery/line-chart/line-chart";
 import { MAP_HANDLER, MapRef } from "src/app/shared/map-renderer";
 import { CircularBarChartConfig, splitQueryResult } from "src/app/shared/netquery/circular-bar-chart/circular-bar-chart.component";
 import { BytesPipe } from "src/app/shared/pipes/bytes.pipe";
-import { HttpErrorResponse } from "@angular/common/http";
 
 interface BlockedProfile {
   profileID: string;
@@ -43,13 +42,14 @@ interface News {
 const newsResourceIdentifier = "intel/news.yaml"
 
 @Component({
-  selector: 'app-dashboard',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrls: ['./dashboard.component.scss'],
-  templateUrl: './dashboard.component.html',
-  providers: [
-    { provide: MAP_HANDLER, useExisting: forwardRef(() => DashboardPageComponent), multi: true },
-  ]
+    selector: 'app-dashboard',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    styleUrls: ['./dashboard.component.scss'],
+    templateUrl: './dashboard.component.html',
+    providers: [
+        { provide: MAP_HANDLER, useExisting: forwardRef(() => DashboardPageComponent), multi: true },
+    ],
+    standalone: false
 })
 export class DashboardPageComponent implements OnInit, AfterViewInit {
   @ViewChildren(SfngNetqueryLineChartComponent)

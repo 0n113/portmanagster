@@ -5,10 +5,11 @@ import { SfngDialogRef, SfngDialogService, SFNG_DIALOG_REF } from '@safing/ui';
 import { EditProfileDialog } from '../edit-profile-dialog';
 
 @Component({
-  selector: 'app-process-details',
-  templateUrl: './process-details-dialog.html',
-  styleUrls: ['./process-details-dialog.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-process-details',
+    templateUrl: './process-details-dialog.html',
+    styleUrls: ['./process-details-dialog.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class ProcessDetailsDialogComponent {
   process: (Process & { ID: string });
@@ -59,7 +60,7 @@ export class ProcessDetailsDialogComponent {
   }
 
   openParent() {
-    if (!!this.process.ParentPid) {
+    if (this.process.ParentPid) {
       this.portapi.get<Process>(`network:tree/${this.process.ParentPid}-${this.process.ParentCreatedAt}`)
         .subscribe(process => {
           this.process = {
@@ -85,7 +86,7 @@ export class ProcessDetailsDialogComponent {
   }
 
   private createProfileWithFingerprint(fp: Fingerprint) {
-    let profilePreset: Partial<AppProfile> = {
+    const profilePreset: Partial<AppProfile> = {
       Fingerprints: [
         fp
       ]

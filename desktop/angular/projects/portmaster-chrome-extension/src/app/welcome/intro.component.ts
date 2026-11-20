@@ -4,14 +4,15 @@ import { MetaAPI } from "@safing/portmaster-api";
 import { Subject, takeUntil } from "rxjs";
 
 @Component({
-  templateUrl: './intro.component.html',
-  styles: [
-    `
+    templateUrl: './intro.component.html',
+    styles: [
+        `
     :host {
       @apply flex flex-col h-full;
     }
     `
-  ]
+    ],
+    standalone: false
 })
 export class IntroComponent {
   private cancelRequest$ = new Subject<void>();

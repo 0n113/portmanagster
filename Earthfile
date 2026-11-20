@@ -5,7 +5,7 @@ VERSION 0.8
 ARG --global custom_version = ""
 
 ARG --global go_version = 1.27
-ARG --global node_version = 18
+ARG --global node_version = 22
 ARG --global rust_version = 1.89
 ARG --global tauri_version = "2.2.5"
 ARG --global golangci_lint_version = 2.12.2
@@ -279,7 +279,9 @@ angular-base:
 
     COPY desktop/angular/ .
     # Remove symlink and copy assets directly.
-    RUN rm ./assets
+    # Keep an empty directory: the src/assets symlinks point to it, and
+    # Angular 20 fails on a missing asset input directory.
+    RUN rm ./assets && mkdir ./assets
     # COPY assets/data ./assets # Do not include the assets folder into portmaster.zip, we use the assets.zip instead
 
     IF [ "${configuration}" = "production" ]
