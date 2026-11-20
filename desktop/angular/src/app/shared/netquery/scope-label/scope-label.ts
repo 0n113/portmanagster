@@ -24,7 +24,7 @@ export class SfngNetqueryScopeLabelComponent implements OnChanges {
   subdomain: string = '';
 
   ngOnChanges(change: SimpleChanges) {
-    if (!!change['scope']) {
+    if (change['scope']) {
       //this.label = change.label.currentValue;
       const result = parseDomain(change.scope.currentValue || '')
 

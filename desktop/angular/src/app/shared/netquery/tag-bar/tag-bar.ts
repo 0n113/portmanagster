@@ -110,7 +110,7 @@ export class SfngNetqueryTagbarComponent implements ControlValueAccessor {
 
     console.log(this.values);
 
-    let cpy: SfngTagbarValue[] = [];
+    const cpy: SfngTagbarValue[] = [];
 
     this.values.forEach(val => {
       if (val.key === key) {

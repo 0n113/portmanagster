@@ -6,8 +6,7 @@ import { OverlayStepper, SfngDialogService, StepperRef } from '@safing/ui';
 import { BehaviorSubject, merge, Subject } from 'rxjs';
 import { debounceTime, filter, mergeMap, skip, startWith, take } from 'rxjs/operators';
 import { IntroModule } from './intro';
-import { NotificationsService, UIStateService } from './services';
-import { ActionIndicatorService } from './shared/action-indicator';
+import { UIStateService } from './services';
 import { fadeInAnimation, fadeOutAnimation } from './shared/animations';
 import { ExitService } from './shared/exit-screen';
 import { SfngNetquerySearchOverlayComponent } from './shared/netquery/search-overlay';
@@ -203,7 +202,7 @@ export class AppComponent implements OnInit, AfterViewInit {
     this.sideDashOpen.next(this.sideDashStatus !== 'collapsed')
 
     if (this.integration instanceof TauriIntegrationService) {
-      let tauri = this.integration;
+      const tauri = this.integration;
 
       tauri.shouldShow()
         .then(show => {

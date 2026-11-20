@@ -165,11 +165,11 @@ export class BasicSettingComponent<S extends BaseSetting<any, any>> implements C
     if (!!this.unit && !!this.suffixElement) {
       const input = this.suffixElement.nativeElement.previousSibling! as HTMLInputElement;
       const style = window.getComputedStyle(input);
-      let paddingleft = parseInt(style.paddingLeft.slice(0, -2))
+      const paddingleft = parseInt(style.paddingLeft.slice(0, -2))
       // we need to use `input.value` instead of `value` as we need to
       // get preceding zeros of the number input as well, while still
       // using the value as a fallback.
-      let value = input.value || (this._value as string);
+      const value = input.value || (this._value as string);
       const width = this.getTextWidth(value, style.font) + paddingleft;
       this.suffixElement.nativeElement.style.left = `${width}px`;
     }
@@ -197,7 +197,7 @@ export class BasicSettingComponent<S extends BaseSetting<any, any>> implements C
       }
     }
 
-    if (!!this.setting?.ValidationRegex) {
+    if (this.setting?.ValidationRegex) {
       const re = new RegExp(this.setting.ValidationRegex);
 
       if (!this.isJSON) {
@@ -246,7 +246,7 @@ export class BasicSettingComponent<S extends BaseSetting<any, any>> implements C
     }
     // EOM
 
-    let t = typeof v;
+    const t = typeof v;
     this._type = t;
 
     if (this.isJSON) {
@@ -323,12 +323,12 @@ export class BasicSettingComponent<S extends BaseSetting<any, any>> implements C
    * @param font The CSS font descriptor that would be used for the text
    */
   private getTextWidth(text: string, font: string): number {
-    let canvas = this.cachedCanvas || this.document.createElement('canvas');
+    const canvas = this.cachedCanvas || this.document.createElement('canvas');
     this.cachedCanvas = canvas;
 
-    let context = canvas.getContext("2d")!;
+    const context = canvas.getContext("2d")!;
     context.font = font;
-    let metrics = context.measureText(text);
+    const metrics = context.measureText(text);
     return metrics.width;
   }
 }

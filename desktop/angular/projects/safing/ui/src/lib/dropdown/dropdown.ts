@@ -156,11 +156,11 @@ export class SfngDropdownComponent implements OnInit {
   }
 
   onOutsideClick(event: MouseEvent) {
-    if (!!this.trigger) {
+    if (this.trigger) {
       const triggerEl = this.trigger.elementRef.nativeElement;
 
       let node = event.target;
-      while (!!node) {
+      while (node) {
         if (node === triggerEl) {
           return;
         }
@@ -203,7 +203,7 @@ export class SfngDropdownComponent implements OnInit {
       return;
     }
 
-    if (!!t) {
+    if (t) {
       this.trigger = t;
       const rect = (this.trigger.elementRef.nativeElement as HTMLElement).getBoundingClientRect()
 

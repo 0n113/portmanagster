@@ -1,4 +1,3 @@
-import { ComponentPortal } from "@angular/cdk/portal";
 import { HttpErrorResponse } from "@angular/common/http";
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ComponentRef, EventEmitter, OnInit, inject } from "@angular/core";
 import { SFNG_DIALOG_REF, SfngDialogRef, SfngDialogService } from "@safing/ui";

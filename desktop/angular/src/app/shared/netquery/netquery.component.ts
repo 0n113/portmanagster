@@ -3,7 +3,7 @@ import { FormatWidth, formatDate, getLocaleDateFormat, getLocaleId } from "@angu
 import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, EventEmitter, Input, LOCALE_ID, OnDestroy, OnInit, Output, QueryList, TemplateRef, TrackByFunction, ViewChildren, inject, isDevMode } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, Router } from "@angular/router";
-import { BandwidthChartResult, ChartResult, Condition, Database, GreaterOrEqual, IPScope, LessOrEqual, Netquery, NetqueryConnection, OrderBy, PossilbeValue, Query, QueryResult, Select, Verdict } from "@safing/portmaster-api";
+import { BandwidthChartResult, ChartResult, Condition, Database, GreaterOrEqual, IPScope, LessOrEqual, Netquery, NetqueryConnection, OrderBy, PossilbeValue, Query, QueryResult, Verdict } from "@safing/portmaster-api";
 import { Datasource, DynamicItemsPaginator, SelectOption } from "@safing/ui";
 import { BehaviorSubject, Observable, Subject, combineLatest, forkJoin, interval, merge, of, timer } from "rxjs";
 import { catchError, filter, map, share, skip, startWith, switchMap, take, takeUntil } from "rxjs/operators";

@@ -62,7 +62,7 @@ export class SfngNetqueryConnectionDetailsComponent implements OnInit, OnDestroy
   bwData: ConnectionBandwidthChartResult[] = [];
 
   ngOnChanges(changes: SimpleChanges) {
-    if (!!changes?.conn) {
+    if (changes?.conn) {
       this.updateConnectionNotice();
       this.loadBandwidthChart();
 

@@ -16,7 +16,6 @@ import {
   PORTMASTER_HTTP_API_ENDPOINT,
   PortapiService,
   Record,
-  deepClone,
 } from '@safing/portmaster-api';
 import { Subscription, map, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
@@ -210,7 +209,7 @@ export class AppIconComponent implements OnInit, OnDestroy {
     }
 
     // if there's a source ID only holds the profile ID
-    if (!!this.profile.Source) {
+    if (this.profile.Source) {
       return [this.profile.Source, id];
     }
 
@@ -243,7 +242,7 @@ export class AppIconComponent implements OnInit, OnDestroy {
         switchMap((profile: AppProfile) => {
           this.updateLetter(profile);
 
-          if (!!profile.Icons?.length) {
+          if (profile.Icons?.length) {
             const firstIcon = profile.Icons[0];
 
             console.log(`profile ${profile.Name} has icon of from source ${firstIcon.Source} stored in ${firstIcon.Type}`)

@@ -10,10 +10,8 @@
       ],
       "parserOptions": {
         "project": [
-          "projects/safing/ui/tsconfig.lib.json",
-          "projects/safing/ui/tsconfig.spec.json"
-        ],
-        "createDefaultProgram": true
+          "tsconfig.json"
+        ]
       },
       "rules": {
         "@angular-eslint/directive-selector": [

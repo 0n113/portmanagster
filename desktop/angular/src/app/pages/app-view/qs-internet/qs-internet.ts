@@ -37,7 +37,7 @@ export class QuickSettingInternetButtonComponent implements OnChanges {
     if ('settings' in changes) {
       this.currentValue = '';
       const defaultActionSetting = this.settings.find(s => s.Key == 'filter/defaultAction') as (StringSetting | undefined);
-      if (!!defaultActionSetting) {
+      if (defaultActionSetting) {
         this.currentValue = getActualValue(defaultActionSetting);
         this.updateInterfering();
       }

@@ -25,7 +25,7 @@ export class NotificationComponent implements OnInit {
   @HostBinding('class')
   get hostClass(): string {
     let cls = `notif-${this.state}`;
-    if (!!this.notification) {
+    if (this.notification) {
       cls = `${cls} notif-${getNotificationTypeString(this.notification.Type)}`
     }
     return cls
@@ -34,7 +34,7 @@ export class NotificationComponent implements OnInit {
   state: NotificationState = NotificationState.Invalid;
 
   ngOnInit() {
-    if (!!this.notification) {
+    if (this.notification) {
       this.state = this.notification.State || NotificationState.Invalid;
     } else {
       this.state = NotificationState.Invalid;

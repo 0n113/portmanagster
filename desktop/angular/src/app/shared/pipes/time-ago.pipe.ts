@@ -40,7 +40,7 @@ export function timeAgo(value: number | Date | string) {
 
   for (let i = timeCeilings.length - 1; i >= 0; i--) {
     const f = timeCeilings[i];
-    let n = Math.floor(diffInSeconds / f.ceiling);
+    const n = Math.floor(diffInSeconds / f.ceiling);
     if (n > 0) {
       if (i < 1) {
         return `< 1 min ` + suffix;

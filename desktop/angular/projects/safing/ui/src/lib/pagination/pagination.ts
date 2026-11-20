@@ -115,9 +115,9 @@ export class SfngPaginationWrapperComponent<T = any> implements OnChanges, OnDes
  * @returns An array of page numbers to display
  */
 export function generatePageNumbers(current: number, countPages: number): number[] {
-  let delta = 2;
-  let leftRange = current - delta;
-  let rightRange = current + delta + 1;
+  const delta = 2;
+  const leftRange = current - delta;
+  const rightRange = current + delta + 1;
 
   return Array.from({ length: countPages }, (v, k) => k + 1)
     .filter(i => i === 1 || i === countPages || (i >= leftRange && i < rightRange));

@@ -60,7 +60,7 @@ export class ProcessDetailsDialogComponent {
   }
 
   openParent() {
-    if (!!this.process.ParentPid) {
+    if (this.process.ParentPid) {
       this.portapi.get<Process>(`network:tree/${this.process.ParentPid}-${this.process.ParentCreatedAt}`)
         .subscribe(process => {
           this.process = {
@@ -86,7 +86,7 @@ export class ProcessDetailsDialogComponent {
   }
 
   private createProfileWithFingerprint(fp: Fingerprint) {
-    let profilePreset: Partial<AppProfile> = {
+    const profilePreset: Partial<AppProfile> = {
       Fingerprints: [
         fp
       ]

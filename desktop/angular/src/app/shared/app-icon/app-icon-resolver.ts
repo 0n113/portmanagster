@@ -27,7 +27,7 @@ export class DefaultIconResolver extends AppIconResolver {
       return;
     }
 
-    let promise = new Promise<void>((resolve) => {
+    const promise = new Promise<void>((resolve) => {
       this.profileService
         .getProcessesByProfile(profile)
         .pipe(
@@ -35,7 +35,7 @@ export class DefaultIconResolver extends AppIconResolver {
             // if we there are no running processes for this profile,
             // we try to find the icon based on the information stored in
             // the profile.
-            let info: ProcessInfo[] = [{
+            const info: ProcessInfo[] = [{
               execPath: profile.LinkedPath,
               cmdline: profile.PresentationPath,
               pid: -1,

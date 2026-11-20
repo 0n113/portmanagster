@@ -72,7 +72,7 @@ export class MultiSwitchComponent<T> implements OnDestroy, AfterViewInit, Contro
     this._disabled = coerceBooleanProperty(v);
 
     // Update all buttons states as well.
-    if (!!this.buttons) {
+    if (this.buttons) {
       this.buttons.forEach(btn => btn.disabled = this.disabled);
     }
   }
@@ -116,7 +116,7 @@ export class MultiSwitchComponent<T> implements OnDestroy, AfterViewInit, Contro
   /** Writes a new value for the multi-line switch */
   writeValue(value: T) {
     this.activeButton = value;
-    if (!!this.buttons) {
+    if (this.buttons) {
       // Set externalWrite to true while we iterate the buttons
       // and eventually call `setActiveItem` so we don't re-emit
       // the active item once the keyManager publishes the change
@@ -251,9 +251,9 @@ export class MultiSwitchComponent<T> implements OnDestroy, AfterViewInit, Contro
           this.updatePosition(offset);
 
           let foundTarget = false;
-          let target = this.findTargetButton(offset);
+          const target = this.findTargetButton(offset);
 
-          if (!!target) {
+          if (target) {
             this.marker!.nativeElement.style.backgroundColor = target.borderColorActive;
 
             this.buttons!.forEach(btn => {
@@ -307,10 +307,10 @@ export class MultiSwitchComponent<T> implements OnDestroy, AfterViewInit, Contro
       if (x >= min && x <= max) {
         newButton = btn;
 
-        if (!!cb) {
+        if (cb) {
           cb(btn, true);
         }
-      } else if (!!cb) {
+      } else if (cb) {
         cb(btn, false);
       }
     });
@@ -326,7 +326,7 @@ export class MultiSwitchComponent<T> implements OnDestroy, AfterViewInit, Contro
       newButton = Array.from(this.buttons!)[0];
     }
 
-    if (!!newButton) {
+    if (newButton) {
       this.keyManager!.setActiveItem(newButton);
     }
   }

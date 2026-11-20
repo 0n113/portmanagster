@@ -285,7 +285,7 @@ export class SfngSelectComponent<T> implements AfterViewInit, ControlValueAccess
         // the item might be out-of-view so make sure
         // we scroll enough to have it inside the view
         const scrollable = this.scrollableList?.nativeElement;
-        if (!!scrollable) {
+        if (scrollable) {
           const active = this.keyManager.activeItem!.elementRef.nativeElement;
           const activeHeight = active.getBoundingClientRect().height;
           const bottom = scrollable.scrollTop + scrollable.getBoundingClientRect().height;
@@ -338,7 +338,7 @@ export class SfngSelectComponent<T> implements AfterViewInit, ControlValueAccess
                 }
               }
 
-              if (!!item.label) {
+              if (item.label) {
                 if (item.label.toLocaleLowerCase().includes(search)) {
                   return true
                 }

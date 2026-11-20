@@ -86,7 +86,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
    * @param event The save-settings event
    */
   saveSetting(event: SaveSettingEvent) {
-    let idx = this.settings.findIndex(setting => setting.Key === event.key);
+    const idx = this.settings.findIndex(setting => setting.Key === event.key);
     if (idx < 0) {
       return;
     }
@@ -104,7 +104,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this.configService.save(setting)
       .subscribe({
         next: () => {
-          if (!!event.accepted) {
+          if (event.accepted) {
             event.accepted();
           }
 
@@ -122,7 +122,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
           }
         },
         error: err => {
-          if (!!event.rejected) {
+          if (event.rejected) {
             event.rejected(err);
           }
 

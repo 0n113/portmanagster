@@ -90,10 +90,6 @@ export class DurationPipe implements PipeTransform {
       value = secondNum - firstNum
     }
 
-    if (value < second) {
-
-    }
-
     const result = formatDuration(value);
     if (result === '0') {
       return '< 1s'

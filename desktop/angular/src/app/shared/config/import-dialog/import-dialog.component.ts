@@ -193,7 +193,7 @@ export class ImportDialogComponent {
     reader.onload = (data) => {
       (event.target as any).value = '';
 
-      let content = (data.target as any).result;
+      const content = (data.target as any).result;
       this.updateAndValidate(content);
     };
 

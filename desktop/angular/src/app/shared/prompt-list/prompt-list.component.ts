@@ -79,7 +79,7 @@ export class PromptListComponent implements OnInit, OnDestroy {
         switchMap(notifs => {
           // collect all profile keys in a distict set so we don't load
           // them more that once.
-          var profileKeys = new Set<string>();
+          const profileKeys = new Set<string>();
           notifs.forEach(n => profileKeys.add(
             this.profileService.getKey(n.EventData!.Profile.Source, n.EventData!.Profile.ID)
           ));
@@ -97,7 +97,7 @@ export class PromptListComponent implements OnInit, OnDestroy {
         profiles$,
       ]).subscribe(([prompts, profiles]) => {
 
-        let promptsByProfile = new Map<string, ExtendedConnectionPrompt[]>();
+        const promptsByProfile = new Map<string, ExtendedConnectionPrompt[]>();
 
         // for each prompt, make an "extended" connection prompt by parsing the
         // domain and index them by profile key
@@ -119,7 +119,7 @@ export class PromptListComponent implements OnInit, OnDestroy {
 
           // Create an "extended" version of the prompt by parsing
           // and assigning the domain and subdomain values.
-          let copy: ExtendedConnectionPrompt = {
+          const copy: ExtendedConnectionPrompt = {
             ...prompt,
             domain: null,
             subdomain: null,
@@ -157,7 +157,7 @@ export class PromptListComponent implements OnInit, OnDestroy {
   }
 
   allow(prompt: ConnectionPrompt) {
-    let allowActions = [
+    const allowActions = [
       'allow-domain-all',
       'allow-serving-ip',
       'allow-ip',
@@ -165,7 +165,7 @@ export class PromptListComponent implements OnInit, OnDestroy {
 
     for (let i = 0; i < allowActions.length; i++) {
       const action = prompt.AvailableActions.find(a => a.ID === allowActions[i])
-      if (!!action) {
+      if (action) {
         this.execute(prompt, action);
         return;
       }
@@ -173,7 +173,7 @@ export class PromptListComponent implements OnInit, OnDestroy {
   }
 
   block(prompt: ConnectionPrompt) {
-    let permitActions = [
+    const permitActions = [
       'block-domain-all',
       'block-serving-ip',
       'block-ip',
@@ -181,7 +181,7 @@ export class PromptListComponent implements OnInit, OnDestroy {
 
     for (let i = 0; i < permitActions.length; i++) {
       const action = prompt.AvailableActions.find(a => a.ID === permitActions[i])
-      if (!!action) {
+      if (action) {
         this.execute(prompt, action);
         return;
       }

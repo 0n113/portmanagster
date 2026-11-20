@@ -145,7 +145,7 @@ export class OverlayStepperContainerComponent implements OnInit, OnDestroy, Step
     // call onBeforeNext or onBeforeBack of the current step
     if (this.currentStep) {
       if (forward) {
-        if (!!this.currentStep.onBeforeNext) {
+        if (this.currentStep.onBeforeNext) {
           try {
             await this.currentStep.onBeforeNext();
           } catch (err) {
@@ -156,7 +156,7 @@ export class OverlayStepperContainerComponent implements OnInit, OnDestroy, Step
           }
         }
       } else {
-        if (!!this.currentStep.onBeforeBack) {
+        if (this.currentStep.onBeforeBack) {
           try {
             await this.currentStep.onBeforeBack()
           } catch (err) {

@@ -1,6 +1,6 @@
-import { INTEGRATION_SERVICE, IntegrationService } from 'src/app/integration';
+import { INTEGRATION_SERVICE } from 'src/app/integration';
 import { ConnectedPosition } from '@angular/cdk/overlay';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Inject, OnInit, Output, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, OnInit, Output, inject } from '@angular/core';
 import { ConfigService, DebugAPI, PortapiService, StringSetting } from '@safing/portmaster-api';
 import { tap } from 'rxjs/operators';
 import { AppComponent } from 'src/app/app.component';

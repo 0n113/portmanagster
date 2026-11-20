@@ -21,7 +21,7 @@ export class SfngAccordionGroupComponent implements OnDestroy {
   set headerTemplate(v: TemplateRef<any> | null) {
     this._headerTemplate = v;
 
-    if (!!this.accordions.length) {
+    if (this.accordions.length) {
       this.accordions.forEach(a => {
         a.headerTemplate = v;
         a.cdr.markForCheck();

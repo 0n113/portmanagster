@@ -124,7 +124,7 @@ export class FilterListComponent implements OnInit, OnDestroy, ControlValueAcces
    */
   writeValue(ids: string[]) {
     this.selectedIDs = ids;
-    if (!!this.index) {
+    if (this.index) {
       this.updateIndex(this.index);
     }
   }
@@ -136,13 +136,13 @@ export class FilterListComponent implements OnInit, OnDestroy, ControlValueAcces
   private updateIndex(index: FilterListIndex) {
     this.index = index;
 
-    var nodes: TreeNode[] = [];
-    let lm = new Map<string, TreeNode>();
-    let childCategories: Category[] = [];
+    const nodes: TreeNode[] = [];
+    const lm = new Map<string, TreeNode>();
+    const childCategories: Category[] = [];
 
     // Create a tree-node for each category
     this.index.categories.forEach(category => {
-      let tn: TreeNode = {
+      const tn: TreeNode = {
         id: category.id,
         description: category.description,
         name: category.name,
@@ -179,12 +179,12 @@ export class FilterListComponent implements OnInit, OnDestroy, ControlValueAcces
     });
 
     this.index.sources.forEach(source => {
-      let category = lm.get(source.category);
+      const category = lm.get(source.category);
       if (!category) {
         return;
       }
 
-      let tn: TreeNode = {
+      const tn: TreeNode = {
         id: source.id,
         name: source.name,
         description: source.description,
@@ -214,7 +214,7 @@ export class FilterListComponent implements OnInit, OnDestroy, ControlValueAcces
       this.updateNode(tn, true, true, true, false);
 
       let parent = tn.parent;
-      while (!!parent) {
+      while (parent) {
         parent.expanded = true;
         parent.hasSelectedChildren = true;
         parent = parent.parent;
@@ -229,9 +229,9 @@ export class FilterListComponent implements OnInit, OnDestroy, ControlValueAcces
 
   /** Returns all actually selected IDs. */
   private getIDs() {
-    let ids: string[] = [];
+    const ids: string[] = [];
 
-    let collectIds = (n: TreeNode) => {
+    const collectIds = (n: TreeNode) => {
       if (n.selected) {
         // If the parent is selected we can ignore the
         // childs because they must be selected as well.
@@ -273,8 +273,6 @@ export class FilterListComponent implements OnInit, OnDestroy, ControlValueAcces
         }
       } else if (node.parent.selected) {
         // if we are unselected now we might need to "unselect" the parent
-        // but select siblings directly
-        const selectedSiblings = node.parent.children.filter(sibling => sibling.selected && sibling !== node);
         this.updateNode(node.parent, false, false, true, false)
       }
     }

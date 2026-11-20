@@ -123,7 +123,7 @@ export class NotificationListComponent implements OnInit, OnDestroy {
    * @param notif The notification that has been clicked.
    */
   toggelView(notif: _Notification<any>) {
-    const ref = this.dialog.create(NotificationComponent, {
+    this.dialog.create(NotificationComponent, {
       backdrop: 'light',
       autoclose: true,
       data: notif,

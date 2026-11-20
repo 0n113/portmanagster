@@ -279,7 +279,9 @@ angular-base:
 
     COPY desktop/angular/ .
     # Remove symlink and copy assets directly.
-    RUN rm ./assets
+    # Keep an empty directory: the src/assets symlinks point to it, and
+    # Angular 20 fails on a missing asset input directory.
+    RUN rm ./assets && mkdir ./assets
     # COPY assets/data ./assets # Do not include the assets folder into portmaster.zip, we use the assets.zip instead
 
     IF [ "${configuration}" = "production" ]

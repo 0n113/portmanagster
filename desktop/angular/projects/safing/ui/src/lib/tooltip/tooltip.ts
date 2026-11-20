@@ -95,7 +95,7 @@ export class SfngTooltipDirective implements OnInit, OnDestroy, OnChanges {
           this.createTooltip();
           return;
         }
-        if (!!this.tooltipRef) {
+        if (this.tooltipRef) {
           this.tooltipRef.instance.dispose();
           this.tooltipRef = null;
         }
@@ -118,7 +118,7 @@ export class SfngTooltipDirective implements OnInit, OnDestroy, OnChanges {
   /** Creates the actual tooltip overlay */
   private createTooltip() {
     // there's nothing to do if the tooltip is still active.
-    if (!!this.tooltipRef) {
+    if (this.tooltipRef) {
       return;
     }
 
@@ -184,7 +184,7 @@ export class SfngTooltipDirective implements OnInit, OnDestroy, OnChanges {
       pos = [pos];
     }
 
-    let allowedPositions: ConnectedPosition[] =
+    const allowedPositions: ConnectedPosition[] =
       pos.map(p => {
         if (typeof p === 'string') {
           return this.getAllowedConnectedPosition(p);
@@ -193,7 +193,7 @@ export class SfngTooltipDirective implements OnInit, OnDestroy, OnChanges {
         return p
       });
 
-    let position = this.overlay.position()
+    const position = this.overlay.position()
       .flexibleConnectedTo(this.originRef)
       .withFlexibleDimensions(true)
       .withPush(true)

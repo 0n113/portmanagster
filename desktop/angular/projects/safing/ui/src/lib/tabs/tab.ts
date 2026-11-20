@@ -135,7 +135,7 @@ export class TabOutletComponent implements AfterViewInit {
   }
 
   onTabContentScroll(event: Event) {
-    if (!!this.scrollHandler) {
+    if (this.scrollHandler) {
       this.scrollHandler(event)
     }
   }
