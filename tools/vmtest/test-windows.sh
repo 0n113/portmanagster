@@ -72,11 +72,19 @@ if [[ "$what" == soak ]]; then
 	log "building portmaster-core.exe"
 	(cd "$VMTEST_REPO" && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 "$(go_bin)" build -o "$results/portmaster-core.exe" ./cmds/portmaster-core)
 	vm_scp "$WINDOWS_SSH_PORT" "$WINDOWS_USER" "$results/portmaster-core.exe" "$VMTEST_REPO/tools/vmtest/windows/soak.ps1" 'C:/vmtest/'
+	# WINDOWS_CORE_DLL: test this core DLL instead of the downloaded one.
+	vm_ssh "$WINDOWS_SSH_PORT" "$WINDOWS_USER" 'Remove-Item C:\vmtest\portmaster-core.dll -ErrorAction SilentlyContinue' || true
+	dll_arg=
+	if [[ -n "${WINDOWS_CORE_DLL:-}" ]]; then
+		log "using core DLL $WINDOWS_CORE_DLL"
+		vm_scp "$WINDOWS_SSH_PORT" "$WINDOWS_USER" "$WINDOWS_CORE_DLL" 'C:/vmtest/portmaster-core.dll'
+		dll_arg=' -Dll C:\vmtest\portmaster-core.dll'
+	fi
 	log "running soak test for $minutes minutes as administrator"
 	# Like the smoke test: run as a scheduled task, detached from SSH.
 	"${SSH[@]}" "
 		Remove-Item C:\\vmtest\\soak.txt, C:\\vmtest\\soak.done -ErrorAction SilentlyContinue
-		Set-Content -Path C:\\vmtest\\soak-task.ps1 -Value '& C:\\vmtest\\soak.ps1 -Core C:\\vmtest\\portmaster-core.exe -Minutes $minutes *> C:\\vmtest\\soak.txt; Set-Content -Path C:\\vmtest\\soak.done -Value \$LASTEXITCODE'
+		Set-Content -Path C:\\vmtest\\soak-task.ps1 -Value '& C:\\vmtest\\soak.ps1 -Core C:\\vmtest\\portmaster-core.exe -Minutes $minutes$dll_arg *> C:\\vmtest\\soak.txt; Set-Content -Path C:\\vmtest\\soak.done -Value \$LASTEXITCODE'
 		\$action = New-ScheduledTaskAction -Execute powershell.exe -Argument '-NoProfile -ExecutionPolicy Bypass -File C:\\vmtest\\soak-task.ps1'
 		Register-ScheduledTask -TaskName pm-soak -Action \$action -User SYSTEM -RunLevel Highest -Force | Out-Null
 		Start-ScheduledTask -TaskName pm-soak"

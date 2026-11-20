@@ -1,7 +1,7 @@
 # Soak test of portmaster-core on Windows. Runs inside the test VM as
 # administrator (see test-windows.sh soak):
 #
-#   .\soak.ps1 -Core C:\vmtest\portmaster-core.exe -Minutes 60
+#   .\soak.ps1 -Core C:\vmtest\portmaster-core.exe -Minutes 60 [-Dll C:\vmtest\portmaster-core.dll]
 #
 # Fetches the signed release binaries (including the kernel extension), runs
 # the given portmaster-core under constant traffic and samples its resource
@@ -11,7 +11,8 @@
 # keeps growing well beyond the warm-up level.
 param(
     [Parameter(Mandatory = $true)][string]$Core,
-    [int]$Minutes = 60
+    [int]$Minutes = 60,
+    [string]$Dll = ''
 )
 
 $ErrorActionPreference = 'Continue'
@@ -29,6 +30,13 @@ Remove-Item -Recurse -Force $Work -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Bin, $Data | Out-Null
 
 & $Core update --bin-dir $Bin --data-dir $Data *> (Join-Path $Work 'update.log')
+# Use the given core DLL instead of the downloaded one, like the smoke test.
+if ($Dll) {
+    $target = Get-ChildItem -Path $Bin -Recurse -Filter 'portmaster-core*.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
+    $targetPath = if ($target) { $target.FullName } else { Join-Path $Bin 'portmaster-core.dll' }
+    Copy-Item -Force $Dll $targetPath
+    Write-Output "core DLL replaced with $Dll"
+}
 # Allow incoming SSH, the test is controlled over SSH.
 Set-Content -Path (Join-Path $Data 'config.json') -Encoding ASCII -Value '{"filter":{"serviceEndpoints":["+ * TCP/22"]}}'
 
