@@ -28,6 +28,12 @@ func GetIconAndName(ctx context.Context, binPath string, homeDir string) (icon *
 		return nil, name, err
 	}
 
+	// The binary does not exist anymore or has no icon. This is not an error,
+	// same as on Linux.
+	if len(png) == 0 {
+		return nil, name, nil
+	}
+
 	// Update profile icon and return icon object.
 	filename, err := UpdateProfileIcon(png, "png")
 	if err != nil {
@@ -99,10 +105,11 @@ func getIconAndNamefromRSS(ctx context.Context, binPath string) (png []byte, nam
 		return iconErr != nil
 	})
 	if iconErr != nil {
-		return nil, name, fmt.Errorf("failed to get icon: %w", err)
+		return nil, name, fmt.Errorf("failed to get icon: %w", iconErr)
 	}
 	if icon == nil {
-		return nil, name, errors.New("no icon in resources")
+		// Many command line tools have no icon.
+		return nil, name, nil
 	}
 	// Convert icon, if it exists.
 	icoBuf := &bytes.Buffer{}

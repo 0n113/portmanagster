@@ -25,3 +25,18 @@ func TestFindIcon(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestGetIconAndNameMissingBinary(t *testing.T) {
+	t.Parallel()
+
+	icon, name, err := GetIconAndName(context.Background(), `C:\does\not\exist\tool.exe`, "")
+	if err != nil {
+		t.Fatalf("missing binary should not be an error: %s", err)
+	}
+	if icon != nil {
+		t.Errorf("missing binary should have no icon, got %+v", icon)
+	}
+	if name == "" {
+		t.Error("name should be generated from the path")
+	}
+}
