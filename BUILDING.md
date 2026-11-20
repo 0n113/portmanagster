@@ -100,44 +100,36 @@ Upstream `development` auf, keine Regression dieses Branches):
 | `service/resolver` · `TestResolveIPAndValidate` | benötigt Internetzugang (Reverse-DNS) |
 | `service/profile/binmeta` · `TestFindIcon` | benötigt Desktop-Icons (evolution, nextcloud) |
 | `service/profile/endpoints` · `TestEndpointMatching` | benötigt GeoIP-Datenbank |
-| `spn/crew` · `TestConnectOp` | schlägt auch upstream fehl (EOF) |
 
-`spn/docks · TestExpansion` wird bewusst per `t.Skip` übersprungen: Der Test
-authentifiziert sich mit SPN-Zugangstokens, die in portmasterpro nicht mehr
-existieren.
-
-### Nur die Telemetrie-/SPN-Stub-Tests
+### Nur die Telemetrie-Stub-Tests
 
 ```bash
 # service/sync — Stub startet/stoppt ohne Fehler, kein Manager
 go test -v ./service/sync/...
 
-# spn/access — kein Login, alle Features offen, kein Manager
-go test -v ./spn/access/...
-
 # service/netquery — Endpoints ungated, kein SPN-Import
 go test -v ./service/netquery/...
 ```
 
-### Erwartete Ausgabe (Beispiel `spn/access`)
+### Erwartete Ausgabe (Beispiel `service/sync`)
 
 ```
-=== RUN   TestAccessStubNoOp
---- PASS: TestAccessStubNoOp (0.00s)
-=== RUN   TestAccessStubNotLoggedIn
---- PASS: TestAccessStubNotLoggedIn (0.00s)
-=== RUN   TestAccessStubAllFeaturesUnlocked
---- PASS: TestAccessStubAllFeaturesUnlocked (0.00s)
-=== RUN   TestAccessStubManagerIsNil
---- PASS: TestAccessStubManagerIsNil (0.00s)
+=== RUN   TestImportProfileWithoutSourceDetectsExisting
+--- PASS: TestImportProfileWithoutSourceDetectsExisting (0.00s)
+=== RUN   TestExportProfileOmitsUnusedPresentationPath
+--- PASS: TestExportProfileOmitsUnusedPresentationPath (0.00s)
+=== RUN   TestImportSettingsIntoNilConfigProfile
+--- PASS: TestImportSettingsIntoNilConfigProfile (0.00s)
+=== RUN   TestImportSingleSettingIntoNilConfigProfile
+--- PASS: TestImportSingleSettingIntoNilConfigProfile (0.00s)
 PASS
-ok  	github.com/safing/portmaster/spn/access
+ok  	github.com/safing/portmaster/service/sync
 ```
 
 ### Mit Race-Detector (empfohlen vor einem Merge)
 
 ```bash
-go test -race ./service/sync/... ./spn/access/... ./service/netquery/...
+go test -race ./service/sync/... ./service/netquery/...
 ```
 
 ### go vet (statische Analyse)
@@ -155,7 +147,7 @@ Sicherstellen dass keine bekannten Safing-Telemetrie-URLs mehr im Code sind:
 ```bash
 # Sollte keine Ausgabe liefern:
 grep -r 'account.safing.io\|updates.safing.io\|telemetry.safing.io\|api.safing.io' \
-  ./service/sync/ ./spn/access/
+  ./service/sync/
 
 echo "Exit $?: 0 = sauber, alles andere = Fund"
 ```
@@ -284,15 +276,15 @@ go vet ./...
 
 # 5. Tests (CI-Konvention) + Race-Detector auf den privacy-kritischen Paketen
 go test -short -count=1 ./...
-go test -race -short -count=1 ./service/network/... ./service/netquery/... ./service/sync/... ./spn/access/...
+go test -race -short -count=1 ./service/network/... ./service/netquery/... ./service/sync/...
 
 # 6. Telemetrie-URLs prüfen
 grep -r 'account.safing.io\|updates.safing.io\|api.safing.io' \
-  ./service/sync/ ./spn/access/ && echo "FUND!" || echo "Sauber."
+  ./service/sync/ && echo "FUND!" || echo "Sauber."
 
 # 7. SPN-/Account-Imports prüfen
 grep -r 'safing/portmaster/spn' ./service/netquery/ && echo "FUND!" || echo "Sauber."
-grep -rn --include='*.go' '"github.com/safing/portmaster/spn/access' ./service/ && echo "FUND!" || echo "Sauber."
+test ! -e spn && echo "Sauber." || echo "FUND!"   # SPN-Code ist entfernt
 grep -rn --include='*.go' 'RequiresFeatureIDAnnotation:' ./service/ && echo "FUND!" || echo "Sauber."
 
 # 8. Frontend (Angular, siehe Hinweis in Abschnitt 6)

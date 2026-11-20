@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Removed
+- The remaining SPN code (`spn/`, about 37,000 lines) and the SPN server tools `cmds/hub` and
+  `cmds/observation-hub`. Portmaster itself had not used it anymore. Upstream changes to `spn/`
+  are no longer merged.
+
 ### Changed
 - Merged upstream `development` up to `21a2b064` (2.2.3 release line: updates path-traversal fix,
   profile lookup/geo-rule fixes, iptables crash-safety, UI fixes, tray icon OS theme).

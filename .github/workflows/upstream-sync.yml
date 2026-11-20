@@ -56,7 +56,7 @@ jobs:
               echo "Upstream \`safing/portmaster:$UPSTREAM_BRANCH\` has ${{ steps.diff.outputs.new }} new commit(s) up to \`$UPSTREAM_SHA\`."
               echo
               echo "Merge checklist:"
-              echo "- [ ] conflicts resolved (typical: \`Cargo.toml\` version, \`service/instance.go\`, \`spn/access\`)"
+              echo "- [ ] conflicts resolved (typical: \`Cargo.toml\` version, \`service/instance.go\`; upstream changes under \`spn/\` are dropped, the fork removed SPN)"
               echo "- [ ] no SPN/account references re-introduced into \`service/\` (CI guard)"
               echo "- [ ] all workflows green"
               echo
