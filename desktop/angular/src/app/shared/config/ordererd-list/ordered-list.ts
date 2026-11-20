@@ -5,17 +5,18 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 
 @Component({
-  selector: 'app-ordered-list',
-  templateUrl: './ordered-list.html',
-  styleUrls: ['./ordered-list.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => OrderedListComponent),
-      multi: true,
-    }
-  ]
+    selector: 'app-ordered-list',
+    templateUrl: './ordered-list.html',
+    styleUrls: ['./ordered-list.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => OrderedListComponent),
+            multi: true,
+        }
+    ],
+    standalone: false
 })
 export class OrderedListComponent implements ControlValueAccessor {
   @HostBinding('tabindex')

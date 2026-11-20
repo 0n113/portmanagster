@@ -3,14 +3,15 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Ho
 import { fadeInAnimation, fadeOutAnimation } from '../../animations';
 
 @Component({
-  selector: 'app-rule-list-item',
-  templateUrl: 'list-item.html',
-  styleUrls: ['list-item.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [
-    fadeInAnimation,
-    fadeOutAnimation
-  ]
+    selector: 'app-rule-list-item',
+    templateUrl: 'list-item.html',
+    styleUrls: ['list-item.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    animations: [
+        fadeInAnimation,
+        fadeOutAnimation
+    ],
+    standalone: false
 })
 export class RuleListItemComponent implements OnInit {
   /** The host element is going to fade in/out */

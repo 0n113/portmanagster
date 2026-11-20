@@ -2,8 +2,9 @@ import { DecimalPipe } from "@angular/common";
 import { Pipe, PipeTransform } from "@angular/core";
 
 @Pipe({
-  pure: true,
-  name: 'bytes',
+    pure: true,
+    name: 'bytes',
+    standalone: false
 })
 export class BytesPipe implements PipeTransform {
   transform(value: any, decimal: string = '1.0-2', ...args: any[]) {

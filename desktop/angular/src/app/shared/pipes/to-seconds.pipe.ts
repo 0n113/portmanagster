@@ -1,8 +1,9 @@
 import { Pipe, PipeTransform } from "@angular/core";
 
 @Pipe({
-  name: 'toSeconds',
-  pure: true,
+    name: 'toSeconds',
+    pure: true,
+    standalone: false
 })
 export class ToSecondsPipe implements PipeTransform {
   transform(value: Date | string, ...args: any[]) {

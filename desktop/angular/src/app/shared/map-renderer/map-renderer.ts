@@ -34,12 +34,13 @@ export interface MapHandler {
 export const MAP_HANDLER = new InjectionToken<MapHandler>('MAP_HANDLER');
 
 @Component({
-  selector: 'app-map-renderer',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: '',
-  styleUrls: [
-    './map-style.scss'
-  ],
+    selector: 'app-map-renderer',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    template: '',
+    styleUrls: [
+        './map-style.scss'
+    ],
+    standalone: false
 })
 export class MapRendererComponent implements OnInit, AfterViewInit, OnDestroy {
   static readonly Rotate = 0; // so [-0, 0] is the initial center of the projection

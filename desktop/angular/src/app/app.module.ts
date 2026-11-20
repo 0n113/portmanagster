@@ -98,9 +98,9 @@ function loadAndSetLocaleInitializer(configService: ConfigService) {
         localeModuleID = "en";
       }
 
-      /* webpackInclude: /(en|en-GB)\.mjs$/ */
+      /* webpackInclude: /(en|en-GB)\.js$/ */
       /* webpackChunkName: "./l10n-base/[request]"*/
-      await import(`../../node_modules/@angular/common/locales/${localeModuleID}.mjs`)
+      await import(`../../node_modules/@angular/common/locales/${localeModuleID}.js`)
         .then(locale => {
           registerLocaleData(locale.default)
 

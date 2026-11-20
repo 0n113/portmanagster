@@ -24,16 +24,17 @@ interface ProfilePrompts extends AppProfile {
 const PromptLimit = 3;
 
 @Component({
-  selector: 'app-prompt-list',
-  templateUrl: './prompt-list.component.html',
-  styleUrls: [
-    './prompt-list.component.scss'
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [
-    moveInOutAnimation,
-    moveInOutListAnimation
-  ]
+    selector: 'app-prompt-list',
+    templateUrl: './prompt-list.component.html',
+    styleUrls: [
+        './prompt-list.component.scss'
+    ],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    animations: [
+        moveInOutAnimation,
+        moveInOutListAnimation
+    ],
+    standalone: false
 })
 export class PromptListComponent implements OnInit, OnDestroy {
   profiles: ProfilePrompts[] = [];

@@ -1,24 +1,25 @@
 import { ListKeyManager } from '@angular/cdk/a11y';
 import { coerceBooleanProperty } from '@angular/cdk/coercion';
-import { DOCUMENT } from '@angular/common';
-import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChildren, ElementRef, EventEmitter, forwardRef, HostBinding, HostListener, Inject, Input, NgZone, OnDestroy, Output, QueryList, Renderer2, ViewChild } from '@angular/core';
+
+import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChildren, ElementRef, EventEmitter, forwardRef, HostBinding, HostListener, Inject, Input, NgZone, OnDestroy, Output, QueryList, Renderer2, ViewChild, DOCUMENT } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { animationFrameScheduler, fromEvent, Subscription } from 'rxjs';
 import { map, startWith, subscribeOn, take, takeUntil } from 'rxjs/operators';
 import { SwitchItemComponent } from './switch-item';
 
 @Component({
-  selector: 'app-multi-switch',
-  templateUrl: './multi-switch.html',
-  styleUrls: ['./multi-switch.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => MultiSwitchComponent),
-      multi: true,
-    }
-  ]
+    selector: 'app-multi-switch',
+    templateUrl: './multi-switch.html',
+    styleUrls: ['./multi-switch.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => MultiSwitchComponent),
+            multi: true,
+        }
+    ],
+    standalone: false
 })
 export class MultiSwitchComponent<T> implements OnDestroy, AfterViewInit, ControlValueAccessor {
   /** Subscription to all button-select changes */

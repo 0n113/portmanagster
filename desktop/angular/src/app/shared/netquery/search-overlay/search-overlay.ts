@@ -7,14 +7,14 @@ import { SfngSearchbarFields } from "../searchbar";
 import { connectionFieldTranslation } from "../utils";
 
 @Component({
-  selector: 'sfng-netquery-search-overlay',
-  templateUrl: './search-overlay.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [
-    NetqueryHelper,
-  ],
-  styles: [
-    `
+    selector: 'sfng-netquery-search-overlay',
+    templateUrl: './search-overlay.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    providers: [
+        NetqueryHelper,
+    ],
+    styles: [
+        `
     :host {
       @apply block;
       width: 700px;
@@ -24,7 +24,8 @@ import { connectionFieldTranslation } from "../utils";
       border: 1px solid theme("colors.gray.200") !important;
     }
     `
-  ]
+    ],
+    standalone: false
 })
 export class SfngNetquerySearchOverlayComponent {
   keyTranslation = connectionFieldTranslation;

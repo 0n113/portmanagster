@@ -98,14 +98,14 @@ interface QuickDateSetting {
  */
 
 @Component({
-  // eslint-disable-next-line @angular-eslint/component-selector
-  selector: 'sfng-netquery-viewer',
-  templateUrl: './netquery.component.html',
-  providers: [
-    NetqueryHelper,
-  ],
-  styles: [
-    `
+    // eslint-disable-next-line @angular-eslint/component-selector
+    selector: 'sfng-netquery-viewer',
+    templateUrl: './netquery.component.html',
+    providers: [
+        NetqueryHelper,
+    ],
+    styles: [
+        `
     :host {
       @apply flex flex-col gap-3 pr-3 min-h-full;
     }
@@ -114,11 +114,12 @@ interface QuickDateSetting {
       @apply inline-block text-xxs uppercase rounded-sm bg-gray-500 bg-opacity-25 font-mono border-gray-500 border px-0.5;
     }
     `
-  ],
-  animations: [
-    fadeInAnimation
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush
+    ],
+    animations: [
+        fadeInAnimation
+    ],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {

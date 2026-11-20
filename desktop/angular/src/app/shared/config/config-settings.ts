@@ -55,10 +55,11 @@ interface Category {
 }
 
 @Component({
-  selector: 'app-settings-view',
-  templateUrl: './config-settings.html',
-  styleUrls: ['./config-settings.scss'],
-  animations: [fadeInAnimation, fadeOutAnimation, fadeInListAnimation],
+    selector: 'app-settings-view',
+    templateUrl: './config-settings.html',
+    styleUrls: ['./config-settings.scss'],
+    animations: [fadeInAnimation, fadeOutAnimation, fadeInListAnimation],
+    standalone: false
 })
 export class ConfigSettingsViewComponent
   implements OnInit, OnDestroy, AfterViewInit {

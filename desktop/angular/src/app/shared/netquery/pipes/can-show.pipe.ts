@@ -3,8 +3,9 @@ import { ExpertiseLevel, NetqueryConnection } from "@safing/portmaster-api";
 
 
 @Pipe({
-  name: "canShowConnection",
-  pure: true,
+    name: "canShowConnection",
+    pure: true,
+    standalone: false
 })
 export class CanShowConnection implements PipeTransform {
   transform(conn: NetqueryConnection, level: ExpertiseLevel) {

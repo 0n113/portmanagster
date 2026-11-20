@@ -7,8 +7,9 @@ import {
 import { INTEGRATION_SERVICE } from '../integration';
 
 @Directive({
-  // eslint-disable-next-line @angular-eslint/directive-selector
-  selector: 'a[href]'
+    // eslint-disable-next-line @angular-eslint/directive-selector
+    selector: 'a[href]',
+    standalone: false
 })
 export class ExternalLinkDirective implements OnChanges {
   private readonly integration = inject(INTEGRATION_SERVICE);

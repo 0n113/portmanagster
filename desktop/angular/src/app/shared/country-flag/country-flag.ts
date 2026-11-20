@@ -1,7 +1,8 @@
 import { AfterViewInit, Directive, ElementRef, HostBinding, Input, OnChanges, Renderer2, SimpleChanges } from '@angular/core';
 
 @Directive({
-  selector: 'span[appCountryFlags]',
+    selector: 'span[appCountryFlags]',
+    standalone: false
 })
 export class CountryFlagDirective implements AfterViewInit, OnChanges {
   private readonly flagDir = "/assets/img/flags/";

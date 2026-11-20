@@ -3,16 +3,17 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, forwardRef, Host
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 @Component({
-  selector: 'sfng-toggle',
-  templateUrl: './toggle-switch.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => SfngToggleSwitchComponent),
-      multi: true,
-    }
-  ]
+    selector: 'sfng-toggle',
+    templateUrl: './toggle-switch.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => SfngToggleSwitchComponent),
+            multi: true,
+        }
+    ],
+    standalone: false
 })
 export class SfngToggleSwitchComponent implements ControlValueAccessor {
   @HostListener('blur')

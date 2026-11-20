@@ -9,12 +9,13 @@ interface ProfileAttachedConnection extends NetqueryConnection {
 }
 
 @Component({
-  selector: 'sfng-netquery-connection-row',
-  templateUrl: './conn-row.html',
-  styleUrls: [
-    './conn-row.scss'
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'sfng-netquery-connection-row',
+    templateUrl: './conn-row.html',
+    styleUrls: [
+        './conn-row.scss'
+    ],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SfngNetqueryConnectionRowComponent implements OnInit, OnDestroy {
   readonly scopes = IPScope;

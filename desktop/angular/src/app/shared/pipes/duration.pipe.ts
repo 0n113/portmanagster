@@ -57,8 +57,9 @@ export function formatDuration(millis: number, skipDays = false, skipMillis = fa
 }
 
 @Pipe({
-  name: 'duration',
-  pure: true
+    name: 'duration',
+    pure: true,
+    standalone: false
 })
 export class DurationPipe implements PipeTransform {
   transform(value: number | [string, string] | [Date, Date] | [number, number], ...args: any[]) {

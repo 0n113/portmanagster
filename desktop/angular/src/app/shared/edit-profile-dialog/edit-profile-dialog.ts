@@ -25,9 +25,10 @@ import { Observable, Subject, map, of, switchMap, takeUntil } from 'rxjs';
 import { ActionIndicatorService } from 'src/app/shared/action-indicator';
 
 @Component({
-  templateUrl: './edit-profile-dialog.html',
-  //changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrls: ['./edit-profile-dialog.scss'],
+    templateUrl: './edit-profile-dialog.html',
+    //changeDetection: ChangeDetectionStrategy.OnPush,
+    styleUrls: ['./edit-profile-dialog.scss'],
+    standalone: false
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class EditProfileDialog implements OnInit, OnDestroy {

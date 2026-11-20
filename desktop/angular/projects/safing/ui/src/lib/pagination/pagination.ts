@@ -40,7 +40,8 @@ export interface Pagination<T> {
 
 
 @Directive({
-  selector: '[sfngPageContent]'
+    selector: '[sfngPageContent]',
+    standalone: false
 })
 export class SfngPaginationContentDirective<T = any> {
   constructor(public readonly templateRef: TemplateRef<T>) { }
@@ -52,9 +53,10 @@ export interface PageChangeEvent {
 }
 
 @Component({
-  selector: 'sfng-pagination',
-  templateUrl: './pagination.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'sfng-pagination',
+    templateUrl: './pagination.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SfngPaginationWrapperComponent<T = any> implements OnChanges, OnDestroy {
   private _sub: Subscription = Subscription.EMPTY;

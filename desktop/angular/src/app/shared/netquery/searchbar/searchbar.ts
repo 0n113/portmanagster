@@ -36,8 +36,9 @@ export type SfngSearchbarSuggestion<K extends keyof NetqueryConnection> = {
 }
 
 @Directive({
-  selector: '[sfngNetquerySuggestion]',
-  exportAs: 'sfngNetquerySuggestion'
+    selector: '[sfngNetquerySuggestion]',
+    exportAs: 'sfngNetquerySuggestion',
+    standalone: false
 })
 export class SfngNetquerySuggestionDirective<K extends keyof NetqueryConnection> {
   constructor() { }
@@ -65,20 +66,21 @@ export class SfngNetquerySuggestionDirective<K extends keyof NetqueryConnection>
 }
 
 @Component({
-  selector: 'sfng-netquery-searchbar',
-  templateUrl: './searchbar.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [
-    fadeInAnimation,
-    fadeInListAnimation
-  ],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => SfngNetquerySearchbarComponent),
-      multi: true,
-    }
-  ]
+    selector: 'sfng-netquery-searchbar',
+    templateUrl: './searchbar.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    animations: [
+        fadeInAnimation,
+        fadeInListAnimation
+    ],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => SfngNetquerySearchbarComponent),
+            multi: true,
+        }
+    ],
+    standalone: false
 })
 export class SfngNetquerySearchbarComponent implements ControlValueAccessor, OnInit, OnDestroy, AfterViewInit {
   private loadSuggestions$ = new Subject<void>();

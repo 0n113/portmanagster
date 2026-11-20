@@ -8,34 +8,24 @@ export const SFNG_TOOLTIP_CONTENT = new InjectionToken<string | TemplateRef<any>
 export const SFNG_TOOLTIP_OVERLAY = new InjectionToken<OverlayRef>('SFNG_TOOLTIP_OVERLAY');
 
 @Component({
-  selector: 'sfng-tooltip-container',
-  templateUrl: './tooltip-component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [
-    trigger(
-      'moveInOut',
-      [
-        transition(
-          ':enter',
-          [
-            style({ opacity: 0, transform: 'translate{{ what }}({{ value }}) scale(0.75)' }),
-            animate('.1s ease-in',
-              style({ opacity: 1, transform: 'translate{{ what }}(0%) scale(1)' }))
-          ],
-          { params: { what: 'Y', value: '-8px' } } // default parameters
-        ),
-        transition(
-          ':leave',
-          [
-            style({ opacity: 1 }),
-            animate('.1s ease-out',
-              style({ opacity: 0, transform: 'translate{{ what }}({{ value }}) scale(0.75)' }))
-          ],
-          { params: { what: 'Y', value: '8px' } } // default parameters
-        )
-      ]
-    )]
-
+    selector: 'sfng-tooltip-container',
+    templateUrl: './tooltip-component.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    animations: [
+        trigger('moveInOut', [
+            transition(':enter', [
+                style({ opacity: 0, transform: 'translate{{ what }}({{ value }}) scale(0.75)' }),
+                animate('.1s ease-in', style({ opacity: 1, transform: 'translate{{ what }}(0%) scale(1)' }))
+            ], { params: { what: 'Y', value: '-8px' } } // default parameters
+            ),
+            transition(':leave', [
+                style({ opacity: 1 }),
+                animate('.1s ease-out', style({ opacity: 0, transform: 'translate{{ what }}({{ value }}) scale(0.75)' }))
+            ], { params: { what: 'Y', value: '8px' } } // default parameters
+            )
+        ])
+    ],
+    standalone: false
 })
 export class SfngTooltipComponent implements AfterViewInit, OnDestroy {
   /**

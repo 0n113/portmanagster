@@ -6,8 +6,9 @@ interface Model {
 }
 
 @Pipe({
-  pure: true,
-  name: 'combinedMenu'
+    pure: true,
+    name: 'combinedMenu',
+    standalone: false
 })
 export class CombinedMenuPipe implements PipeTransform {
   transform<T extends Model>(value: KeyValue<any, T | undefined>[], ...args: any[]) {

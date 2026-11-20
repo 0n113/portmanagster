@@ -3,9 +3,10 @@ import { Step, StepRef, STEP_REF } from "@safing/ui";
 import { of } from "rxjs";
 
 @Component({
-  templateUrl: './step-1-welcome.html',
-  styleUrls: ['../step.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    templateUrl: './step-1-welcome.html',
+    styleUrls: ['../step.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class Step1WelcomeComponent implements Step {
   validChange = of(true)

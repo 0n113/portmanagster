@@ -57,9 +57,10 @@ import { SfngNetqueryViewer } from 'src/app/shared/netquery';
 import { EditProfileDialog } from './../../shared/edit-profile-dialog/edit-profile-dialog';
 
 @Component({
-  templateUrl: './app-view.html',
-  styleUrls: ['../page.scss', './app-view.scss'],
-  animations: [fadeOutAnimation, fadeInAnimation],
+    templateUrl: './app-view.html',
+    styleUrls: ['../page.scss', './app-view.scss'],
+    animations: [fadeOutAnimation, fadeInAnimation],
+    standalone: false
 })
 export class AppViewComponent implements OnInit, OnDestroy {
   private readonly integration = inject(INTEGRATION_SERVICE);

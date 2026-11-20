@@ -60,10 +60,11 @@ const iconIDsToIgnore = [
 const profilesToIgnore = ['local/_unidentified', 'local/_unsolicited'];
 
 @Component({
-  selector: 'app-icon',
-  templateUrl: './app-icon.html',
-  styleUrls: ['./app-icon.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-icon',
+    templateUrl: './app-icon.html',
+    styleUrls: ['./app-icon.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class AppIconComponent implements OnInit, OnDestroy {
   private sub = Subscription.EMPTY;

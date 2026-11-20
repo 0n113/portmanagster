@@ -11,9 +11,10 @@ interface QuickSettingModel extends QuickSetting<any> {
 }
 
 @Component({
-  templateUrl: './step-3-dns.html',
-  styleUrls: ['../step.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    templateUrl: './step-3-dns.html',
+    styleUrls: ['../step.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class Step3DNSComponent implements Step, OnInit {
   private destroyRef = inject(DestroyRef);

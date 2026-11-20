@@ -113,16 +113,17 @@ export interface SeriesData {
 }
 
 @Component({
-  selector: 'sfng-netquery-line-chart',
-  styles: [
-    `
+    selector: 'sfng-netquery-line-chart',
+    styles: [
+        `
     :host {
       @apply block h-full w-full;
     }
     `
-  ],
-  template: '',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    ],
+    template: '',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SfngNetqueryLineChartComponent<D extends SeriesData = any> implements OnChanges, OnInit, AfterViewInit {
   private destroyRef = inject(DestroyRef);

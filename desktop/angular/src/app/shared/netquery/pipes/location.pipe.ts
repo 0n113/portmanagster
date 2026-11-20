@@ -2,8 +2,9 @@ import { Pipe, PipeTransform } from '@angular/core';
 import { IsGlobalScope, IsLANScope, IsLocalhost, NetqueryConnection } from '@safing/portmaster-api';
 
 @Pipe({
-  name: 'connectionLocation',
-  pure: true,
+    name: 'connectionLocation',
+    pure: true,
+    standalone: false
 })
 export class ConnectionLocationPipe implements PipeTransform {
   transform(conn: NetqueryConnection): string {

@@ -10,7 +10,8 @@ import { SfngTooltipComponent, SFNG_TOOLTIP_CONTENT, SFNG_TOOLTIP_OVERLAY } from
 export type SfngTooltipPosition = 'left' | 'right' | 'bottom' | 'top';
 
 @Directive({
-  selector: '[sfng-tooltip],[snfgTooltip]',
+    selector: '[sfng-tooltip],[snfgTooltip]',
+    standalone: false
 })
 export class SfngTooltipDirective implements OnInit, OnDestroy, OnChanges {
   /** Used to control the visibility of the tooltip */
@@ -75,9 +76,14 @@ export class SfngTooltipDirective implements OnInit, OnDestroy, OnChanges {
   private _offset: number | null = 8;
 
   /** The actual content that should be displayed in the tooltip overlay. */
-  @Input('sfngTooltip')
   @Input('sfng-tooltip')
   tooltipContent: string | TemplateRef<any> | null = null;
+
+  /** Alias of sfng-tooltip. Angular does not allow two aliases on one input. */
+  @Input('sfngTooltip')
+  set tooltipContentAlias(v: string | TemplateRef<any> | null) {
+    this.tooltipContent = v;
+  }
 
   @Input('snfgTooltipPosition')
   position: ConnectedPosition | SfngTooltipPosition | (SfngTooltipPosition | ConnectedPosition)[] | 'any' = 'any';

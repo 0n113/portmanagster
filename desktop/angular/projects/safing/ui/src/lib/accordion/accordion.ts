@@ -4,14 +4,15 @@ import { fadeInAnimation, fadeOutAnimation } from '../animations';
 import { SfngAccordionGroupComponent } from './accordion-group';
 
 @Component({
-  selector: 'sfng-accordion',
-  templateUrl: './accordion.html',
-  exportAs: 'sfngAccordion',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [
-    fadeInAnimation,
-    fadeOutAnimation
-  ]
+    selector: 'sfng-accordion',
+    templateUrl: './accordion.html',
+    exportAs: 'sfngAccordion',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    animations: [
+        fadeInAnimation,
+        fadeOutAnimation
+    ],
+    standalone: false
 })
 export class SfngAccordionComponent<T = any> implements OnInit, OnDestroy {
   /** @deprecated in favor of [data] */

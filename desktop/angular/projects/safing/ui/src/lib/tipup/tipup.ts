@@ -2,8 +2,8 @@
 import { coerceBooleanProperty, coerceNumberProperty } from '@angular/cdk/coercion';
 import { ConnectedPosition } from '@angular/cdk/overlay';
 import { _getShadowRoot } from '@angular/cdk/platform';
-import { DOCUMENT } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Directive, ElementRef, HostBinding, HostListener, Inject, Injectable, Injector, Input, NgZone, OnDestroy, Optional, Renderer2, RendererFactory2 } from '@angular/core';
+
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Directive, ElementRef, HostBinding, HostListener, Inject, Injectable, Injector, Input, NgZone, OnDestroy, Optional, Renderer2, RendererFactory2, DOCUMENT } from '@angular/core';
 import { Observable, of, Subject } from 'rxjs';
 import { debounce, debounceTime, filter, map, skip, take, timeout } from 'rxjs/operators';
 import { SfngDialogRef, SfngDialogService } from '../dialog';
@@ -15,7 +15,8 @@ import { Button, HelpTexts, SFNG_TIP_UP_CONTENTS, TipUp } from './translations';
 import { SfngTipUpPlacement, TIPUP_TOKEN } from './utils';
 
 @Directive({
-  selector: '[sfngTipUpTrigger]',
+    selector: '[sfngTipUpTrigger]',
+    standalone: false
 })
 export class SfngsfngTipUpTriggerDirective implements OnDestroy {
   constructor(
@@ -171,9 +172,8 @@ export class SfngsfngTipUpTriggerDirective implements OnDestroy {
 }
 
 @Component({
-  selector: 'sfng-tipup',
-  template:
-    `<svg viewBox="0 0 24 24"
+    selector: 'sfng-tipup',
+    template: `<svg viewBox="0 0 24 24"
     class="tipup"
     [sfngTipUpTrigger]="key"
     [sfngTipUpDefaultAnchor]="parent"
@@ -187,8 +187,8 @@ export class SfngsfngTipUpTriggerDirective implements OnDestroy {
       <path stroke="#ffff" shape-rendering="geometricPrecision" d="M12 17v-5h-1M11.749 8c-.138 0-.25.112-.249.25 0 .138.112.25.25.25s.25-.112.25-.25-.112-.25-.251-.25"/>
     </g>
   </svg>`,
-  styles: [
-    `
+    styles: [
+        `
       :host {
         display: inline-block;
         width   : 1rem;
@@ -202,8 +202,9 @@ export class SfngsfngTipUpTriggerDirective implements OnDestroy {
         opacity: 1;
       }
       `
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    ],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SfngTipUpIconComponent implements SfngTipUpPlacement {
   @Input()

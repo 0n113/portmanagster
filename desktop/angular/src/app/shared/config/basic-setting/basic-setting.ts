@@ -1,26 +1,27 @@
 import { coerceBooleanProperty } from '@angular/cdk/coercion';
-import { DOCUMENT } from '@angular/common';
-import { AfterViewChecked, ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, EventEmitter, forwardRef, Inject, Input, Output, ViewChild } from '@angular/core';
+
+import { AfterViewChecked, ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, EventEmitter, forwardRef, Inject, Input, Output, ViewChild, DOCUMENT } from '@angular/core';
 import { AbstractControl, ControlValueAccessor, NgModel, NG_VALIDATORS, NG_VALUE_ACCESSOR, ValidationErrors, Validator } from '@angular/forms';
 import { BaseSetting, ExternalOptionHint, OptionType, parseSupportedValues, SettingValueType, WellKnown } from '@safing/portmaster-api';
 
 @Component({
-  selector: 'app-basic-setting',
-  templateUrl: './basic-setting.html',
-  styleUrls: ['./basic-setting.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      multi: true,
-      useExisting: forwardRef(() => BasicSettingComponent),
-    },
-    {
-      provide: NG_VALIDATORS,
-      multi: true,
-      useExisting: forwardRef(() => BasicSettingComponent),
-    }
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'app-basic-setting',
+    templateUrl: './basic-setting.html',
+    styleUrls: ['./basic-setting.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            multi: true,
+            useExisting: forwardRef(() => BasicSettingComponent),
+        },
+        {
+            provide: NG_VALIDATORS,
+            multi: true,
+            useExisting: forwardRef(() => BasicSettingComponent),
+        }
+    ],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class BasicSettingComponent<S extends BaseSetting<any, any>> implements ControlValueAccessor, Validator, AfterViewChecked {
   /** @private template-access to all external option hits */

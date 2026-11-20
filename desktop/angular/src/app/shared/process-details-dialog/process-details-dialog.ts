@@ -5,10 +5,11 @@ import { SfngDialogRef, SfngDialogService, SFNG_DIALOG_REF } from '@safing/ui';
 import { EditProfileDialog } from '../edit-profile-dialog';
 
 @Component({
-  selector: 'app-process-details',
-  templateUrl: './process-details-dialog.html',
-  styleUrls: ['./process-details-dialog.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-process-details',
+    templateUrl: './process-details-dialog.html',
+    styleUrls: ['./process-details-dialog.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class ProcessDetailsDialogComponent {
   process: (Process & { ID: string });

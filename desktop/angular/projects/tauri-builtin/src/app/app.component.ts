@@ -3,12 +3,11 @@ import { CommonModule } from '@angular/common';
 import { ServiceManagerStatus, TauriIntegrationService } from 'src/app/integration/taur-app';
 
 @Component({
-  selector: 'app-root',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './app.component.html',
-  styles: [
-    `
+    selector: 'app-root',
+    imports: [CommonModule],
+    templateUrl: './app.component.html',
+    styles: [
+        `
       :host {
         @apply block w-screen h-screen bg-background;
       }
@@ -17,7 +16,7 @@ import { ServiceManagerStatus, TauriIntegrationService } from 'src/app/integrati
         @apply absolute w-20;
       }
     `,
-  ],
+    ]
 })
 export class AppComponent implements OnInit {
   private tauri = inject(TauriIntegrationService);

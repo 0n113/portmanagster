@@ -22,7 +22,8 @@ export type SortByFunc = (a: SelectOption, b: SelectOption) => number;
 export type SelectDisplayMode = 'dropdown' | 'inline';
 
 @Directive({
-  selector: '[sfngSelectRenderedListItem]'
+    selector: '[sfngSelectRenderedListItem]',
+    standalone: false
 })
 export class SfngSelectRenderedItemDirective implements ListKeyManagerOption {
   @Input('sfngSelectRenderedListItem')
@@ -47,16 +48,17 @@ export class SfngSelectRenderedItemDirective implements ListKeyManagerOption {
 }
 
 @Component({
-  selector: 'sfng-select',
-  templateUrl: './select.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => SfngSelectComponent),
-      multi: true,
-    },
-  ]
+    selector: 'sfng-select',
+    templateUrl: './select.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => SfngSelectComponent),
+            multi: true,
+        },
+    ],
+    standalone: false
 })
 export class SfngSelectComponent<T> implements AfterViewInit, ControlValueAccessor, OnDestroy {
   /** emits the search text entered by the user */

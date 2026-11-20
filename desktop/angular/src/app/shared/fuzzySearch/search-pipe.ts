@@ -3,7 +3,8 @@ import { FuseResult, FuseSearchOpts, FuzzySearchService } from './fuse.service';
 
 
 @Pipe({
-  name: 'fuzzySearch',
+    name: 'fuzzySearch',
+    standalone: false
 })
 export class FuzzySearchPipe implements PipeTransform {
   constructor(

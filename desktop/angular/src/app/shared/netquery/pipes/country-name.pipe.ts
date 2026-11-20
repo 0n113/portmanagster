@@ -46,8 +46,9 @@ export class CountryNameService {
 }
 
 @Pipe({
-  name: 'countryName',
-  pure: true,
+    name: 'countryName',
+    pure: true,
+    standalone: false
 })
 export class CountryNamePipe implements PipeTransform {
   private countryService = inject(CountryNameService);

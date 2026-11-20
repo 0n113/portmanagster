@@ -5,17 +5,18 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { SfngDialogService } from '@safing/ui';
 
 @Component({
-  selector: 'app-rule-list',
-  templateUrl: './rule-list.html',
-  styleUrls: ['./rule-list.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => RuleListComponent),
-      multi: true,
-    }
-  ],
+    selector: 'app-rule-list',
+    templateUrl: './rule-list.html',
+    styleUrls: ['./rule-list.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => RuleListComponent),
+            multi: true,
+        }
+    ],
+    standalone: false
 })
 export class RuleListComponent implements ControlValueAccessor {
   /** Add the host element into the tab-sequence */

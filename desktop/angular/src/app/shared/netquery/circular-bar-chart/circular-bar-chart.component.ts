@@ -54,9 +54,10 @@ export function splitQueryResult<T extends QueryResult, K extends keyof T>(resul
 }
 
 @Component({
-  selector: 'sfng-netquery-circular-bar-chart',
-  template: '',
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'sfng-netquery-circular-bar-chart',
+    template: '',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class CircularBarChartComponent<T> implements OnInit, AfterViewInit {
   private readonly elementRef = inject(ElementRef) as ElementRef<HTMLElement>;

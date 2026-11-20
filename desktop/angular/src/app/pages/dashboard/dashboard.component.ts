@@ -43,13 +43,14 @@ interface News {
 const newsResourceIdentifier = "intel/news.yaml"
 
 @Component({
-  selector: 'app-dashboard',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrls: ['./dashboard.component.scss'],
-  templateUrl: './dashboard.component.html',
-  providers: [
-    { provide: MAP_HANDLER, useExisting: forwardRef(() => DashboardPageComponent), multi: true },
-  ]
+    selector: 'app-dashboard',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    styleUrls: ['./dashboard.component.scss'],
+    templateUrl: './dashboard.component.html',
+    providers: [
+        { provide: MAP_HANDLER, useExisting: forwardRef(() => DashboardPageComponent), multi: true },
+    ],
+    standalone: false
 })
 export class DashboardPageComponent implements OnInit, AfterViewInit {
   @ViewChildren(SfngNetqueryLineChartComponent)

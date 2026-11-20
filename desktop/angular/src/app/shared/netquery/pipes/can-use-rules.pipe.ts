@@ -15,8 +15,9 @@ let optionKeys = new Set([
 ])
 
 @Pipe({
-  name: "canUseRules",
-  pure: true,
+    name: "canUseRules",
+    pure: true,
+    standalone: false
 })
 export class CanUseRulesPipe implements PipeTransform {
   transform(conn: NetqueryConnection): boolean {

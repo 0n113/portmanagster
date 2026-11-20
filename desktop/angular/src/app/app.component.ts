@@ -15,13 +15,14 @@ import { INTEGRATION_SERVICE, IntegrationService } from './integration';
 import { TauriIntegrationService } from './integration/taur-app';
 
 @Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss'],
-  animations: [
-    fadeInAnimation,
-    fadeOutAnimation,
-  ]
+    selector: 'app-root',
+    templateUrl: './app.component.html',
+    styleUrls: ['./app.component.scss'],
+    animations: [
+        fadeInAnimation,
+        fadeOutAnimation,
+    ],
+    standalone: false
 })
 export class AppComponent implements OnInit, AfterViewInit {
   readonly connected = this.portapi.connected$.pipe(

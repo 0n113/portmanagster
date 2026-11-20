@@ -8,7 +8,8 @@ import { ExpertiseService } from './expertise.service';
 // match the required expertise.
 export type ExpertiseLevelOverwrite<T> = (lvl: ExpertiseLevelNumber, data: T) => boolean;
 @Directive({
-  selector: '[appExpertiseLevel]',
+    selector: '[appExpertiseLevel]',
+    standalone: false
 })
 export class ExpertiseDirective<T> implements OnInit, OnDestroy {
   private allowedValue: ExpertiseLevelNumber = ExpertiseLevelNumber.user;

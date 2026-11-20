@@ -4,10 +4,11 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChildren,
 import { SfngDropdownComponent } from '@safing/ui';
 
 @Component({
-  selector: 'app-menu-trigger',
-  templateUrl: './menu-trigger.html',
-  styleUrls: ['./menu-trigger.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-menu-trigger',
+    templateUrl: './menu-trigger.html',
+    styleUrls: ['./menu-trigger.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class MenuTriggerComponent {
   @ViewChild(CdkOverlayOrigin, { static: true })
@@ -45,10 +46,11 @@ export class MenuTriggerComponent {
 }
 
 @Component({
-  selector: 'app-menu-item',
-  template: '<ng-content></ng-content>',
-  styleUrls: ['./menu-item.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-menu-item',
+    template: '<ng-content></ng-content>',
+    styleUrls: ['./menu-item.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class MenuItemComponent {
   @Input()
@@ -80,18 +82,20 @@ export class MenuItemComponent {
 }
 
 @Component({
-  selector: 'app-menu-group',
-  template: '<ng-content></ng-content>',
-  styleUrls: ['./menu-group.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-menu-group',
+    template: '<ng-content></ng-content>',
+    styleUrls: ['./menu-group.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class MenuGroupComponent { }
 
 @Component({
-  selector: 'app-menu',
-  exportAs: 'appMenu',
-  templateUrl: './menu.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-menu',
+    exportAs: 'appMenu',
+    templateUrl: './menu.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class MenuComponent {
   @ContentChildren(MenuItemComponent)

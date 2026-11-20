@@ -11,15 +11,16 @@ import { ExitService } from 'src/app/shared/exit-screen';
 import { TauriIntegrationService } from 'src/app/integration/taur-app';
 
 @Component({
-  selector: 'app-navigation',
-  templateUrl: './navigation.html',
-  styleUrls: ['./navigation.scss'],
-  exportAs: 'navigation',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [
-    fadeInAnimation,
-    fadeOutAnimation,
-  ]
+    selector: 'app-navigation',
+    templateUrl: './navigation.html',
+    styleUrls: ['./navigation.scss'],
+    exportAs: 'navigation',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    animations: [
+        fadeInAnimation,
+        fadeOutAnimation,
+    ],
+    standalone: false
 })
 export class NavigationComponent implements OnInit {
   private readonly integration = inject(INTEGRATION_SERVICE);

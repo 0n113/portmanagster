@@ -17,9 +17,10 @@ const interferingSettings = {
 }
 
 @Component({
-  selector: 'app-qs-internet',
-  templateUrl: './qs-internet.html',
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'app-qs-internet',
+    templateUrl: './qs-internet.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class QuickSettingInternetButtonComponent implements OnChanges {
   @Input()

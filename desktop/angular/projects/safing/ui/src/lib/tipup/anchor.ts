@@ -2,7 +2,8 @@ import { Directive, ElementRef, HostBinding, Input, isDevMode } from "@angular/c
 import { SfngTipUpPlacement } from "./utils";
 
 @Directive({
-  selector: '[sfngTipUpAnchor]',
+    selector: '[sfngTipUpAnchor]',
+    standalone: false
 })
 export class SfngTipUpAnchorDirective implements SfngTipUpPlacement {
   constructor(

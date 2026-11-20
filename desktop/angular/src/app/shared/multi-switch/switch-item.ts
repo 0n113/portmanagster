@@ -2,10 +2,11 @@ import { Component, ChangeDetectionStrategy, Input, isDevMode, OnInit, HostBindi
 import { coerceBooleanProperty } from '@angular/cdk/coercion';
 
 @Component({
-  selector: 'app-switch-item',
-  template: '<ng-content></ng-content>',
-  styleUrls: ['./switch-item.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-switch-item',
+    template: '<ng-content></ng-content>',
+    styleUrls: ['./switch-item.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SwitchItemComponent<T> implements OnInit {
   @Input()

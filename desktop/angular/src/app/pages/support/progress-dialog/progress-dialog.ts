@@ -29,15 +29,16 @@ export type TicketInfo = GithubIssue | PrivateTicket;
 
 
 @Component({
-  templateUrl: './progress-dialog.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: [
-    `
+    templateUrl: './progress-dialog.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    styles: [
+        `
     :host {
       @apply block flex flex-col gap-8 relative;
     }
     `,
-  ]
+    ],
+    standalone: false
 })
 export class SupportProgressDialogComponent implements OnInit {
 

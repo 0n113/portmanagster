@@ -11,45 +11,36 @@ export const STEP_ANIMATION_DIRECTION = new InjectionToken<'left' | 'right'>('ST
  * move animations.
  */
 @Component({
-  template: `
+    template: `
     <div [@moveInOut]="{value: _appAnimate, params: {in: in, out: out}}" class="flex flex-col overflow-auto">
       <ng-template [cdkPortalOutlet]="portal"></ng-template>
     </div>
   `,
-  styles: [
-    `
+    styles: [
+        `
     :host{
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
     `
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [
-    trigger(
-      'moveInOut',
-      [
-        transition(
-          ':enter',
-          [
-            style({ opacity: 0, transform: 'translateX({{ in }})' }),
-            animate('.2s ease-in',
-              style({ opacity: 1, transform: 'translateX(0%)' }))
-          ],
-          { params: { in: '100%' } } // default parameters
-        ),
-        transition(
-          ':leave',
-          [
-            style({ opacity: 1 }),
-            animate('.2s ease-out',
-              style({ opacity: 0, transform: 'translateX({{ out }})' }))
-          ],
-          { params: { out: '-100%' } } // default parameters
-        )
-      ]
-    )]
+    ],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    animations: [
+        trigger('moveInOut', [
+            transition(':enter', [
+                style({ opacity: 0, transform: 'translateX({{ in }})' }),
+                animate('.2s ease-in', style({ opacity: 1, transform: 'translateX(0%)' }))
+            ], { params: { in: '100%' } } // default parameters
+            ),
+            transition(':leave', [
+                style({ opacity: 1 }),
+                animate('.2s ease-out', style({ opacity: 0, transform: 'translateX({{ out }})' }))
+            ], { params: { out: '-100%' } } // default parameters
+            )
+        ])
+    ],
+    standalone: false
 })
 export class StepOutletComponent implements AfterViewInit {
   /** @private - Whether or not the animation should run. */

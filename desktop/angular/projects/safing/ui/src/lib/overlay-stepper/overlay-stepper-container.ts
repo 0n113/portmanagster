@@ -13,10 +13,10 @@ import { StepOutletComponent, STEP_ANIMATION_DIRECTION, STEP_PORTAL } from "./st
 export const STEP_CONFIG = new InjectionToken<StepperConfig>('StepperConfig');
 
 @Component({
-  templateUrl: './overlay-stepper-container.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: [
-    `
+    templateUrl: './overlay-stepper-container.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    styles: [
+        `
     :host {
       position: relative;
       display: flex;
@@ -24,31 +24,22 @@ export const STEP_CONFIG = new InjectionToken<StepperConfig>('StepperConfig');
       width: 600px;
     }
     `
-  ],
-  animations: [
-    trigger(
-      'moveInOut',
-      [
-        transition(
-          ':enter',
-          [
-            style({ opacity: 0, transform: 'translateX({{ in }})' }),
-            animate('.2s cubic-bezier(0.4, 0, 0.2, 1)',
-              style({ opacity: 1, transform: 'translateX(0%)' }))
-          ],
-          { params: { in: '100%' } } // default parameters
-        ),
-        transition(
-          ':leave',
-          [
-            style({ opacity: 1 }),
-            animate('.2s cubic-bezier(0.4, 0, 0.2, 1)',
-              style({ opacity: 0, transform: 'translateX({{ out }})' }))
-          ],
-          { params: { out: '-100%' } } // default parameters
-        )
-      ]
-    )]
+    ],
+    animations: [
+        trigger('moveInOut', [
+            transition(':enter', [
+                style({ opacity: 0, transform: 'translateX({{ in }})' }),
+                animate('.2s cubic-bezier(0.4, 0, 0.2, 1)', style({ opacity: 1, transform: 'translateX(0%)' }))
+            ], { params: { in: '100%' } } // default parameters
+            ),
+            transition(':leave', [
+                style({ opacity: 1 }),
+                animate('.2s cubic-bezier(0.4, 0, 0.2, 1)', style({ opacity: 0, transform: 'translateX({{ out }})' }))
+            ], { params: { out: '-100%' } } // default parameters
+            )
+        ])
+    ],
+    standalone: false
 })
 export class OverlayStepperContainerComponent implements OnInit, OnDestroy, StepperControl {
   /** Used to keep cache the stepRef instances. See documentation for {@class StepRef} */

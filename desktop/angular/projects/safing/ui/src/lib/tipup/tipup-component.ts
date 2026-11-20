@@ -5,9 +5,10 @@ import { ActionRunner, Button, SFNG_TIP_UP_ACTION_RUNNER, TipUp } from './transl
 import { TIPUP_TOKEN } from "./utils";
 
 @Component({
-  selector: 'sfng-tipup-container',
-  templateUrl: './tipup.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'sfng-tipup-container',
+    templateUrl: './tipup.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SfngTipUpComponent implements OnInit, TipUp<any> {
   title: string = 'N/A';

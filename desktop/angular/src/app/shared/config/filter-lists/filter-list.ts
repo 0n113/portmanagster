@@ -43,20 +43,21 @@ interface TreeNode {
 }
 
 @Component({
-  selector: 'app-filter-list',
-  templateUrl: './filter-list.html',
-  styleUrls: ['./filter-list.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => FilterListComponent),
-      multi: true,
-    }
-  ],
-  animations: [
-    moveInOutListAnimation,
-  ]
+    selector: 'app-filter-list',
+    templateUrl: './filter-list.html',
+    styleUrls: ['./filter-list.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => FilterListComponent),
+            multi: true,
+        }
+    ],
+    animations: [
+        moveInOutListAnimation,
+    ],
+    standalone: false
 })
 export class FilterListComponent implements OnInit, OnDestroy, ControlValueAccessor {
   /** The actual filter-list index as loaded from the portmaster. */

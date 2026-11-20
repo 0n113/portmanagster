@@ -7,9 +7,10 @@ import { mergeMap } from "rxjs/operators";
 import { SaveSettingEvent } from "src/app/shared/config/generic-setting";
 
 @Component({
-  templateUrl: './step-2-trackers.html',
-  styleUrls: ['../step.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    templateUrl: './step-2-trackers.html',
+    styleUrls: ['../step.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class Step2TrackersComponent implements Step, OnInit {
   private destroyRef = inject(DestroyRef);

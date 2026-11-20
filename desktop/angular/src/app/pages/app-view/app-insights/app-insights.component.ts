@@ -12,9 +12,10 @@ interface CountryBarData {
 }
 
 @Component({
-  selector: 'app-app-insights',
-  templateUrl: './app-insights.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'app-app-insights',
+    templateUrl: './app-insights.component.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class AppInsightsComponent implements OnInit {
   private readonly netquery = inject(Netquery);

@@ -1,20 +1,20 @@
-import { AppProfile } from './../../../../../dist-lib/safing/portmaster-api/lib/app-profile.types.d';
 import { ChangeDetectionStrategy, Component, OnInit, TrackByFunction, inject } from "@angular/core";
 import { Router } from '@angular/router';
-import { PortapiService } from '@safing/portmaster-api';
+import { AppProfile, PortapiService } from '@safing/portmaster-api';
 import { SFNG_DIALOG_REF, SfngDialogRef } from "@safing/ui";
 import { ActionIndicatorService } from 'src/app/shared/action-indicator';
 
 @Component({
-  templateUrl: './merge-profile-dialog.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: [
-    `
+    templateUrl: './merge-profile-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    styles: [
+        `
     :host {
       @apply flex flex-col gap-2 justify-start h-96 w-96;
     }
     `
-  ]
+    ],
+    standalone: false
 })
 export class MergeProfileDialogComponent implements OnInit {
   readonly dialogRef: SfngDialogRef<MergeProfileDialogComponent, unknown, AppProfile[]> = inject(SFNG_DIALOG_REF);

@@ -12,14 +12,15 @@ interface SecurityOption {
 }
 
 @Component({
-  selector: 'app-security-lock',
-  templateUrl: './security-lock.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrls: ['./security-lock.scss'],
-  animations: [
-    fadeInAnimation,
-    fadeOutAnimation
-  ]
+    selector: 'app-security-lock',
+    templateUrl: './security-lock.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    styleUrls: ['./security-lock.scss'],
+    animations: [
+        fadeInAnimation,
+        fadeOutAnimation
+    ],
+    standalone: false
 })
 export class SecurityLockComponent implements OnInit {
   private destroyRef = inject(DestroyRef);

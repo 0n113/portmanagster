@@ -16,9 +16,10 @@ import { INTEGRATION_SERVICE } from 'src/app/integration';
 import { SupportProgressDialogComponent, TicketData, TicketInfo } from '../progress-dialog';
 
 @Component({
-  templateUrl: './support-form.html',
-  styleUrls: ['./support-form.scss'],
-  animations: [fadeInAnimation, moveInOutAnimation, fadeInListAnimation]
+    templateUrl: './support-form.html',
+    styleUrls: ['./support-form.scss'],
+    animations: [fadeInAnimation, moveInOutAnimation, fadeInListAnimation],
+    standalone: false
 })
 export class SupportFormComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);

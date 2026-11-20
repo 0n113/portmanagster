@@ -3,8 +3,9 @@ import { AppProfile, AppProfileService } from "@safing/portmaster-api";
 import { Subscription } from "rxjs";
 
 @Pipe({
-  name: 'toAppProfile',
-  pure: false
+    name: 'toAppProfile',
+    pure: false,
+    standalone: false
 })
 export class ToAppProfilePipe implements PipeTransform, OnDestroy {
   profileService = inject(AppProfileService);

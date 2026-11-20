@@ -5,10 +5,11 @@ import { Action, NotificationState, NotificationsService, getNotificationTypeStr
 import { _Notification } from '../notification-list/notification-list.component';
 
 @Component({
-  selector: 'app-notification',
-  templateUrl: './notification.html',
-  styleUrls: ['./notification.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-notification',
+    templateUrl: './notification.html',
+    styleUrls: ['./notification.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class NotificationComponent implements OnInit {
   readonly ref = inject(SFNG_DIALOG_REF);

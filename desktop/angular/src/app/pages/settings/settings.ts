@@ -8,12 +8,13 @@ import { fadeInAnimation } from 'src/app/shared/animations';
 import { SaveSettingEvent } from 'src/app/shared/config/generic-setting/generic-setting';
 
 @Component({
-  templateUrl: './settings.html',
-  styleUrls: [
-    '../page.scss',
-    './settings.scss'
-  ],
-  animations: [fadeInAnimation]
+    templateUrl: './settings.html',
+    styleUrls: [
+        '../page.scss',
+        './settings.scss'
+    ],
+    animations: [fadeInAnimation],
+    standalone: false
 })
 export class SettingsComponent implements OnInit, OnDestroy {
   /** @private The current search term for the settings. */
