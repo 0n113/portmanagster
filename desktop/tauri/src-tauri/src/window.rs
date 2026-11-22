@@ -1,4 +1,4 @@
-use log::{debug, error};
+use log::{debug, error, warn};
 use tauri::{
     image::Image, AppHandle, Listener, Manager, Result, Theme, UserAttentionType, WebviewUrl,
     WebviewWindow, WebviewWindowBuilder,
@@ -18,6 +18,27 @@ const CUSTOM_ENVVAR_FOR_WEBVIEW_PROCESS: &str = "PORTMASTER_UI_WEBVIEW_PROCESS";
 
 #[cfg(target_os = "windows")]
 static UI_PROCESS_ENV_VAR_DEFINED_FLAG: AtomicBool = AtomicBool::new(false);
+
+/// Reports whether the main window may navigate to the URL.
+///
+/// The main window has access to the app commands and, through them, to the
+/// Portmaster API. It must therefore only ever show the bundled pages and
+/// the UI served by the Portmaster core. All other pages belong into the
+/// system browser.
+fn is_allowed_navigation(url: &tauri::Url) -> bool {
+    let host = url.host_str().unwrap_or_default();
+    match url.scheme() {
+        // Bundled pages: tauri://localhost, or http(s)://tauri.localhost on Windows.
+        "tauri" => host == "localhost",
+        "http" | "https" if cfg!(windows) && host == "tauri.localhost" => true,
+        // The UI served by the Portmaster core.
+        "http" if host == "127.0.0.1" && url.port_or_known_default() == Some(817) => true,
+        // Development servers, see `may_navigate_to_ui`.
+        #[cfg(debug_assertions)]
+        "http" if host == "127.0.0.1" || host == "localhost" => true,
+        _ => false,
+    }
+}
 
 /// Either returns the existing "main" window or creates a new one.
 ///
@@ -48,8 +69,8 @@ pub fn create_main_window(app: &AppHandle) -> Result<WebviewWindow> {
             })
             .on_navigation(|url| {
                 debug!("[tauri] main window navigation event: {}", url);
-                if url.as_str() == "about:blank" {
-                    debug!("[tauri] blocking navigation to about:blank");
+                if !is_allowed_navigation(url) {
+                    warn!("[tauri] blocking navigation of the main window to {}", url);
                     return false;
                 }
                 true
@@ -329,4 +350,45 @@ pub fn create_debounced_window_state_saver(
     });
 
     tx
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_allowed_navigation;
+
+    fn allowed(url: &str) -> bool {
+        is_allowed_navigation(&url.parse().unwrap())
+    }
+
+    #[test]
+    fn app_pages_are_allowed() {
+        assert!(allowed("tauri://localhost/index.html"));
+        assert!(allowed("http://127.0.0.1:817/ui/modules/portmaster/"));
+    }
+
+    #[test]
+    fn tauri_localhost_is_only_the_app_on_windows() {
+        assert_eq!(allowed("http://tauri.localhost/index.html"), cfg!(windows));
+        assert_eq!(allowed("https://tauri.localhost/"), cfg!(windows));
+    }
+
+    #[test]
+    fn foreign_pages_are_blocked() {
+        assert!(!allowed("about:blank"));
+        assert!(!allowed("https://example.com/"));
+        assert!(!allowed("https://127.0.0.1.example.com/"));
+        assert!(!allowed("https://example.com/?127.0.0.1"));
+        assert!(!allowed("http://127.0.0.1:817@example.com/"));
+        assert!(!allowed("https://127.0.0.1:817/"));
+        assert!(!allowed("tauri://example.com/"));
+        assert!(!allowed("file:///etc/passwd"));
+        assert!(!allowed("data:text/html,x"));
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    fn other_local_ports_are_blocked_in_release() {
+        assert!(!allowed("http://127.0.0.1:8080/"));
+        assert!(!allowed("http://localhost:817/"));
+    }
 }

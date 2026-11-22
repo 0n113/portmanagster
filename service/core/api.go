@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/ghodss/yaml"
 
@@ -34,6 +36,7 @@ var (
 	errInvalidWritePermission = errors.New("invalid write permission")
 	errInvalidTTL             = errors.New("ttl must be positive and at most 30 days")
 	errAppAccessDenied        = errors.New("access denied")
+	errInvalidAppName         = errors.New("invalid app-name: must be 1-64 characters of letters, digits, spaces and . _ - + @")
 	errAppAuthTimeout         = errors.New("timeout")
 )
 
@@ -42,6 +45,9 @@ const maxAppAuthTTL = 30 * 24 * time.Hour
 
 // appAuthAllowActionID is the notification action ID to authorize an app.
 const appAuthAllowActionID = "allow"
+
+// maxAppNameLength is the maximum length of an app name in runes.
+const maxAppNameLength = 64
 
 func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
@@ -341,6 +347,46 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 // getSavePermission returns the requested api.Permission from p.
 // It only allows "user" and "admin" as external processes should
 // never be able to request "self".
+// validateAppName trims and validates the app name given by the requesting
+// app. The name ends up in a notification that is rendered as Markdown and is
+// shown to the user as part of a trusted-looking prompt, so only a small,
+// harmless character set is allowed.
+func validateAppName(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" || utf8.RuneCountInString(name) > maxAppNameLength {
+		return "", errInvalidAppName
+	}
+	for _, r := range name {
+		switch {
+		case unicode.IsLetter(r), unicode.IsDigit(r):
+		case r == ' ', r == '.', r == '_', r == '-', r == '+', r == '@':
+		default:
+			return "", errInvalidAppName
+		}
+	}
+	return name, nil
+}
+
+// escapeMarkdown neutralises Markdown link and HTML syntax in values that an
+// untrusted party can influence (profile names, binary paths), so they cannot
+// inject links into a notification. Line breaks are replaced to prevent
+// injecting additional paragraphs.
+func escapeMarkdown(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		switch r {
+		case '\\', '[', ']', '(', ')', '<', '>', '`':
+			b.WriteByte('\\')
+			b.WriteRune(r)
+		case '\r', '\n':
+			b.WriteByte(' ')
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
 func getSavePermission(p string) api.Permission {
 	switch p {
 	case "user":
@@ -376,13 +422,15 @@ func getMyProfile(ar *api.Request) (interface{}, error) {
 }
 
 func authorizeApp(ar *api.Request) (interface{}, error) {
-	appName := ar.Request.URL.Query().Get("app-name")
+	appName, err := validateAppName(ar.Request.URL.Query().Get("app-name"))
+	if err != nil {
+		return nil, err
+	}
 	readPermStr := ar.Request.URL.Query().Get("read")
 	writePermStr := ar.Request.URL.Query().Get("write")
 
 	ttl := time.Hour * 24
 	if ttlStr := ar.Request.URL.Query().Get("ttl"); ttlStr != "" {
-		var err error
 		ttl, err = time.ParseDuration(ttlStr)
 		if err != nil {
 			return nil, err
@@ -412,7 +460,7 @@ func authorizeApp(ar *api.Request) (interface{}, error) {
 		Title:   "An app requests access to the Portmaster",
 		Message: fmt.Sprintf(
 			"Allow %q (%s) to access the Portmaster with %s read and %s write permission for %s?\n\nBinary: %s",
-			appName, proc.Profile().LocalProfile().Name, readPermStr, writePermStr, ttl, proc.Path,
+			appName, escapeMarkdown(proc.Profile().LocalProfile().Name), readPermStr, writePermStr, ttl, escapeMarkdown(proc.Path),
 		),
 		ShowOnSystem: true,
 		Expires:      time.Now().Add(time.Minute).Unix(),
