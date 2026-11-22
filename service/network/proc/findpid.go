@@ -36,9 +36,7 @@ func GetPID(socketInfo socket.Info) (pid int) {
 
 // findPID returns the pid of the given uid and socket inode.
 func findPID(uid, inode int) (pid int) {
-	// Inodes are unsigned 32-bit values, but stored in an int. On 32-bit
-	// platforms, values above MaxInt32 wrap to negative, so format via uint32.
-	socketName := "socket:[" + strconv.FormatUint(uint64(uint32(inode)), 10) + "]" //nolint:gosec // Intentional truncation to the unsigned 32-bit inode, see comment above.
+	socketName := socketNameForInode(inode)
 
 	// Always update pid table (it has a call limiter anyway)
 	updatePids()
