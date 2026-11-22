@@ -10,6 +10,11 @@ var (
 	getTCP6Table = iphelper.GetTCP6Table
 	getUDP4Table = iphelper.GetUDP4Table
 	getUDP6Table = iphelper.GetUDP6Table
+
+	// Windows reports one owning process per socket in its connection tables
+	// (the process that opened it) and offers no per-process descriptor
+	// tables to scan for other holders, so this is not supported.
+	findSocketHolders func(inode int) ([]int, error)
 )
 
 // CheckPID checks the if socket info already has a PID and if not, tries to find it.
