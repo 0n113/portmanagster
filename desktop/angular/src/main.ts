@@ -5,10 +5,8 @@ import { AppModule } from './app/app.module';
 import { environment } from './environments/environment';
 import { INTEGRATION_SERVICE, integrationServiceFactory } from './app/integration';
 import { bootstrapApplication } from '@angular/platform-browser';
-import { PromptWidgetComponent } from './app/shared/prompt-list';
 import { PromptEntryPointComponent } from './app/prompt-entrypoint/prompt-entrypoint';
 import { provideHttpClient } from '@angular/common/http';
-import { provideRouter } from '@angular/router';
 import { PortmasterAPIModule } from '@safing/portmaster-api';
 import { NotificationsService } from './app/services';
 import { TauriIntegrationService } from './app/integration/taur-app';
@@ -27,29 +25,50 @@ if (typeof (CSS as any)['registerProperty'] === 'function') {
 }
 
 function handleExternalResources(e: Event) {
-  // TODO: 
-  //    This code executes "openExternal()" when any "<a />" element in the app is clicked.
-  //    This could potentially be a security issue.
-  //    We should consider restricting this to only external links that belong to a certain domain (e.g., https://safing.io).
-  
+  // Links inside the app may come from untrusted text (notifications,
+  // imported profiles, news), so every click on an "<a />" passes here:
+  // links to the app itself load normally, all others open in the system
+  // browser and never in the app window.
+
   // get click target
   let target: HTMLElement | null = e.target as HTMLElement;
     
   // traverse until we reach element "<a />"
-  while (!!target && target.tagName !== "A") {
+  while (target && target.tagName !== "A") {
     target = target.parentElement;
   }
 
-  if (!!target) {
-    let href = target.getAttribute("href");
+  if (target) {
+    const href = target.getAttribute("href");
     if (href?.startsWith("blob")) {
       return
     }
 
-    if (!!href && !href.includes(location.hostname)) {
-      e.preventDefault();
+    if (!href) {
+      return
+    }
 
-      integrationServiceFactory().openExternal(href);
+    // Only links to our own origin may load inside the app. A link is
+    // compared by its parsed origin: a substring check on the host name
+    // would treat "https://127.0.0.1.example.com/" as internal and load a
+    // foreign page into the privileged app window.
+    let url: URL;
+    try {
+      url = new URL(href, location.href);
+    } catch {
+      e.preventDefault();
+      return
+    }
+
+    if (url.origin === location.origin) {
+      return
+    }
+
+    e.preventDefault();
+
+    // Hand only web and mail links to the system.
+    if (["http:", "https:", "mailto:"].includes(url.protocol)) {
+      integrationServiceFactory().openExternal(url.href);
     }
   }
 }
@@ -64,7 +83,7 @@ if (document.addEventListener) {
   // we cannot use document.writeXX here as it's not allowed to
   // write to Document from an async loaded script.
 
-  let linkTag = document.createElement("link");
+  const linkTag = document.createElement("link");
   linkTag.rel = "stylesheet";
   linkTag.href = "/assets/fonts/roboto.css";
   if (navigator.platform.startsWith("Win")) {

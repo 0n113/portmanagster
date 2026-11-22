@@ -23,6 +23,9 @@ func init() {
 	}()
 }
 
+// Listing the holders of a socket is not supported on this system.
+var findSocketHolders func(inode int) ([]int, error)
+
 func getTCP4Table() (connections []*socket.ConnectionInfo, listeners []*socket.BindInfo, err error) {
 	return nil, nil, nil
 }

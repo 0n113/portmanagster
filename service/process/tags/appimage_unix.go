@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -59,18 +60,33 @@ func (h *AppImageHandler) TagDescriptions() []process.TagDescription {
 // AddTags adds tags to the given process.
 func (h *AppImageHandler) AddTags(p *process.Process) {
 	// Detect app image path via ENV vars.
+	// The env vars are set by the process itself and can be faked by any
+	// program. They are therefore only accepted if APPDIR is a real AppImage
+	// mount that contains the binary and whose mount source names the same
+	// AppImage file as APPIMAGE. Note that a user who creates their own FUSE
+	// mount can still fake this (same trust level as the mount ID tag below), so
+	// this raises the bar from "set two environment variables", but is not proof
+	// of identity.
 	func() {
-		// Get and verify AppImage location.
-		appImageLocation, ok := p.Env["APPIMAGE"]
-		if !ok || appImageLocation == "" {
+		appImageLocation := p.Env["APPIMAGE"]
+		appImageMountDir := p.Env["APPDIR"]
+		if appImageLocation == "" || appImageMountDir == "" {
 			return
 		}
-		appImageMountDir, ok := p.Env["APPDIR"]
-		if !ok || appImageMountDir == "" {
+
+		// Cheap, pure checks first.
+		if !validateAppImageEnv(p.Path, appImageLocation, appImageMountDir) {
 			return
 		}
-		// Check if the process path is in the mount dir.
-		if !strings.HasPrefix(p.Path, appImageMountDir) {
+
+		// Confirm that APPDIR is a real AppImage mount and that its source is
+		// the AppImage given in APPIMAGE.
+		mountSource, err := getAppImageMountName(appImageMountDir)
+		if err != nil {
+			log.Debugf("process/tags: failed to get mount name: %s", err)
+			return
+		}
+		if !appImageMountMatches(mountSource, appImageLocation) {
 			return
 		}
 
@@ -183,4 +199,32 @@ func getAppImageMountName(mountPoint string) (mountName string, err error) {
 	}
 
 	return "", nil
+}
+
+// validateAppImageEnv checks the purely syntactic requirements of the APPIMAGE
+// and APPDIR values: APPIMAGE must be an absolute, clean path and the process
+// binary must be inside APPDIR, which must itself be a mount dir of the form
+// /tmp/.mount_*. The path boundary check prevents "/tmp/.mount_x" from
+// matching "/tmp/.mount_xyz/bin".
+func validateAppImageEnv(procPath, appImage, appDir string) bool {
+	if !filepath.IsAbs(appImage) || filepath.Clean(appImage) != appImage {
+		return false
+	}
+	if !filepath.IsAbs(appDir) || filepath.Clean(appDir) != appDir {
+		return false
+	}
+	if appImageMountDirRegex.FindString(appDir) != appDir {
+		return false
+	}
+	return strings.HasPrefix(procPath, appDir+"/")
+}
+
+// appImageMountMatches returns whether the mount source from /proc/mounts
+// names the given AppImage file. Depending on the runtime, the source is the
+// full path or only the file name; both are accepted, compared exactly.
+func appImageMountMatches(mountSource, appImage string) bool {
+	if mountSource == "" || appImage == "" {
+		return false
+	}
+	return mountSource == appImage || mountSource == filepath.Base(appImage)
 }

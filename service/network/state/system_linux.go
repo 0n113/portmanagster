@@ -13,6 +13,8 @@ var (
 	getUDP4Table = proc.GetUDP4Table
 	getUDP6Table = proc.GetUDP6Table
 
+	findSocketHolders = proc.FindSocketHolders
+
 	checkPIDTries        = 5
 	checkPIDBaseWaitTime = 5 * time.Millisecond
 )

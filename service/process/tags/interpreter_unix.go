@@ -150,6 +150,10 @@ func (h *InterpHandler) CreateProfile(p *process.Process) *profile.Profile {
 				return nil
 			}
 
+			if len(args) == 0 {
+				return nil
+			}
+
 			// if arg0 is the interpreter name itself strip it away
 			// and use the next one
 			if it.Regex.MatchString(args[0]) && len(args) > 1 {
@@ -201,6 +205,11 @@ func (h *InterpHandler) AddTags(p *process.Process) {
 	args, err := shlex.Split(p.CmdLine)
 	if err != nil {
 		// give up if we failed to parse the command line
+		return
+	}
+
+	// An empty or whitespace-only command line yields no args.
+	if len(args) == 0 {
 		return
 	}
 
