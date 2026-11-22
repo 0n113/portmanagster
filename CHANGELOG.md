@@ -7,6 +7,8 @@ pre-releases carry a `-rcN` suffix.
 
 ## [Unreleased]
 
+## [0.2.0-rc1] - 2026-11-22
+
 ### Removed
 - All SPN code (`spn/`, about 37,000 lines) and the SPN server tools `cmds/hub` and
   `cmds/observation-hub`; the core is built without SPN.
@@ -37,9 +39,15 @@ pre-releases carry a `-rcN` suffix.
 - Linux: eBPF programs load on kernels with an extended BTF header; a missing IVPN client is not
   logged as an error; the desktop app reports a missing or failed system service correctly and
   no longer needs libssl.
+- Security: links in untrusted text no longer load foreign pages into the app window, the app
+  commands are checked by Tauri's ACL and its HTTP command only reaches the core API; the API
+  trusts a socket only if all processes holding it are trusted (Linux); the AppImage path is no
+  longer taken from the environment unchecked.
 - Security: the UI connects only to the local API; only the app's own webview inherits API trust;
   HTML injection through app names and the app authorization prompt fixed; dependencies with
   known advisories updated (Go, npm, Cargo).
+- Linux packages: `portmaster-core` gets the SELinux label `bin_t` also without `semanage`; on a
+  fresh Fedora the service failed to start ("fork/exec /usr/bin/iptables: permission denied").
 - Call limiters keep working when the clock is set back; reversed port ranges, log file
   permissions, config flatten order, the `.free` TLD.
 
@@ -51,6 +59,7 @@ pre-releases carry a `-rcN` suffix.
 - VM test suite for Linux and Windows (`tools/vmtest`), also on Proxmox VE: smoke tests with
   packet interception, filter list and blocking checks, eBPF bandwidth data, and soak tests for
   leaks under constant traffic.
+- Linux `.deb` and `.rpm` packages in the releases, built on Debian 12 (glibc 2.36).
 - Release workflow creates the GitHub release on `v*` tag push; weekly upstream sync workflow.
 
 ## [0.1.0-rc1] - 2026-10-01
