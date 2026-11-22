@@ -35,7 +35,7 @@ func TestLookupHolders(t *testing.T) {
 		Remote: socket.Address{IP: client, Port: 50000},
 		Inode:  1002,
 	}
-	errScan := errors.New("scan failed")
+	errScan := errors.New("scan failed") //nolint:err113 // Test error.
 
 	tests := []struct {
 		name        string

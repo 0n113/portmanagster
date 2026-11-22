@@ -15,15 +15,22 @@ import (
 
 // TestCheckAPISocketHolders checks that API trust is only granted if every
 // process holding the socket of the request is trusted on its own.
+var (
+	errTestProcessNotFound  = errors.New("process not found")
+	errTestPermissionDenied = errors.New("permission denied")
+)
+
 func TestCheckAPISocketHolders(t *testing.T) { //nolint:paralleltest // Replaces the package-level process getter.
 	root := t.TempDir()
 	newExe := func(rel string) string {
 		t.Helper()
 		path := filepath.Join(root, rel)
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		err := os.MkdirAll(filepath.Dir(path), 0o750)
+		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(path, nil, 0o600); err != nil {
+		err = os.WriteFile(path, nil, 0o600)
+		if err != nil {
 			t.Fatal(err)
 		}
 		return path
@@ -53,7 +60,7 @@ func TestCheckAPISocketHolders(t *testing.T) { //nolint:paralleltest // Replaces
 		if p, ok := processes[pid]; ok {
 			return p, nil
 		}
-		return nil, fmt.Errorf("process %d not found", pid)
+		return nil, fmt.Errorf("%w: %d", errTestProcessNotFound, pid)
 	}
 	t.Cleanup(func() { getAPIProcess = originalGetAPIProcess })
 
@@ -117,7 +124,7 @@ func TestCheckAPISocketHolders(t *testing.T) { //nolint:paralleltest // Replaces
 		{
 			name:       "holders cannot be read",
 			trustedPid: appPid,
-			holdersErr: errors.New("permission denied"),
+			holdersErr: errTestPermissionDenied,
 		},
 		{
 			name:       "socket not found yet",
@@ -133,7 +140,7 @@ func TestCheckAPISocketHolders(t *testing.T) { //nolint:paralleltest // Replaces
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range tests { //nolint:paralleltest // See above.
 		t.Run(tc.name, func(t *testing.T) {
 			retry, err := checkAPISocketHolders(t.Context(), tc.trustedPid, tc.holders, tc.holdersErr, authenticatedPath)
 			if tc.wantAccess {

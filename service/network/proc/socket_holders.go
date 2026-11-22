@@ -11,6 +11,8 @@ import (
 	"syscall"
 )
 
+var errSocketWithoutInode = errors.New("socket has no inode")
+
 // FindSocketHolders returns the PIDs of all processes that currently hold a
 // file descriptor of the socket with the given inode.
 //
@@ -28,7 +30,7 @@ import (
 func FindSocketHolders(inode int) (pids []int, err error) {
 	if inode == 0 {
 		// Sockets without an inode (eg. in TIME_WAIT) are not held by anyone.
-		return nil, errors.New("socket has no inode")
+		return nil, errSocketWithoutInode
 	}
 	return findSocketHolders("/proc", socketNameForInode(inode))
 }

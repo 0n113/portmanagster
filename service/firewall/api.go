@@ -202,7 +202,8 @@ checkLevelsLoop:
 			break checkLevelsLoop
 		default: // normal process
 			// Check if the requesting process is in database root / updates dir.
-			if realPath, err := filepath.EvalSymlinks(proc.Path); err == nil {
+			realPath, err := filepath.EvalSymlinks(proc.Path)
+			if err == nil {
 
 				// check if the client has been allowed by flag
 				if slices.Contains(allowedClients, realPath) {

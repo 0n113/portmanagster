@@ -11,6 +11,11 @@ import (
 // that cannot list all processes holding a socket.
 var ErrSocketHoldersUnsupported = errors.New("listing the holders of a socket is not supported on this system")
 
+var (
+	errSocketHoldersOnlyTCP = errors.New("listing socket holders is only supported for TCP")
+	errUnsupportedIPVersion = errors.New("unsupported IP version")
+)
+
 // LookupSocketHolders returns the PIDs of all processes that currently hold
 // the socket of the given TCP connection.
 //
@@ -23,7 +28,7 @@ func LookupSocketHolders(pktInfo *packet.Info) (pids []int, err error) {
 		return nil, ErrSocketHoldersUnsupported
 	}
 	if pktInfo.Protocol != packet.TCP {
-		return nil, errors.New("listing socket holders is only supported for TCP")
+		return nil, errSocketHoldersOnlyTCP
 	}
 
 	// auto-detect version
@@ -42,7 +47,7 @@ func LookupSocketHolders(pktInfo *packet.Info) (pids []int, err error) {
 	case packet.IPv6:
 		return tcp6Table.lookupHolders(pktInfo, findSocketHolders)
 	default:
-		return nil, errors.New("unsupported IP version")
+		return nil, errUnsupportedIPVersion
 	}
 }
 

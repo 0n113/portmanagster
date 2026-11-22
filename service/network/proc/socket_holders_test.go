@@ -21,10 +21,12 @@ func TestFindSocketHoldersFake(t *testing.T) {
 	link := func(pid, fd, target string) {
 		t.Helper()
 		dir := filepath.Join(procDir, pid, "fd")
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		err := os.MkdirAll(dir, 0o750)
+		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.Symlink(target, filepath.Join(dir, fd)); err != nil {
+		err = os.Symlink(target, filepath.Join(dir, fd))
+		if err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -35,7 +37,8 @@ func TestFindSocketHoldersFake(t *testing.T) {
 	link("300", "7", "socket:[42]")  // A second holder, eg. an inherited descriptor.
 	link("self", "3", "socket:[42]") // Not a PID, must be ignored.
 	// A process that exited between listing /proc and reading its descriptors.
-	if err := os.MkdirAll(filepath.Join(procDir, "400"), 0o755); err != nil {
+	err := os.MkdirAll(filepath.Join(procDir, "400"), 0o750)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -66,16 +69,19 @@ func TestFindSocketHoldersUnreadable(t *testing.T) {
 
 	procDir := t.TempDir()
 	fdDir := filepath.Join(procDir, "500", "fd")
-	if err := os.MkdirAll(fdDir, 0o755); err != nil {
+	err := os.MkdirAll(fdDir, 0o750)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink("socket:[42]", filepath.Join(fdDir, "3")); err != nil {
+	err = os.Symlink("socket:[42]", filepath.Join(fdDir, "3"))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod(fdDir, 0); err != nil {
+	err = os.Chmod(fdDir, 0)
+	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(fdDir, 0o755) }) //nolint:gosec // Test directory.
+	t.Cleanup(func() { _ = os.Chmod(fdDir, 0o750) }) //nolint:gosec // Test directory.
 
 	pids, err := findSocketHolders(procDir, "socket:[42]")
 	if err == nil {
@@ -106,7 +112,8 @@ func TestFindSocketHoldersInherited(t *testing.T) {
 	}
 	defer func() { _ = file.Close() }()
 	var stat syscall.Stat_t
-	if err := syscall.Fstat(int(file.Fd()), &stat); err != nil { //nolint:gosec // File descriptors fit into an int.
+	err = syscall.Fstat(int(file.Fd()), &stat) //nolint:gosec // File descriptors fit into an int.
+	if err != nil {
 		t.Fatalf("failed to stat socket: %s", err)
 	}
 	inode := int(stat.Ino) //nolint:gosec // Inode numbers fit into an int.
@@ -116,7 +123,8 @@ func TestFindSocketHoldersInherited(t *testing.T) {
 	linkProc := func(pid int) {
 		t.Helper()
 		name := strconv.Itoa(pid)
-		if err := os.Symlink("/proc/"+name, filepath.Join(procDir, name)); err != nil {
+		err = os.Symlink("/proc/"+name, filepath.Join(procDir, name))
+		if err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -133,7 +141,8 @@ func TestFindSocketHoldersInherited(t *testing.T) {
 	// Start a child that inherits the socket.
 	cmd := exec.Command(sleepPath, "30")
 	cmd.ExtraFiles = []*os.File{file}
-	if err := cmd.Start(); err != nil {
+	err = cmd.Start()
+	if err != nil {
 		t.Fatalf("failed to start child: %s", err)
 	}
 	defer func() {
