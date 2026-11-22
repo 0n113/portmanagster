@@ -518,7 +518,6 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
       menuTitle: 'Active',
       suggestions: booleanSuggestionValues(),
     },
-    tunneled: {},
     from: {
       virtual: true
     },
