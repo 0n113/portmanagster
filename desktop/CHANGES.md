@@ -1,50 +1,27 @@
-# Desktop UI changes in portmasterpro
+# UI changes in portmasterpro
 
-The production UI is the Angular app in `desktop/angular` (Angular 16, npm,
-Karma). All account, subscription and SPN gating is handled centrally in the
-`@safing/portmaster-api` library so that the ~90 components which read the
-user profile did not have to be touched individually.
+The UI is the Angular app in `desktop/angular` (Angular 20, Node 22), built into the Tauri
+desktop app in `desktop/tauri`.
 
-## Central change: `projects/safing/portmaster-api/src/lib/spn.service.ts`
+## Removed
 
-| Member | Before | Now |
-|---|---|---|
-| `profile$` / `watchProfile()` / `userProfile()` | watched `core:spn/account/user`, fetched `/v1/spn/account/user/profile` | static `LOCAL_PROFILE` with `feature_ids = [history, bw-vis, vpn-compat]`; SPN not included |
-| `status$` | watched `runtime:spn/status` | static `disabled` status |
-| `watchPins()` | watched `map:main/` | always `[]` |
-| `login()` / `logout()` | HTTP to `/v1/spn/account/...` | fail locally with `ERR_ACCOUNT_REMOVED`, no request |
-| `loadFeaturePackages()` / `watchEnabledFeatures()` | HTTP to `/v1/account/features` | always `[]` |
+- The SPN page, map entry and quick settings, "Pause SPN", SPN identities, the SPN column and
+  filter in the connection list, SPN parts of the connection details and help texts.
+- Login, account details, pricing, feature upsell and "Portmaster Plus/Pro" copy.
+- The SPN and account services in `@safing/portmaster-api` and the `RequiresFeatureID`
+  annotation of settings.
+- SPN entries in the tray menu (`desktop/tauri`).
 
-Effect: every `profile?.current_plan?.feature_ids?.includes(FeatureID.History)`
-or `FeatureID.Bandwidth` check in the app (monitor, app-view, netquery,
-dashboard, generic-setting upgrade lock) evaluates to `true`; every
-`FeatureID.SPN` check evaluates to `false`. No outbound request to
-`account.safing.io` or the ticket agent is issued by the UI.
+## Changed
 
-## Removed from the UI
+- Network History and Bandwidth Visibility are always shown; no subscription check.
+- The world map lives in `shared/map-renderer` and shows local connection data.
+- The UI connects only to the local API.
+- Several security fixes: HTML injection through app names, the app authorization prompt,
+  API trust for the app's own webview only.
+- Angular 16 → 20, with ng-zorro, ngx-markdown and Font Awesome updated to match.
 
-- Navigation: SPN map entry, "Re-Initialize SPN", "Logout Completely".
-- Route `/spn` (the page component still compiles but is unreachable;
-  `**` redirects to the dashboard).
-- Dashboard: "Features" (package upsell) widget, "Login / Subscribe" /
-  "Account Details" header, current-plan/billing text, "SPN Identities"
-  mini-stat, "Connections Tunneled through SPN" chart.
-- Upsell copy: "Available in Portmaster Plus/Pro" and the pricing link in the
-  monitor page.
+## Kept on purpose
 
-## Left in place (dead but harmless)
-
-`spn-login`, `spn-account-details`, `spn-status`, `feature-scout`, `pages/spn`
-still exist as components. They are either never rendered (`spnLoginRequired`
-is `false`, SPN status is `disabled`, developer-expertise gated) or no longer
-routed. Removing them entirely is optional clean-up.
-
-## Verify
-
-```bash
-cd desktop/angular
-npm ci
-npm run build
-grep -rn 'account.safing.io\|/v1/spn/account\|/v1/account/features' projects/safing/portmaster-api/src
-# expected: no matches in spn.service.ts
-```
+Neutral fields of the local connection data (`exit_node`, `tunneled`) and the `SPN` field of the
+pause state: the core still sends them, always empty or `false`.

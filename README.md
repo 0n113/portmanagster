@@ -1,120 +1,87 @@
-> ## portmasterpro — privacy-focused fork
-> This repository is a fork of [safing/portmaster](https://github.com/safing/portmaster) **without SPN, Safing accounts,
-> subscriptions or telemetry**. Network History and Bandwidth Visibility work locally for everyone.
-> Upstream binary update checks are off by default (upstream binaries would replace this build); filter lists and
-> GeoIP data still update from `updates.safing.io`.
->
-> - **Download:** [Releases](https://github.com/0n113/portmasterpro/releases) (Windows x64 installer; unsigned → SmartScreen warning)
-> - **Build & test:** [BUILDING.md](BUILDING.md) · **Changes:** [CHANGELOG.md](CHANGELOG.md), [desktop/CHANGES.md](desktop/CHANGES.md) · **Release process:** [RELEASE.md](RELEASE.md)
-> - **Branches:** `development` (fork mainline, syncs upstream `safing/portmaster:development` weekly by PR), `release-candidate/*` (frozen RCs)
-> - The kernel driver is Safing's signed stable driver, unchanged. Not affiliated with or endorsed by Safing.
->
-> The original upstream README follows.
+# portmasterpro
 
-# Get Peace of Mind <br> with [Easy Privacy](https://safing.io/)
+A fork of the application firewall [Portmaster](https://github.com/safing/portmaster) by Safing,
+**without SPN, Safing accounts, subscriptions or telemetry**. The features that upstream sells
+as part of a paid plan and that run locally on your computer (Network History, Bandwidth
+Visibility) are available to everyone.
 
-Portmaster is a free and open-source application firewall that does the heavy lifting for you.
-Restore privacy and take back control over all your computer's network activity.
+> Not affiliated with or endorsed by Safing. "Safing" and "Portmaster" are trademarks of Safing
+> ICS Technologies GmbH, see [TRADEMARKS](TRADEMARKS). The code is licensed under the
+> [GPLv3](LICENSE), like upstream.
 
-With great defaults your privacy improves without any effort. And if you want to configure and control everything down to the last detail - Portmaster has you covered too. Developed in the EU 🇪🇺, Austria.
+## What it does
 
-__[Download for Free](https://safing.io/download/)__
+Portmaster watches every network connection of every app on your computer and lets you decide
+what is allowed:
 
-__[About Us](https://safing.io/about/)__
+- **Monitor:** see all connections per app, live and in the network history.
+- **Block:** block apps, domains, IPs, countries, LAN or internet access, per app or globally.
+- **Filter lists:** block ads, trackers and malware domains for the whole system.
+- **Secure DNS:** resolve names over DNS-over-TLS/HTTPS with the resolvers you choose.
+- **Bandwidth:** see how much data each connection and app sends and receives.
 
-![Portmaster User Interface](https://safing.io/assets/img/page-specific/landing/portmaster-thumbnail.png?)
+## Compared to the original Portmaster
 
-_seen on:_  
+| | portmasterpro | Portmaster (Safing) |
+|---|---|---|
+| Firewall, monitoring, filter lists, secure DNS | yes | yes |
+| Network History, Bandwidth Visibility | free, local | paid plan (Plus or higher) |
+| SPN (Safing Privacy Network, a multi-hop VPN) | removed | paid plan (Pro) |
+| Safing account and login | removed | optional, needed for paid features |
+| Requests to Safing besides intel data updates | none | account, subscription and support services |
+| Intel data (filter lists, GeoIP) | from Safing's update server | from Safing's update server |
+| Automatic app updates | off: Safing's binaries would replace this build | on |
+| Installers | Windows (unsigned); Linux core binary | signed Windows installer, Linux packages |
+| Kernel driver (Windows) | Safing's signed stable driver, unchanged | Safing's signed driver |
+| Split Tunnel | off: needs a newer signed driver | as released by Safing |
+| Support | none: no issue tracker, one maintainer | documentation, Discord, support for subscribers |
 
-[<img src="https://safing.io/assets/img/external/heise_online.svg" height="35">](https://www.heise.de/tests/Datenschutz-Firewall-Portmaster-im-Test-9611687.html)
-&nbsp;&nbsp;&nbsp;
-[![ghacks.net](https://safing.io/assets/img/external/ghacks.png)](https://www.ghacks.net/2022/11/08/portmaster-1-0-released-open-source-application-firewall/)
-&nbsp;&nbsp;&nbsp;
-[![Techlore](https://safing.io/assets/img/external/techlore.png)](https://www.youtube.com/watch?v=E8cTRhGtmcM)
-&nbsp;&nbsp;&nbsp;
-[![Lifehacker](https://safing.io/assets/img/external/logos/lifehacker.webp)](https://lifehacker.com/the-lesser-known-apps-everyone-should-install-on-a-new-1850223434)
+### Pros
 
-## [Features](https://safing.io/features/)
+- All local features without account or subscription.
+- No SPN code and no account code: less code that runs with administrator rights, and nothing
+  that connects to Safing except the intel data updates.
+- Fixes that upstream does not have yet: stability on Windows shutdown, update downloads that
+  stall or fail, DNS cache handling, filter lists at first start, several UI security fixes.
+  See [CHANGELOG.md](CHANGELOG.md).
+- Current UI stack (Angular 20) without known security advisories in production dependencies.
+- Tested in VMs on Linux and Windows, including hour-long soak tests for leaks
+  ([tools/vmtest](tools/vmtest/README.md)).
 
-1. Monitor All Network Activity
-2. Full Control: Block Anything
-3. Automatically Block Trackers & Malware
-4. Set Global & Per‑App Settings
-5. Secure DNS (Doh/DoT)
-6. Record and Search Network Activity ([$](https://safing.io/pricing/))
-7. Per-App Bandwidth Usage ([$](https://safing.io/pricing/))
-8. [SPN, our Next-Gen Privacy Network](https://safing.io/spn/) ([$$](https://safing.io/pricing/))
+### Cons
 
-# Technical Introduction
+- No SPN. If you want Safing's multi-hop VPN, use the original.
+- Unsigned installer: Windows SmartScreen warns on first start.
+- No automatic updates of the app; install new releases yourself.
+- No Linux packages in the releases; build them from source (`earthly +installer-linux`).
+- Depends on Safing for the signed Windows driver and for intel data.
+- Pre-release quality: a small project with one maintainer and no support channel.
+- Upstream changes arrive with a delay: they are merged weekly by pull request.
 
-Portmaster is a privacy suite for your Windows and Linux desktop.
+## Download
 
-### Base Technology
+[Releases](https://github.com/0n113/portmasterpro/releases): Windows x64 installer, core binaries
+for Linux and Windows, `SHA256SUMS.txt`. The Windows installer replaces an existing Portmaster
+installation (same service name and install directory).
 
-- Portmaster integrates into network stack using nfqueue on Linux and a kernel driver (WFP) on Windows.
-- Packets are intercepted at the raw packet level - every packet is seen and can be stopped.
-- Ownership of connections is found using eBPF and `/proc` on Linux and a kernel driver and the IP Helper API (`iphlpapi.dll`) on Windows.
-- Most settings can be defined per app, which can be matched in different ways.
-- Support for special processes with weird or concealed paths/actors:
-  - Snap, AppImage and Script support on Linux
-  - Windows Store apps and svchost.exe system services support on Windows
-- Everything is 100% local on your device. (except the SPN, naturally)
-  - Updates are fully signed and downloaded automatically.
-  - Intelligence data (block lists, geoip) is downloaded and applied automatically.
-- The Portmaster Core Service runs as a system service, the UI elements (App, Notifier) run in user context.
-- The main UI still uses electron as a wrapper :/ - but this will change in the future. You can also open the UI in the browser
+## Build and test
 
-### Feature: Secure DNS
+- [BUILDING.md](BUILDING.md): build the core, the UI and the Windows installer.
+- [TESTING.md](TESTING.md): unit tests, CI, VM tests and manual checks.
+- [RELEASE.md](RELEASE.md): release checklist.
 
-- Portmaster intercepts "astray" DNS queries and reroutes them to itself for seamless integration.
-- DNS queries are resolved by the default or configured DoT/DoH resolvers.
-- Full support for split horizon and horizon validation to defend against rebinding attacks.
+## Repository
 
-### Feature: Privacy Filter
+- `development` is the main branch. A weekly workflow opens a pull request when upstream
+  `safing/portmaster:development` has new commits.
+- `release-candidate/*` branches are frozen release candidates.
+- Changes go in by pull request; CI must be green before merging.
 
-- Define allowed network scopes: Localhost, LAN, Internet, P2P, Inbound.
-- Easy rules based on Internet entities: Domain, IP, Country and more.
-- Filter Lists block common malware, ad, tracker domains etc.
-
-### Feature: Network History ($)
-
-- Record connections and their details in a local database and search all of it later
-- Auto-delete old history or delete on demand
-
-### Feature: Bandwidth Visibility ($)
-
-- Monitor bandwidth usage per connection and app
-
-### Feature: SPN - Safing Privacy Network ($$)
-
-- A Privacy Network aimed at use cases "between" VPN and Tor.
-- Uses onion encryption over multiple hops just like Tor.
-- Routes are chosen to cover most distance within the network to increase privacy.
-- Exits are chosen near the destination server. This automatically geo-unblocks in many cases.
-- Exclude apps and domains/entities from using SPN.
-- Change routing algorithm and focus per app.
-- Nodes are hosted by Safing (company behind Portmaster) and the community.
-- Speeds are pretty decent (>100MBit/s).
-- Further Reading: [SPN Whitepaper](https://safing.io/files/whitepaper/Gate17.pdf)
-
-## Documentation
-
-All details and guides in the dedicated [wiki](https://wiki.safing.io/)
-
-- [Getting Started](https://wiki.safing.io/en/Portmaster/App)
-- Install
-  - [on Windows](https://wiki.safing.io/en/Portmaster/Install/Windows)
-  - [on Linux](https://wiki.safing.io/en/Portmaster/Install/Linux)
-- [Contribute](https://wiki.safing.io/en/Contribute)
-- [VPN Compatibility](https://wiki.safing.io/en/Portmaster/App/Compatibility#vpn-compatibly)
-- [Software Compatibility](https://wiki.safing.io/en/Portmaster/App/Compatibility)
-- [Architecture](https://wiki.safing.io/en/Portmaster/Architecture)
-- [Settings Handbook](https://docs.safing.io/portmaster/settings)
-- [Portmaster Developer API](https://docs.safing.io/portmaster/api)
-
-# Build Portmaster Yourself (WIP)
-
-1. [Install Earthly CLI](https://earthly.dev/get-earthly)
-2. [Install Docker Engine](https://docs.docker.com/engine/install/)
-3. Run `earthly +release`
-4. Find artifacts in `./dist`
+| Path | Content |
+|---|---|
+| `service/`, `base/`, `cmds/` | Go core (`portmaster-core`) and tools |
+| `desktop/angular/` | UI (Angular), see [desktop/CHANGES.md](desktop/CHANGES.md) |
+| `desktop/tauri/` | Desktop app and tray (Tauri, Rust) |
+| `windows_kext/`, `windows_core_dll/` | Windows kernel extension sources and core DLL |
+| `packaging/` | Linux packages, Windows installer |
+| `tools/vmtest/` | Test VMs for Linux and Windows |

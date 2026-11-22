@@ -1,6 +1,6 @@
 name: Release Windows Installer
 
-# Builds the Windows x64 NSIS installer from Linux (cross-build, see BUILDING.md §7b)
+# Builds the Windows x64 NSIS installer from Linux (cross-build, see "Windows installer" in BUILDING.md)
 # and attaches it together with the core binaries to an existing GitHub release.
 #
 # Triggers:

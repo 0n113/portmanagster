@@ -1,24 +1,57 @@
-# Changelog — portmasterpro
+# Changelog
 
-All notable changes to this fork relative to upstream [safing/portmaster](https://github.com/safing/portmaster).
-Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow SemVer; pre-releases carry a `-rcN` suffix.
+All notable changes of portmasterpro relative to upstream
+[safing/portmaster](https://github.com/safing/portmaster).
+Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow SemVer;
+pre-releases carry a `-rcN` suffix.
 
 ## [Unreleased]
 
 ### Removed
-- The remaining SPN code (`spn/`, about 37,000 lines) and the SPN server tools `cmds/hub` and
-  `cmds/observation-hub`. Portmaster itself had not used it anymore. Upstream changes to `spn/`
-  are no longer merged.
+- All SPN code (`spn/`, about 37,000 lines) and the SPN server tools `cmds/hub` and
+  `cmds/observation-hub`; the core is built without SPN.
+- The SPN and account UI: SPN page, login, pricing, account details, SPN quick settings,
+  "Pause SPN", the SPN column and filters in the connection list.
+- Upstream issue workflows, Travis CI and funding configuration that do not apply to the fork.
 
 ### Changed
-- Merged upstream `development` up to `21a2b064` (2.2.3 release line: updates path-traversal fix,
-  profile lookup/geo-rule fixes, iptables crash-safety, UI fixes, tray icon OS theme).
-- Release workflow now creates the GitHub release automatically on `v*` tag push (pre-release
-  when the tag contains `-`), with notes taken from this changelog.
+- Upstream merged up to 2.2.9 and later `development` commits.
+- UI upgraded from Angular 16 to 20.3, Node 22; build tooling and dependencies updated for
+  security advisories.
+- Built with Go 1.27.
+- Documentation rewritten in English, with a comparison to the original Portmaster.
+- The upstream sync workflow opens its pull requests against `development`.
+
+### Fixed
+- Windows: hangs when closing archives and the log writer at shutdown; DNS Client cache is
+  flushed when interception starts; the core DLL is built with the static C runtime; a binary
+  without an icon is no longer an error.
+- Updates: stalled downloads are aborted and failed downloads retried; no upgrades into a
+  read-only installation; an installed upgrade is reported as success.
+- DNS: systemd-resolved cache flushed on start, CNAME chains kept, the network check retries
+  once before going offline, UDP queries are retransmitted.
+- Firewall: the verdict of an ended connection is no longer applied to a new socket;
+  connections to `0.0.0.0` and `::` are no longer named.
+- Profiles: app filter lists apply once the list index is available; missing intel data at first
+  start is not reported as a settings failure or warned about on every connection.
+- Linux: eBPF programs load on kernels with an extended BTF header; a missing IVPN client is not
+  logged as an error; the desktop app reports a missing or failed system service correctly and
+  no longer needs libssl.
+- Security: the UI connects only to the local API; only the app's own webview inherits API trust;
+  HTML injection through app names and the app authorization prompt fixed; dependencies with
+  known advisories updated (Go, npm, Cargo).
+- Call limiters keep working when the clock is set back; reversed port ranges, log file
+  permissions, config flatten order, the `.free` TLD.
+
+### Performance
+- SQLite writes without a `RETURNING` clause, one idle timer per batch, faster filter list
+  decoding.
 
 ### Added
-- `CHANGELOG.md`, `RELEASE.md` (release checklist) and a scheduled upstream-sync workflow that
-  opens a pull request when upstream `development` has new commits.
+- VM test suite for Linux and Windows (`tools/vmtest`), also on Proxmox VE: smoke tests with
+  packet interception, filter list and blocking checks, eBPF bandwidth data, and soak tests for
+  leaks under constant traffic.
+- Release workflow creates the GitHub release on `v*` tag push; weekly upstream sync workflow.
 
 ## [0.1.0-rc1] - 2026-10-01
 
