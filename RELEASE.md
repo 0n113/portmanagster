@@ -32,9 +32,8 @@ Ziel: reproduzierbares, geprüftes Release ohne Überraschungen. Alle Punkte abh
 - [ ] Projekt-Wiki/Memory aktualisieren
 
 ## Hinweise
-- GitHub startet `workflow_dispatch`- und `schedule`-Workflows nur vom **Default-Branch**. Solange `development`
-  der Upstream-Spiegel ist, müssen Workflow-Änderungen dorthin gespiegelt werden. Empfehlung: Default-Branch
-  auf die Fork-Mainline umstellen (z. B. `main` = heutiger `no-spn-no-telemetry`).
+- GitHub startet `workflow_dispatch`- und `schedule`-Workflows nur vom **Default-Branch**. Das ist `development`,
+  die Fork-Mainline; der frühere Branch `no-spn-no-telemetry` ist vollständig darin enthalten und veraltet.
 - Upstream-Treiber: Split Tunnel benötigt einen neueren signierten Kext als Stable 2.2.3. Erst aktivieren,
   wenn Upstream einen passenden signierten Treiber veröffentlicht hat.
 - Signatur: ohne Code-Signing-Zertifikat warnt SmartScreen. Option: eigenes Zertifikat

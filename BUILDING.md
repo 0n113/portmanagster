@@ -1,7 +1,7 @@
 # portmasterpro — Build & Test Guide
 
 Diese Anleitung beschreibt wie du portmasterpro lokal kompilierst, testest
-und die `no-spn-no-telemetry`-Änderungen verifizierst.
+und die Änderungen des Forks (ohne SPN und Telemetrie) verifizierst.
 
 ---
 
@@ -27,7 +27,7 @@ git clone https://github.com/0n113/portmasterpro.git
 cd portmasterpro
 
 # Branch mit den Telemetrie-/SPN-Bereinigungen auschecken
-git checkout no-spn-no-telemetry
+git checkout development
 ```
 
 ---
@@ -262,7 +262,7 @@ Diesen Block einmalig von oben nach unten durchlaufen:
 
 ```bash
 # 1. Sauber starten
-git checkout no-spn-no-telemetry
+git checkout development
 git pull
 
 # 2. Deps aufräumen
@@ -304,7 +304,7 @@ Die Stub-Dateien importieren `service/mgr`. Stelle sicher dass du auf dem
 richtigen Branch bist und `go mod tidy` ausgeführt hast.
 
 ```bash
-git branch          # muss 'no-spn-no-telemetry' zeigen
+git branch          # muss 'development' zeigen
 go mod tidy
 go build ./...
 ```
