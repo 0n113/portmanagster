@@ -246,7 +246,10 @@ jobs:
           cp linux-inputs/intel/* "$T/intel/"
           chmod 0755 "$T/binary/portmaster-core"
           cd "$T"
-          sed -i 's/^version = ".*"/version = "'"$VERSION"'"/' Cargo.toml
+          # Only the package version (the first "version =" line): the table
+          # [target.'cfg(windows)'.dependencies.tauri-runtime-wry] has one too.
+          sed -i '0,/^version = ".*"/s//version = "'"$VERSION"'"/' Cargo.toml
+          grep -n '^version = ' Cargo.toml
           cargo tauri build --ci --bundles deb,rpm
           ls -la target/release/bundle/deb target/release/bundle/rpm
 
