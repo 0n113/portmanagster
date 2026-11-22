@@ -6,6 +6,11 @@ import (
 	"github.com/safing/portmaster/service/process"
 )
 
+const (
+	testAppImage     = "/home/u/Foo.AppImage"
+	testAppImageName = "Foo.AppImage"
+)
+
 func TestValidateAppImageEnv(t *testing.T) {
 	t.Parallel()
 
@@ -14,14 +19,14 @@ func TestValidateAppImageEnv(t *testing.T) {
 		name, path, appImage, appDir string
 		want                         bool
 	}{
-		{"valid", dir + "/usr/bin/foo", "/home/u/Foo.AppImage", dir, true},
-		{"relative appimage", dir + "/usr/bin/foo", "Foo.AppImage", dir, false},
+		{"valid", dir + "/usr/bin/foo", testAppImage, dir, true},
+		{"relative appimage", dir + "/usr/bin/foo", testAppImageName, dir, false},
 		{"unclean appimage", dir + "/usr/bin/foo", "/home/u/../x/Foo.AppImage", dir, false},
-		{"appdir not a mount dir", "/usr/bin/foo", "/home/u/Foo.AppImage", "/usr", false},
-		{"appdir with subpath", dir + "/usr/bin/foo", "/home/u/Foo.AppImage", dir + "/usr", false},
-		{"path outside appdir", "/usr/bin/foo", "/home/u/Foo.AppImage", dir, false},
-		{"bare string prefix", dir + "evil/bin/foo", "/home/u/Foo.AppImage", dir, false},
-		{"path equals appdir", dir, "/home/u/Foo.AppImage", dir, false},
+		{"appdir not a mount dir", "/usr/bin/foo", testAppImage, "/usr", false},
+		{"appdir with subpath", dir + "/usr/bin/foo", testAppImage, dir + "/usr", false},
+		{"path outside appdir", "/usr/bin/foo", testAppImage, dir, false},
+		{"bare string prefix", dir + "evil/bin/foo", testAppImage, dir, false},
+		{"path equals appdir", dir, testAppImage, dir, false},
 		{"empty values", "", "", "", false},
 	}
 	for _, tc := range tests {
@@ -38,13 +43,13 @@ func TestAppImageMountMatches(t *testing.T) {
 		name, source, appImage string
 		want                   bool
 	}{
-		{"full path", "/home/u/Foo.AppImage", "/home/u/Foo.AppImage", true},
-		{"file name only", "Foo.AppImage", "/home/u/Foo.AppImage", true},
-		{"different file", "Bar.AppImage", "/home/u/Foo.AppImage", false},
-		{"different full path", "/opt/Foo.AppImage", "/home/u/Foo.AppImage", false},
-		{"case differs", "foo.appimage", "/home/u/Foo.AppImage", false},
-		{"empty source", "", "/home/u/Foo.AppImage", false},
-		{"empty appimage", "Foo.AppImage", "", false},
+		{"full path", testAppImage, testAppImage, true},
+		{"file name only", testAppImageName, testAppImage, true},
+		{"different file", "Bar.AppImage", testAppImage, false},
+		{"different full path", "/opt/Foo.AppImage", testAppImage, false},
+		{"case differs", "foo.appimage", testAppImage, false},
+		{"empty source", "", testAppImage, false},
+		{"empty appimage", testAppImageName, "", false},
 	}
 	for _, tc := range tests {
 		if got := appImageMountMatches(tc.source, tc.appImage); got != tc.want {
