@@ -1,4 +1,4 @@
-import { getEnumKey, Record, ReleaseLevel, SecurityLevel } from '@safing/portmaster-api';
+import { getEnumKey, Record, ReleaseLevel } from '@safing/portmaster-api';
 
 export interface CaptivePortal {
   URL: string;
@@ -167,12 +167,12 @@ export function GetModuleState(status: CoreStatus, moduleID: string, stateID: st
  * const pausedState = GetModuleState(status, 'Control', 'control:paused');
  * if (pausedState?.Data) {
  *   const pauseData = pausedState.Data as ControlPauseStateData;
- *   console.log(`SPN paused: ${pauseData.SPN}`);
+ *   console.log(`Interception paused: ${pauseData.Interception}`);
  * }
  * ```
  */
 export interface ControlPauseStateData { 
     Interception: boolean;  // Whether Portmaster interception is paused
-    SPN:          boolean;  // Whether SPN is paused    
+    SPN:          boolean;  // Always false: this build has no SPN
     TillTime:     string;   // When the pause will end (JSON date as string, has to be converted to Date)
 }
