@@ -39,6 +39,10 @@ pre-releases carry a `-rcN` suffix.
 - Linux: eBPF programs load on kernels with an extended BTF header; a missing IVPN client is not
   logged as an error; the desktop app reports a missing or failed system service correctly and
   no longer needs libssl.
+- Security: links in untrusted text no longer load foreign pages into the app window, the app
+  commands are checked by Tauri's ACL and its HTTP command only reaches the core API; the API
+  trusts a socket only if all processes holding it are trusted (Linux); the AppImage path is no
+  longer taken from the environment unchecked.
 - Security: the UI connects only to the local API; only the app's own webview inherits API trust;
   HTML injection through app names and the app authorization prompt fixed; dependencies with
   known advisories updated (Go, npm, Cargo).
