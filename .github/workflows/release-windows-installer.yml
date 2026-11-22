@@ -1,12 +1,14 @@
-name: Release Windows Installer
+name: Release Installers
 
-# Builds the Windows x64 NSIS installer from Linux (cross-build, see "Windows installer" in BUILDING.md)
-# and attaches it together with the core binaries to an existing GitHub release.
+# Builds the Windows x64 NSIS installer from Linux (cross-build, see "Windows installer" in
+# BUILDING.md) and the Linux .deb and .rpm packages, and attaches them together with the core
+# binaries to a GitHub release.
 #
 # Triggers:
 #   - push of a tag v*  : creates the GitHub release (pre-release when the tag contains a '-',
 #                         e.g. v0.1.0-rc1) with notes from CHANGELOG.md and attaches the assets.
 #   - workflow_dispatch : attaches the assets to an existing release/draft for the given tag.
+#   - pull_request      : builds everything when the release build changes, uploads nothing.
 
 on:
   push:
@@ -18,12 +20,19 @@ on:
         description: "Release tag to attach the assets to (e.g. v0.1.0-rc1)"
         required: true
         type: string
+  pull_request:
+    branches: [development]
+    paths:
+      - .github/workflows/release-windows-installer.yml
+      - .github/workflows/windows-dll.yml
+      - packaging/**
+      - desktop/tauri/src-tauri/tauri.conf.json5
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-windows-installer-${{ inputs.tag || github.ref_name }}
+  group: release-installers-${{ inputs.tag || github.ref }}
   cancel-in-progress: false
 
 env:
@@ -36,22 +45,30 @@ jobs:
     # runtime, which a clean Windows does not have.
     uses: ./.github/workflows/windows-dll.yml
     with:
-      ref: ${{ inputs.tag || github.ref_name }}
+      ref: ${{ inputs.tag || github.ref }}
 
   windows-installer:
-    name: Cross-build Windows installer and upload release assets
+    name: Cross-build Windows installer, core binaries and UI
     needs: core-dll
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    outputs:
+      tag: ${{ steps.ver.outputs.tag }}
+      version: ${{ steps.ver.outputs.version }}
+      prerelease: ${{ steps.ver.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag || github.ref_name }}
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Derive version from tag
         id: ver
         run: |
-          TAG="${{ inputs.tag || github.ref_name }}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            TAG="v0.0.0-ci${{ github.run_number }}"
+          else
+            TAG="${{ inputs.tag || github.ref_name }}"
+          fi
           case "$TAG" in v[0-9]*) ;; *) echo "::error::tag must look like vX.Y.Z[-pre]"; exit 1;; esac
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
@@ -146,7 +163,7 @@ jobs:
           cp dist/intel/* "$T/intel/"
           python3 packaging/windows/render_nsis_linux.py "$VERSION"
 
-      - name: Collect assets and checksums
+      - name: Collect assets
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
@@ -155,20 +172,127 @@ jobs:
           cp dist/binary/windows_amd64/portmaster-core.exe "release/portmaster-core_${VERSION}_windows_amd64.exe"
           cp dist/binary/linux_amd64/portmaster-core "release/portmaster-core_${VERSION}_linux_amd64"
           cp dist/binary/all/portmaster.zip "release/portmaster-ui_${VERSION}.zip"
-          (cd release && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
 
       - uses: actions/upload-artifact@v4
         with:
-          name: portmasterpro-${{ steps.ver.outputs.version }}-windows
+          name: release-windows
           path: release/
           retention-days: 14
+
+      # Inputs of the Linux packages: the same core, UI and intel data.
+      - name: Collect Linux package inputs
+        run: |
+          mkdir -p linux-inputs/binary linux-inputs/intel linux-inputs/tauri-builtin
+          cp dist/binary/linux_amd64/portmaster-core dist/binary/all/portmaster.zip dist/binary/all/assets.zip linux-inputs/binary/
+          cp dist/intel/* linux-inputs/intel/
+          cp -r desktop/angular/dist/tauri-builtin/. linux-inputs/tauri-builtin/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-inputs
+          path: linux-inputs/
+          retention-days: 1
+
+  linux-packages:
+    name: Build Linux packages (.deb, .rpm)
+    needs: windows-installer
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Same image as upstream's Earthly build: packages built on Debian 12
+    # (glibc 2.36) also run on older distributions than the runner's.
+    container: rust:1.89-bookworm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Install Tauri system dependencies
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            libsoup-3.0-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libgtk-3-dev \
+            file rpm
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/tauri/src-tauri -> target
+          key: linux-bookworm
+
+      - name: Install tauri-cli (prebuilt)
+        run: |
+          curl -sSfL -o /tmp/tauri-cli.tgz \
+            "https://github.com/tauri-apps/tauri/releases/download/tauri-cli-v${TAURI_CLI_VERSION}/cargo-tauri-x86_64-unknown-linux-gnu.tgz"
+          tar xzf /tmp/tauri-cli.tgz -C /tmp
+          install -m 0755 /tmp/cargo-tauri /usr/local/cargo/bin/cargo-tauri
+          cargo tauri -V
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: linux-inputs
+          path: linux-inputs
+
+      - name: Build the desktop app and the packages
+        env:
+          VERSION: ${{ needs.windows-installer.outputs.version }}
+        run: |
+          T=desktop/tauri/src-tauri
+          mkdir -p desktop/angular/dist/tauri-builtin "$T/binary" "$T/intel"
+          cp -r linux-inputs/tauri-builtin/. desktop/angular/dist/tauri-builtin/
+          cp linux-inputs/binary/* "$T/binary/"
+          cp linux-inputs/intel/* "$T/intel/"
+          chmod 0755 "$T/binary/portmaster-core"
+          cd "$T"
+          sed -i 's/^version = ".*"/version = "'"$VERSION"'"/' Cargo.toml
+          cargo tauri build --ci --bundles deb,rpm
+          ls -la target/release/bundle/deb target/release/bundle/rpm
+
+      - name: Check the packages
+        run: |
+          B=desktop/tauri/src-tauri/target/release/bundle
+          dpkg-deb --info $B/deb/*.deb
+          dpkg-deb --contents $B/deb/*.deb | grep -E 'usr/lib/portmaster/portmaster-core|portmaster.service|usr/bin/portmaster'
+          rpm -qpl $B/rpm/*.rpm | grep -E 'usr/lib/portmaster/portmaster-core|portmaster.service|usr/bin/portmaster'
+
+      - name: Collect assets
+        env:
+          VERSION: ${{ needs.windows-installer.outputs.version }}
+        run: |
+          B=desktop/tauri/src-tauri/target/release/bundle
+          mkdir -p release
+          cp $B/deb/*.deb "release/portmasterpro_${VERSION}_amd64.deb"
+          cp $B/rpm/*.rpm "release/portmasterpro_${VERSION}.x86_64.rpm"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: release/
+          retention-days: 14
+
+  publish:
+    name: Publish the GitHub release
+    needs: [windows-installer, linux-packages]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: release-*
+          path: release
+          merge-multiple: true
+
+      - name: Checksums
+        run: (cd release && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
 
       - name: Create the GitHub release if it does not exist yet
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.ver.outputs.tag }}
-          VERSION: ${{ steps.ver.outputs.version }}
-          PRERELEASE: ${{ steps.ver.outputs.prerelease }}
+          TAG: ${{ needs.windows-installer.outputs.tag }}
+          VERSION: ${{ needs.windows-installer.outputs.version }}
+          PRERELEASE: ${{ needs.windows-installer.outputs.prerelease }}
         run: |
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "release $TAG exists, only uploading assets"; exit 0
@@ -182,7 +306,7 @@ jobs:
           except FileNotFoundError:
               text = ""
           m = re.search(r"^## \[?" + re.escape(v) + r"\]?[^\n]*\n(.*?)(?=^## |\Z)", text, re.S | re.M)
-          body = m.group(1).strip() if m else f"portmasterpro {v}. See BUILDING.md and desktop/CHANGES.md."
+          body = m.group(1).strip() if m else f"portmasterpro {v}. See README.md and CHANGELOG.md."
           print(body)
           PY
           ARGS=(--repo "$GITHUB_REPOSITORY" --title "portmasterpro $VERSION" --notes-file /tmp/notes.md --verify-tag)
@@ -192,4 +316,4 @@ jobs:
       - name: Upload assets to the GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ steps.ver.outputs.tag }}" release/* --clobber --repo "${{ github.repository }}"
+        run: gh release upload "${{ needs.windows-installer.outputs.tag }}" release/* --clobber --repo "${{ github.repository }}"
