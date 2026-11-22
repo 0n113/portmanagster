@@ -6,7 +6,7 @@
 >
 > - **Download:** [Releases](https://github.com/0n113/portmasterpro/releases) (Windows x64 installer; unsigned → SmartScreen warning)
 > - **Build & test:** [BUILDING.md](BUILDING.md) · **Changes:** [CHANGELOG.md](CHANGELOG.md), [desktop/CHANGES.md](desktop/CHANGES.md) · **Release process:** [RELEASE.md](RELEASE.md)
-> - **Branches:** `no-spn-no-telemetry` (fork mainline), `release-candidate/*` (frozen RCs), `development` (upstream mirror)
+> - **Branches:** `development` (fork mainline, syncs upstream `safing/portmaster:development` weekly by PR), `release-candidate/*` (frozen RCs)
 > - The kernel driver is Safing's signed stable driver, unchanged. Not affiliated with or endorsed by Safing.
 >
 > The original upstream README follows.

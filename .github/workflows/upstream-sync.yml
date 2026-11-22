@@ -17,7 +17,7 @@ permissions:
 env:
   UPSTREAM_REPO: https://github.com/safing/portmaster.git
   UPSTREAM_BRANCH: development
-  TARGET_BRANCH: no-spn-no-telemetry
+  TARGET_BRANCH: development
 
 jobs:
   sync:
