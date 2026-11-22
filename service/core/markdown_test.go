@@ -34,7 +34,7 @@ func TestValidateAppName(t *testing.T) {
 		{"My App", "My App", true},
 		{"  trimmed  ", "trimmed", true},
 		{"app-1.2_3+x@host", "app-1.2_3+x@host", true},
-		{"Äpfel Übung 日本", "Äpfel Übung 日本", true},
+		{"Äpfel Übung Ωμέγα", "Äpfel Übung Ωμέγα", true},
 		{"", "", false},
 		{"   ", "", false},
 		{"[x](http://a)", "", false},
@@ -44,7 +44,7 @@ func TestValidateAppName(t *testing.T) {
 		{"a`b", "", false},
 		{strings.Repeat("a", 64), strings.Repeat("a", 64), true},
 		{strings.Repeat("a", 65), "", false},
-		{strings.Repeat("日", 64), strings.Repeat("日", 64), true},
+		{strings.Repeat("é", 64), strings.Repeat("é", 64), true},
 	}
 	for _, tc := range tests {
 		got, err := validateAppName(tc.in)
