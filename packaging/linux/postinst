@@ -9,6 +9,26 @@ if systemctl is-active --quiet portmaster.service; then
     WAS_ACTIVE=1
 fi
 
+#
+# Label portmaster-core as bin_t for SELinux. Under /usr/lib it gets lib_t,
+# and the service then runs as init_t, which may not run iptables: the core
+# fails with "fork/exec /usr/bin/iptables: permission denied". As bin_t it
+# runs as unconfined_service_t.
+# Do this before stopping the old service: its ExecStopPost runs the new
+# portmaster-core (--recover-iptables), which needs the label already.
+#
+if command -V semanage >/dev/null 2>&1; then
+    echo "[ ] Fixing SELinux permissions"
+    semanage fcontext -a -t bin_t -s system_u $(realpath /usr/lib)'/portmaster/portmaster-core' || :
+    restorecon -R /usr/lib/portmaster/portmaster-core 2>/dev/null >&2 || :
+elif command -V selinuxenabled >/dev/null 2>&1 && selinuxenabled; then
+    # Without semanage (not installed by default on Fedora), set the label
+    # directly. A full relabel of the file system resets it; installing the
+    # package again sets it again.
+    echo "[ ] Fixing SELinux permissions (chcon, semanage is not installed)"
+    chcon -t bin_t /usr/lib/portmaster/portmaster-core || :
+fi
+
 echo "[ ] Stopping old service (if exists)"
 systemctl stop portmaster.service
 systemctl disable portmaster.service
@@ -58,24 +78,6 @@ if [ -d "$OLD_INSTALLATION_DIR" ]; then
         touch $MIGRATED_FILE_FLAG
         echo "[ ] Migration complete"
     fi
-fi
-
-#
-# Label portmaster-core as bin_t for SELinux. Under /usr/lib it gets lib_t,
-# and the service then runs as init_t, which may not run iptables: the core
-# fails with "fork/exec /usr/bin/iptables: permission denied". As bin_t it
-# runs as unconfined_service_t.
-#
-if command -V semanage >/dev/null 2>&1; then
-    echo "[ ] Fixing SELinux permissions"
-    semanage fcontext -a -t bin_t -s system_u $(realpath /usr/lib)'/portmaster/portmaster-core' || :
-    restorecon -R /usr/lib/portmaster/portmaster-core 2>/dev/null >&2 || :
-elif command -V selinuxenabled >/dev/null 2>&1 && selinuxenabled; then
-    # Without semanage (not installed by default on Fedora), set the label
-    # directly. A full relabel of the file system resets it; installing the
-    # package again sets it again.
-    echo "[ ] Fixing SELinux permissions (chcon, semanage is not installed)"
-    chcon -t bin_t /usr/lib/portmaster/portmaster-core || :
 fi
 
 echo "[ ] Initializing binary files"
