@@ -6,11 +6,12 @@ sfng-toggle {
   }
 
   .slider {
-    @apply absolute cursor-pointer top-0 left-0 right-0 bottom-0 bg-gray-600 transition-all duration-100 rounded-full shadow-inner-xs;
+    @apply absolute cursor-pointer top-0 left-0 right-0 bottom-0 bg-gray-500 transition-all duration-100 rounded-full shadow-inner-xs;
   }
 
   .dot {
-    @apply absolute transition-all duration-200 rounded-full bg-white;
+    @apply absolute transition-all duration-200 rounded-full bg-white text-gray-500;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
     height: 18px;
     width: 18px;
     bottom: 1px;
@@ -18,7 +19,12 @@ sfng-toggle {
   }
 
   input:checked:not(:disabled)+.slider {
-    @apply bg-green-300 bg-opacity-50 text-green;
+    // macOS: a solid green track when on.
+    @apply bg-green-300 text-green;
+  }
+
+  input:focus-visible+.slider {
+    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.5);
   }
 
   input:disabled+.slider {
@@ -26,6 +32,7 @@ sfng-toggle {
   }
 
   .dot.checked {
+    @apply text-green-200;
     transform: translateX(calc(2.5rem - 18px - 2px));
   }
 

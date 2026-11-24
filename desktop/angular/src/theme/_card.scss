@@ -32,13 +32,13 @@
   }
 
   &.active {
-    background-color: #303030;
+    background-color: var(--button-dark);
 
     app-count-indicator {
-      background-color: #474747;
+      background-color: var(--button-light);
 
       div.state {
-        background-color: #5c5c5c;
+        background-color: #5a5a5f;
 
       }
     }
@@ -55,7 +55,7 @@
     text-overflow: ellipsis;
     font-size    : 0.7rem;
     font-weight  : 600;
-    color        : #cacaca;
+    color        : var(--text-secondary);
     margin-left  : 3px;
 
     .card-sub-title {

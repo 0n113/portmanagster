@@ -125,14 +125,14 @@ app-dashboard-widget {
 
 ::ng-deep #dashboard-map {
   #world-group {
-    --map-bg: #111112;
-    --map-country-active: #424141;
-    --map-country-inactive: #2a2a2a;
+    --map-bg: #151517;
+    --map-country-active: #48484c;
+    --map-country-inactive: #2c2c2f;
     --map-country-border-width: 1px;
-    --map-country-border-color: #1e1e1e;
-    --map-country-border-color-selected: #858585;
-    --map-country-blocked-primary: #858585;
-    --map-country-blocked-secondary: #402323;
+    --map-country-border-color: #1d1d20;
+    --map-country-border-color-selected: #8e8e93;
+    --map-country-blocked-primary: #8e8e93;
+    --map-country-blocked-secondary: #3d1715;
 
     path {
       fill: var(--map-country-active);
@@ -142,12 +142,12 @@ app-dashboard-widget {
     }
 
     path.active {
-      color: #1d3c24;
+      color: #0f3a1d;
       fill: currentColor;
     }
 
     path.hover {
-      color: #4fae4f;
+      color: #30d158;
       fill: currentColor;
     }
   }

@@ -62,3 +62,8 @@ h4 {
   @apply font-medium;
   @apply text-tertiary;
 }
+
+::selection {
+  background-color: rgba(10, 132, 255, 0.45);
+  color: #ffffff;
+}

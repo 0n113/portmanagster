@@ -33,14 +33,14 @@ app-icon {
       flex-grow: 1;
       font-size: 0.7rem;
       font-weight: 500;
-      color: #cacaca;
+      color: var(--text-secondary);
     }
 
     span.prompt-count {
       @apply mr-1;
       font-size: 0.6rem;
       font-weight: 600;
-      color: #cacaca;
+      color: var(--text-secondary);
       transform: scale(0.95);
       user-select: none;
     }
@@ -70,7 +70,7 @@ app-menu-item.item-seperator {
     width: 0.5rem;
     border-left-width: 2px;
     border-bottom-width: 2px;
-    border-color: #292929;
+    border-color: var(--cards-tertiary);
   }
 
   .prompt-container,
@@ -90,7 +90,7 @@ app-menu-item.item-seperator {
     .prompt {
       padding-left: 0.75rem;
       margin-bottom: 4px;
-      background-color: #292929;
+      background-color: var(--cards-tertiary);
       height: auto;
       border-radius: 2px;
       align-items: center;
@@ -98,7 +98,7 @@ app-menu-item.item-seperator {
       position: relative;
 
       &:hover {
-        background-color: #303030;
+        background-color: var(--button-dark);
 
         .actions {
           animation: .07s slidein-left ease-in-out;
@@ -117,12 +117,12 @@ app-menu-item.item-seperator {
         padding-bottom: 0.6rem;
         padding-left: 2px;
         padding-right: 9px;
-        color: #cacaca;
+        color: var(--text-secondary);
 
         .subdomain {
           font-size: 0.7rem;
           font-weight: 500;
-          color: #999999;
+          color: var(--text-tertiary);
         }
       }
 
@@ -134,13 +134,13 @@ app-menu-item.item-seperator {
         transition: all .05s ease-in-out;
         position: absolute;
         right: 0;
-        background-color: #292929;
+        background-color: var(--cards-tertiary);
 
         button {
           outline: none;
           @apply bg-transparent;
           font-size: 0.6rem;
-          background-color: #3a3a3a;
+          background-color: var(--button-light);
           padding-left: 1.25rem;
           padding-right: 1.25rem;
           text-transform: capitalize;
@@ -158,8 +158,8 @@ app-menu-item.item-seperator {
           color: hsla(0, 0%, 100%, 0.548);
 
           &:hover {
-            background-color: #363636;
-            color: #ffffff;
+            background-color: var(--button-dark);
+            color: var(--text-primary);
           }
 
           &:last-of-type {
@@ -169,7 +169,7 @@ app-menu-item.item-seperator {
             transition: all cubic-bezier(0.175, 0.885, 0.32, 1.275) .2s;
 
             &:hover {
-              color: #ffffff;
+              color: var(--text-primary);
             }
           }
         }
@@ -184,11 +184,11 @@ app-menu-item.item-seperator {
     cursor: pointer;
     font-size: 0.7rem;
     font-weight: 500;
-    color: #999999;
+    color: var(--text-tertiary);
     user-select: none;
 
     &:hover {
-      color: #cacaca;
+      color: var(--text-secondary);
     }
   }
 }

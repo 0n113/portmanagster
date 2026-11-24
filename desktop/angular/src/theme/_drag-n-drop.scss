@@ -17,7 +17,7 @@
   @apply border-2;
   @apply rounded;
   @apply border-dashed;
-  border-color: #292929;
+  border-color: var(--cards-tertiary);
 }
 
 .cdk-drag-animating {
@@ -33,7 +33,7 @@
   @apply rounded;
   @apply border-2;
   @apply border-dashed;
-  border-color: #292929;
+  border-color: var(--cards-tertiary);
   @apply text-primary;
 }
 
