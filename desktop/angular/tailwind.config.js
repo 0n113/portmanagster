@@ -10,38 +10,38 @@ module.exports = {
       transparent: "transparent",
       current: "currentColor",
       white: "#ffffff",
-      background: "#121213",
+      background: "#1a1a1d",
 
       gray: {
-        100: "#131111",
-        200: "#1b1b1b",
-        300: "#222222",
-        400: "#2c2c2c",
-        500: "#474747",
-        600: "#888888",
-        700: "#ababab",
-        DEFAULT: "#ababab",
+        100: "#151517",
+        200: "#1d1d20",
+        300: "#252528",
+        400: "#2c2c2f",
+        500: "#48484c",
+        600: "#8e8e93",
+        700: "#a1a1a6",
+        DEFAULT: "#a1a1a6",
       },
 
       green: {
-        100: "#143d24",
-        200: "#18823d",
-        300: "#1de966",
-        DEFAULT: "#18823d",
+        100: "#0f3a1d",
+        200: "#248a3d",
+        300: "#30d158",
+        DEFAULT: "#248a3d",
       },
 
       red: {
-        100: "#3d1414",
-        200: "#811818",
-        300: "#e01d1d",
-        DEFAULT: "#d12e2e",
+        100: "#3d1715",
+        200: "#a3261e",
+        300: "#ff453a",
+        DEFAULT: "#ff453a",
       },
 
       yellow: {
-        100: "#3d3a14",
-        200: "#827918",
-        300: "#e9d81d",
-        DEFAULT: "#e9d81d",
+        100: "#3d3508",
+        200: "#a68b06",
+        300: "#ffd60a",
+        DEFAULT: "#ffd60a",
       },
 
       cyan: {
@@ -70,7 +70,7 @@ module.exports = {
       },
 
       blue: {
-        DEFAULT: "#4e97fa",
+        DEFAULT: "#0a84ff",
       },
 
       // Legacy color definitions
@@ -100,7 +100,7 @@ module.exports = {
     },
     textColor: (theme) => {
       return {
-        primary: theme("colors.white"),
+        primary: "#ededee",
         secondary: theme("colors.gray.700"),
         tertiary: theme("colors.gray.600"),
 
@@ -114,6 +114,13 @@ module.exports = {
       },
       fontSize: {
         xxs: "0.7rem",
+      },
+      // Rounder corners, as in the macOS (WhiteSur) theme.
+      borderRadius: {
+        sm: "5px",
+        DEFAULT: "7px",
+        md: "8px",
+        lg: "10px",
       },
     },
   },
