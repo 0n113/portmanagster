@@ -7,6 +7,14 @@ pre-releases carry a `-rcN` suffix.
 
 ## [Unreleased]
 
+### Added
+- Linux: forwarded traffic of VMs, containers and hotspot clients is filtered. It shows up as
+  the app "Forwarded Traffic", with the global rules and filter lists and its own settings;
+  "Filter Forwarded Traffic" in the advanced settings turns it off. Blocks also hold when other
+  software (e.g. Docker) accepts forwarded packets before the Portmaster rules. Domains are known
+  when guests resolve names through the host; P2P blocking and DNS bypass prevention are off for
+  forwarded traffic.
+
 ## [0.3.2] - 2026-11-24
 
 There is no 0.3.1: the fork carries upstream's old tag `v0.3.1`.

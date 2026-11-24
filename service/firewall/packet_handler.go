@@ -491,6 +491,12 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 
 	// Check for special (internal) connection cases.
 	switch {
+	case conn.IsForwarded():
+		// The local port of a forwarded connection is a port of another
+		// device, and DNS of other devices cannot be redirected to the
+		// nameserver, so none of the special cases below apply.
+		checkTunnel = false
+
 	case !conn.Inbound && localPortIsPreAuthenticated(conn.Entity.Protocol, conn.LocalPort):
 		// Approve connection.
 		conn.Accept("connection by Portmaster", noReasonOptionKey)
@@ -604,7 +610,8 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 	}
 
 	// Check if connection should be split tunneled.
-	if checkTunnel {
+	// Forwarded connections cannot be redirected to a local proxy.
+	if checkTunnel && !conn.IsForwarded() {
 		checkSplitTunneling(ctx, conn)
 	}
 

@@ -452,7 +452,11 @@ func NewIncompleteConnection(pkt packet.Packet) *Connection {
 
 	// Adopt the process attribution that an info-only packet reported earlier.
 	pid := info.PID
-	if pid == process.UndefinedProcessID {
+	switch {
+	case info.Forwarded:
+		// Forwarded packets of other devices have no local process.
+		pid = process.ForwardedProcessID
+	case pid == process.UndefinedProcessID:
 		if hintedPID, ok := takePIDHint(connID); ok {
 			pid = hintedPID
 		}

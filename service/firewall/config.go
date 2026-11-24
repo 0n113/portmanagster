@@ -29,6 +29,11 @@ var (
 	CfgOptionDNSQueryInterceptionKey   = "filter/dnsQueryInterception"
 	cfgOptionDNSQueryInterceptionOrder = 81
 	dnsQueryInterception               config.BoolOption
+
+	// CfgOptionFilterForwardedKey is the config key for filtering forwarded traffic.
+	CfgOptionFilterForwardedKey   = "filter/forwardedTraffic"
+	cfgOptionFilterForwardedOrder = 82
+	filterForwarded               config.BoolOption
 )
 
 func registerConfig() error {
@@ -84,6 +89,23 @@ func registerConfig() error {
 		return err
 	}
 	dnsQueryInterception = config.Concurrent.GetAsBool(CfgOptionDNSQueryInterceptionKey, true)
+
+	err = config.Register(&config.Option{
+		Name:           "Filter Forwarded Traffic",
+		Key:            CfgOptionFilterForwardedKey,
+		Description:    "Filter the connections that this device forwards for virtual machines, containers or other devices (Linux). They are handled by the app \"Forwarded Traffic\", with its settings. When off, forwarded traffic is allowed without filtering.",
+		OptType:        config.OptTypeBool,
+		ExpertiseLevel: config.ExpertiseLevelExpert,
+		DefaultValue:   true,
+		Annotations: config.Annotations{
+			config.DisplayOrderAnnotation: cfgOptionFilterForwardedOrder,
+			config.CategoryAnnotation:     "Advanced",
+		},
+	})
+	if err != nil {
+		return err
+	}
+	filterForwarded = config.Concurrent.GetAsBool(CfgOptionFilterForwardedKey, true)
 
 	err = config.Register(&config.Option{
 		Name:           "Prompt Desktop Notifications",

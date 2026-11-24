@@ -58,6 +58,11 @@ func GetPidOfConnection(ctx context.Context, pktInfo *packet.Info) (pid int, con
 		return UnidentifiedProcessID, pktInfo.Inbound, nil
 	}
 
+	// Forwarded packets have no local socket.
+	if pktInfo.Forwarded {
+		return ForwardedProcessID, false, nil
+	}
+
 	// Use fast search for inbound packets, as the listening socket should
 	// already be there for a while now.
 	fastSearch := pktInfo.Inbound

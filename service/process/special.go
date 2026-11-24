@@ -24,6 +24,10 @@ const (
 	// not be attributed to a PID for any reason.
 	UnsolicitedProcessID = -3
 
+	// ForwardedProcessID is the PID used for connections that the host
+	// forwards for other devices, e.g. VMs and containers.
+	ForwardedProcessID = -4
+
 	// NetworkHostProcessID is the PID used for requests served to the network.
 	NetworkHostProcessID = -255
 )
@@ -56,6 +60,16 @@ var (
 		processKey: getProcessKey(UnsolicitedProcessID, 0),
 	}
 
+	// forwardedProcess is used for forwarded connections of other devices.
+	forwardedProcess = &Process{
+		UserID:     ForwardedProcessID,
+		UserName:   "Forwarded",
+		Pid:        ForwardedProcessID,
+		ParentPid:  ForwardedProcessID,
+		Name:       profile.ForwardedProfileName,
+		processKey: getProcessKey(ForwardedProcessID, 0),
+	}
+
 	// systemProcess is used to represent the Kernel.
 	systemProcess = &Process{
 		UserID:     SystemProcessID,
@@ -77,6 +91,11 @@ func GetUnidentifiedProcess(ctx context.Context) *Process {
 // GetUnsolicitedProcess returns the special process assigned to non-attributed incoming connections.
 func GetUnsolicitedProcess(ctx context.Context) *Process {
 	return getSpecialProcess(ctx, unsolicitedProcess)
+}
+
+// GetForwardedProcess returns the special process assigned to forwarded connections.
+func GetForwardedProcess(ctx context.Context) *Process {
+	return getSpecialProcess(ctx, forwardedProcess)
 }
 
 // GetSystemProcess returns the special process used for the Kernel.
