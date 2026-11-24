@@ -30,10 +30,10 @@ div.placeholder {
     width: .5rem;
     flex-shrink: 0;
     flex-grow: 0;
-    background-color: #202020;
+    background-color: var(--cards-secondary);
 
     &.info {
-      background-color: #727272;
+      background-color: #636366;
     }
 
     &.warning {
@@ -51,7 +51,7 @@ div.placeholder {
   }
 
   .preview {
-    background-color: #292929;
+    background-color: var(--cards-tertiary);
     cursor: pointer;
     overflow: hidden;
     flex-grow: 1;
@@ -73,7 +73,7 @@ div.placeholder {
       font-size: 0.7rem;
       font-weight: 500;
 
-      color: #cacaca;
+      color: var(--text-secondary);
 
       .category {
         padding-left: 8px;
@@ -85,7 +85,7 @@ div.placeholder {
     }
 
     &:hover {
-      background-color: #303030;
+      background-color: var(--button-dark);
 
       .buttons {
         opacity: 1;
@@ -102,13 +102,13 @@ div.placeholder {
       left: 100%;
       display: flex;
       white-space: nowrap;
-      background-color: #303030;
+      background-color: var(--button-dark);
 
       button {
         outline: none;
         @apply bg-transparent;
         font-size: 0.6rem;
-        background-color: #3a3a3a;
+        background-color: var(--button-light);
         padding-left: 1.25rem;
         padding-right: 1.25rem;
         text-transform: capitalize;
@@ -119,8 +119,8 @@ div.placeholder {
         height: 100%;
 
         &:hover {
-          background-color: #363636;
-          color: #ffffff;
+          background-color: var(--button-dark);
+          color: var(--text-primary);
         }
 
         &:first-of-type {
@@ -134,7 +134,7 @@ div.placeholder {
           transition: all cubic-bezier(0.175, 0.885, 0.32, 1.275) .2s;
 
           &:hover {
-            color: #ffffff;
+            color: var(--text-primary);
           }
         }
       }
