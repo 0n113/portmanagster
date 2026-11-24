@@ -2,6 +2,13 @@
 
 echo "[ ] Post-Install script [arg1='$1' arg2='$2']"
 
+# Remember whether the service ran, so that an upgrade starts it again
+# instead of leaving the system unprotected until the next reboot.
+WAS_ACTIVE=0
+if systemctl is-active --quiet portmaster.service; then
+    WAS_ACTIVE=1
+fi
+
 echo "[ ] Stopping old service (if exists)"
 systemctl stop portmaster.service
 systemctl disable portmaster.service
@@ -92,4 +99,10 @@ echo "[ ] Enabling service"
 systemctl daemon-reload
 systemctl enable portmaster.service
 
-echo "[ ] Done. Please reboot your system"
+if [ "$WAS_ACTIVE" = 1 ]; then
+    echo "[ ] Starting the service again (it ran before the upgrade)"
+    systemctl start portmaster.service || :
+    echo "[ ] Done."
+else
+    echo "[ ] Done. Start it with 'systemctl start portmaster' or reboot your system"
+fi
