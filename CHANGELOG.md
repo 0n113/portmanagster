@@ -7,6 +7,14 @@ pre-releases carry a `-rcN` suffix.
 
 ## [Unreleased]
 
+### Security
+- Linux: the service reports ready to systemd (`Type=notify`) only after its firewall rules are in
+  place, so services ordered after `network.target`, like sshd, no longer start unfiltered at
+  boot.
+- CI: all GitHub Actions are pinned by commit SHA, the downloaded tauri-cli is checked against
+  its sha256.
+- The shared `exec` directory of the app has the sticky bit.
+
 ## [0.3.0] - 2026-11-24
 
 ### Security
