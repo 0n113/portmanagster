@@ -1,6 +1,9 @@
 html,
 body {
-  font-family: 'Roboto', sans-serif;
+  // The system font first (Adwaita Sans on GNOME/KDE, SF Pro on macOS),
+  // Roboto (bundled) as the fallback.
+  font-family: 'Adwaita Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Roboto', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
   @apply text-primary;
   @apply font-medium;
 }
