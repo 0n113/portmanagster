@@ -7,6 +7,25 @@ pre-releases carry a `-rcN` suffix.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-24
+
+First stable release, the same code as 0.2.0-rc1 plus the changes below.
+
+### Changed
+- UI in the macOS dark appearance: system grays, accent blue, macOS status colors, the system
+  font (Adwaita Sans, SF Pro) and rounder corners.
+- README: install notes for the Linux packages.
+
+### Fixed
+- Linux packages: an upgrade starts the service again if it ran before, instead of leaving the
+  system unprotected until the next reboot.
+- Desktop app dependencies with advisories updated: `cookie` 0.18.3, `url` 2.5.9.
+
+### Upgrade notes
+- Fedora: rpm sorts `0.2.0-rc1` above `0.2.0`. Upgrade from rc1 with
+  `sudo rpm -Uvh --oldpackage ./portmasterpro_0.2.0.x86_64.rpm`.
+- The service conflicts with `firewalld`; removing the package deletes `/var/lib/portmaster`.
+
 ## [0.2.0-rc1] - 2026-11-22
 
 ### Removed
