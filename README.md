@@ -78,9 +78,9 @@ sudo systemctl start portmaster                     # first install only
 - On Fedora with SELinux, the package labels `portmaster-core` as `bin_t`.
 - An upgrade starts the service again if it ran before.
 - Removing the package deletes the settings and the history in `/var/lib/portmaster`.
-- Upgrading from `0.2.0-rc1` on Fedora: rpm sorts `0.2.0-rc1` above `0.2.0`, so `dnf` refuses
-  the package as a downgrade. Use `sudo rpm -Uvh --oldpackage ./portmasterpro_0.2.0.x86_64.rpm`,
-  which keeps the settings (do not remove the old package first).
+- Upgrading from `0.2.0-rc1` on Fedora: rpm sorts `0.2.0-rc1` above `0.2.0`, so use
+  `sudo dnf downgrade ./portmasterpro_0.2.0.x86_64.rpm`. It keeps the settings; do not remove the
+  old package first. Plain `rpm -U` refuses the unsigned package on Fedora 45.
 
 ## Build and test
 

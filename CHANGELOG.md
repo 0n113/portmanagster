@@ -23,7 +23,8 @@ First stable release, the same code as 0.2.0-rc1 plus the changes below.
 
 ### Upgrade notes
 - Fedora: rpm sorts `0.2.0-rc1` above `0.2.0`. Upgrade from rc1 with
-  `sudo rpm -Uvh --oldpackage ./portmasterpro_0.2.0.x86_64.rpm`.
+  `sudo dnf downgrade ./portmasterpro_0.2.0.x86_64.rpm`; it keeps the settings. Plain `rpm -U`
+  refuses the unsigned package on Fedora 45.
 - The service conflicts with `firewalld`; removing the package deletes `/var/lib/portmaster`.
 
 ## [0.2.0-rc1] - 2026-11-22
