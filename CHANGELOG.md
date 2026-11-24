@@ -7,6 +7,10 @@ pre-releases carry a `-rcN` suffix.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-24
+
+There is no 0.3.1: the fork carries upstream's old tag `v0.3.1`.
+
 ### Security
 - Linux: the service reports ready to systemd (`Type=notify`) only after its firewall rules are in
   place, so services ordered after `network.target`, like sshd, no longer start unfiltered at
@@ -14,6 +18,11 @@ pre-releases carry a `-rcN` suffix.
 - CI: all GitHub Actions are pinned by commit SHA, the downloaded tauri-cli is checked against
   its sha256.
 - The shared `exec` directory of the app has the sticky bit.
+
+### Fixed
+- On the first start, the filter lists are applied as soon as they are downloaded. Before, they
+  only took effect up to 15 s later, and connections in between were not checked against them.
+- The AppImage unit test no longer runs on Windows.
 
 ## [0.3.0] - 2026-11-24
 

@@ -67,8 +67,8 @@ an existing Portmaster installation (same service name and install directory).
 ### Linux (Fedora, Debian, Ubuntu)
 
 ```bash
-sudo dnf install ./portmasterpro_0.3.0.x86_64.rpm   # Fedora
-sudo apt install ./portmasterpro_0.3.0_amd64.deb    # Debian, Ubuntu
+sudo dnf install ./portmasterpro_0.3.2.x86_64.rpm   # Fedora
+sudo apt install ./portmasterpro_0.3.2_amd64.deb    # Debian, Ubuntu
 sudo systemctl start portmaster                     # first install only
 ```
 
@@ -85,7 +85,7 @@ sudo systemctl start portmaster                     # first install only
   bring the network up a few seconds earlier.
 - Removing the package deletes the settings and the history in `/var/lib/portmaster`.
 - Upgrade: install the new package the same way (`sudo dnf install ./portmasterpro_X.x86_64.rpm`).
-  The settings stay. rpm sorts `0.2.0-rc1` above `0.2.0`; from rc1, upgrade straight to 0.3.0 or
+  The settings stay. rpm sorts `0.2.0-rc1` above `0.2.0`; from rc1, upgrade straight to 0.3.2 or
   later.
 
 ## Build and test
