@@ -23,6 +23,7 @@ There is no 0.3.1: the fork carries upstream's old tag `v0.3.1`.
 - On the first start, the filter lists are applied as soon as they are downloaded. Before, they
   only took effect up to 15 s later, and connections in between were not checked against them.
 - The AppImage unit test no longer runs on Windows.
+- The tamper check tests no longer depend on the processes of the test machine.
 
 ## [0.3.0] - 2026-11-24
 
