@@ -45,6 +45,12 @@ var defaultDeciders = []deciderFn{
 // decideOnConnection makes a decision about a connection.
 // When called, the connection and profile is already locked.
 func decideOnConnection(ctx context.Context, conn *network.Connection, pkt packet.Packet) {
+	// Forwarded traffic of other devices is only filtered if enabled.
+	if conn.IsForwarded() && !filterForwarded() {
+		conn.Accept("forwarded traffic is not filtered", CfgOptionFilterForwardedKey)
+		return
+	}
+
 	// Check if we have a process and profile.
 	layeredProfile := conn.Process().Profile()
 	if layeredProfile == nil {

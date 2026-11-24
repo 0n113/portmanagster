@@ -476,3 +476,44 @@ func DeleteFlow(protocol uint8, localIP net.IP, localPort uint16, remoteIP net.I
 		return true, nil
 	}
 }
+
+// ListPermanentFlows returns the keys (see network.FlowKey) of all flows in
+// the conntrack table that carry a permanent accept verdict. Blocked flows
+// are not listed: their packets are dropped, so they are never confirmed in
+// the conntrack table.
+func ListPermanentFlows() (map[string]struct{}, error) {
+	nfctLock.Lock()
+	defer nfctLock.Unlock()
+
+	_, err := nfctHandleLocked()
+	if err != nil {
+		return nil, err
+	}
+
+	families := []ct.Family{ct.IPv4}
+	if netenv.IPv6Enabled() {
+		families = append(families, ct.IPv6)
+	}
+
+	filter := ct.FilterAttr{
+		MarkMask: []byte{0xFF, 0xFF, 0xFF, 0xFF},
+		Mark:     make([]byte, 4),
+	}
+	flows := make(map[string]struct{})
+	for _, family := range families {
+		binary.BigEndian.PutUint32(filter.Mark, MarkAcceptAlways)
+		connections, err := queryLocked(family, filter)
+		if err != nil {
+			return nil, fmt.Errorf("nfq: failed to list permanent flows: %w", err)
+		}
+		for _, c := range connections {
+			origin := c.Origin
+			if origin == nil || origin.Src == nil || origin.Dst == nil || origin.Proto == nil ||
+				origin.Proto.Number == nil || origin.Proto.SrcPort == nil || origin.Proto.DstPort == nil {
+				continue
+			}
+			flows[network.FlowKey(*origin.Proto.Number, *origin.Src, *origin.Proto.SrcPort, *origin.Dst, *origin.Proto.DstPort)] = struct{}{}
+		}
+	}
+	return flows, nil
+}

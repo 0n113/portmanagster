@@ -61,6 +61,7 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 		endICMPNotSeenSince := now.Add(-EndICMPConnsAfterInactiveFor).Unix()
 		deleteOlderThan := now.Add(-DeleteConnsAfterEndedThreshold).Unix()
 		deleteIncompleteOlderThan := now.Add(-DeleteIncompleteConnsAfterStartedThreshold).Unix()
+		forwardedCheck := newForwardedFlowCheck(now)
 
 		// network connections
 		for _, conn := range conns.clone() {
@@ -84,6 +85,16 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 				var connActive bool
 				switch conn.IPProtocol { //nolint:exhaustive
 				case packet.TCP, packet.UDP:
+					if conn.IsForwarded() {
+						// Forwarded connections have no local socket.
+						active, checked := forwardedCheck.active(conn, endNotSeenSince)
+						if checked && active && conn.VerdictPermanent {
+							conn.lastSeen.Store(nowUnix)
+						}
+						connActive = active
+						break
+					}
+
 					pktInfo := &packet.Info{
 						Inbound:  false, // src == local
 						Version:  conn.IPVersion,

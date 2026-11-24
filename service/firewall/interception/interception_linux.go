@@ -20,6 +20,10 @@ func startInterception(packets chan packet.Packet) error {
 		return err
 	}
 
+	// Forwarded connections have no local socket; the connection cleaner
+	// asks conntrack whether they are still active.
+	network.SetForwardedFlowLister(nfq.ListPermanentFlows)
+
 	// Start ebpf new connection listener.
 	module.mgr.Go("ebpf connection listener", func(wc *mgr.WorkerCtx) error {
 		return conn_listener.ConnectionListenerWorker(wc.Ctx(), packets)

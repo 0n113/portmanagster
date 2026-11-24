@@ -80,9 +80,14 @@ sudo systemctl start portmaster                     # first install only
 - If the core crashes, its rules stay: new connections are dropped until the service is back,
   about 10 seconds. If it cannot start again, remove the rules with
   `sudo /usr/lib/portmaster/portmaster-core --recover-iptables`.
-- Not filtered: forwarded traffic (containers, VMs with NAT). At boot, services that start after
-  `network.target` (sshd, ...) wait until the core has set its rules; NetworkManager itself may
-  bring the network up a few seconds earlier.
+- Forwarded traffic (VMs, containers, hotspot clients) is filtered as the app "Forwarded
+  Traffic": the global rules and filter lists apply, plus its own settings. Domains are known
+  when the guests resolve names through this computer (libvirt and Podman networks); guests with
+  their own DNS servers (e.g. Docker) are only matched by IP, country and ASN. Turn it off with
+  Settings → Advanced → "Filter Forwarded Traffic". If the core is down, forwarded traffic is
+  dropped like local traffic.
+- At boot, services that start after `network.target` (sshd, ...) wait until the core has set its
+  rules; NetworkManager itself may bring the network up a few seconds earlier.
 - Removing the package deletes the settings and the history in `/var/lib/portmaster`.
 - Upgrade: install the new package the same way (`sudo dnf install ./portmasterpro_X.x86_64.rpm`).
   The settings stay. rpm sorts `0.2.0-rc1` above `0.2.0`; from rc1, upgrade straight to 0.3.2 or

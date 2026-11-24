@@ -74,6 +74,8 @@ func (p *Process) getSpecialProfileID() (specialProfileID string) {
 		specialProfileID = profile.UnidentifiedProfileID
 	case UnsolicitedProcessID:
 		specialProfileID = profile.UnsolicitedProfileID
+	case ForwardedProcessID:
+		specialProfileID = profile.ForwardedProfileID
 	case SystemProcessID:
 		specialProfileID = profile.SystemProfileID
 	case ownPID:

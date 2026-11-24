@@ -73,6 +73,14 @@ func (pkt *Base) SetOutbound() {
 	pkt.info.Inbound = false
 }
 
+// SetForwarded marks the packet as forwarded by the host, e.g. from a VM or
+// container. A forwarded packet is outbound from the device that sent it.
+// This must only used when initializing the packet structure.
+func (pkt *Base) SetForwarded() {
+	pkt.info.Forwarded = true
+	pkt.info.Inbound = false
+}
+
 // IsInbound checks if the packet is inbound.
 func (pkt *Base) IsInbound() bool {
 	return pkt.info.Inbound
@@ -186,6 +194,12 @@ func (pkt *Base) String() string {
 
 // FmtPacket returns the most important information about the packet as a string.
 func (pkt *Base) FmtPacket() string {
+	if pkt.info.Forwarded {
+		if pkt.info.Protocol == TCP || pkt.info.Protocol == UDP {
+			return fmt.Sprintf("FWD %s %s:%d <-> %s:%d", pkt.info.Protocol, pkt.info.Src, pkt.info.SrcPort, pkt.info.Dst, pkt.info.DstPort)
+		}
+		return fmt.Sprintf("FWD %s %s <-> %s", pkt.info.Protocol, pkt.info.Src, pkt.info.Dst)
+	}
 	if pkt.info.Protocol == TCP || pkt.info.Protocol == UDP {
 		if pkt.info.Inbound {
 			return fmt.Sprintf("IN %s %s:%d <-> %s:%d", pkt.info.Protocol, pkt.info.Dst, pkt.info.DstPort, pkt.info.Src, pkt.info.SrcPort)
@@ -252,6 +266,7 @@ type Packet interface {
 	IsOutbound() bool
 	SetInbound()
 	SetOutbound()
+	SetForwarded()
 	HasPorts() bool
 	GetConnectionID() string
 

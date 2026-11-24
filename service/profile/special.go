@@ -30,6 +30,20 @@ Local Area Networks usually have quite a lot of traffic from applications that a
 
 These connections - the "network noise" - can be found in this app.`
 
+	// ForwardedProfileID is the profile ID used for traffic that the host
+	// forwards for other devices, e.g. VMs and containers.
+	ForwardedProfileID = "_forwarded"
+	// ForwardedProfileName is the name used for forwarded traffic.
+	ForwardedProfileName = "Forwarded Traffic"
+	// ForwardedProfileDescription is the description used for forwarded traffic.
+	ForwardedProfileDescription = `Connections that this device forwards for other devices: virtual machines, containers, or devices that use this device as a router or hotspot.
+
+The Portmaster cannot see which app inside a VM or container makes a connection, so all of them are collected here. The local address of a connection shows the device it comes from.
+
+Domains are known when the VM or container resolves names through this device (for example libvirt or Podman networks). Otherwise the rules and filter lists only match IP addresses, countries and ASNs.
+
+Blocking direct (P2P) connections and DNS bypass prevention are off for this profile, as VMs and containers often use their own DNS servers. Use "Filter forwarded traffic" in the global settings to turn the filtering of forwarded traffic off.`
+
 	// SystemProfileID is the profile ID used for the system/kernel.
 	SystemProfileID = "_system"
 	// SystemProfileName is the name used for the system/kernel.
@@ -79,6 +93,7 @@ func isSpecialProfileID(id string) bool {
 	switch id {
 	case UnidentifiedProfileID,
 		UnsolicitedProfileID,
+		ForwardedProfileID,
 		SystemProfileID,
 		SystemResolverProfileID,
 		PortmasterProfileID,
@@ -100,6 +115,9 @@ func updateSpecialProfileMetadata(profile *Profile, binaryPath string) (changed 
 	case UnsolicitedProfileID:
 		newProfileName = UnsolicitedProfileName
 		newDescription = UnsolicitedProfileDescription
+	case ForwardedProfileID:
+		newProfileName = ForwardedProfileName
+		newDescription = ForwardedProfileDescription
 	case SystemProfileID:
 		newProfileName = SystemProfileName
 		newDescription = SystemProfileDescription
@@ -154,6 +172,22 @@ func createSpecialProfile(profileID string, path string) *Profile {
 			ID:               UnsolicitedProfileID,
 			Source:           SourceLocal,
 			PresentationPath: path,
+		})
+
+	case ForwardedProfileID:
+		return New(&Profile{
+			ID:               ForwardedProfileID,
+			Source:           SourceLocal,
+			PresentationPath: path,
+			Config: map[string]any{
+				// VMs and containers often resolve names with their own DNS
+				// servers, so their connections have no domain and look like P2P
+				// connections, and their DNS queries like bypass attempts.
+				// Forwarded DNS cannot be redirected to the Portmaster nameserver.
+				CfgOptionBlockP2PKey:         false,
+				CfgOptionBlockInboundKey:     false,
+				CfgOptionPreventBypassingKey: false,
+			},
 		})
 
 	case SystemProfileID:

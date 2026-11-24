@@ -108,6 +108,39 @@ block_ms=$((($(date +%s%N) - block_start) / 1000000))
 check "a blocked connection fails at once, not by timeout (${block_ms}ms, curl exit code $block_rc)" test "$block_rc" -ne 0 -a "$block_ms" -lt 5000
 check "Portmaster nameserver answers" bash -c "dig +short +time=5 +tries=1 $ALLOWED @127.0.0.1 | grep -q ."
 
+step "Forwarded traffic"
+# A network namespace behind NAT stands for a VM or container: its traffic
+# passes the FORWARD chain of the host.
+guest() { nsenter --net=/run/netns/pmguest "$@"; }
+ip netns add pmguest
+ip link add pmfwd0 type veth peer name pmfwd1
+ip link set pmfwd1 netns pmguest
+ip addr add 10.77.0.1/24 dev pmfwd0
+ip link set pmfwd0 up
+guest ip addr add 10.77.0.2/24 dev pmfwd1
+guest ip link set pmfwd1 up
+guest ip link set lo up
+guest ip route add default via 10.77.0.1
+sysctl -qw net.ipv4.ip_forward=1
+iptables -t nat -A POSTROUTING -s 10.77.0.0/24 -j MASQUERADE
+# The guest does not resolve names itself; the host resolved both names
+# above, so the Portmaster knows the domains of their IPs.
+allowed_ip=$(getent ahostsv4 "$ALLOWED" | awk 'NR==1 {print $1}')
+blocked_ip=$(getent ahostsv4 "$BLOCKED" | awk 'NR==1 {print $1}')
+check "forwarded https://$ALLOWED reachable" guest curl -sS -o /dev/null --max-time 15 --resolve "$ALLOWED:443:$allowed_ip" "https://$ALLOWED/"
+check "forwarded https://$BLOCKED is blocked" bash -c "! nsenter --net=/run/netns/pmguest curl -sS -o /dev/null --max-time 10 --resolve $BLOCKED:443:$blocked_ip https://$BLOCKED/"
+check "the forwarded connection is attributed to Forwarded Traffic" bash -c "for i in 1 2 3 4 5; do grep -q 'Forwarded:.*$BLOCKED.*blocked' '$LOG' && exit 0; sleep 1; done; exit 1"
+# Software like Docker accepts forwarded packets before the Portmaster rules
+# in the filter table; blocks must still apply.
+iptables -I FORWARD 1 -j ACCEPT
+check "forwarded block holds with an ACCEPT rule before the Portmaster" bash -c "! nsenter --net=/run/netns/pmguest curl -sS -o /dev/null --max-time 10 --resolve $BLOCKED:443:$blocked_ip https://$BLOCKED/"
+check "forwarded https://$ALLOWED still reachable" guest curl -sS -o /dev/null --max-time 15 --resolve "$ALLOWED:443:$allowed_ip" "https://$ALLOWED/"
+iptables -D FORWARD 1
+sleep 3 # let netquery save the connections
+n=$(curl -sf --max-time 10 -X POST "$API/netquery/query" -H 'Content-Type: application/json' \
+	-d '{"query":{"profile":{"$like":"%_forwarded"}},"select":["id"],"pageSize":50}' | jq '.results | length' 2>/dev/null || echo 0)
+if [[ "$n" =~ ^[0-9]+$ ]] && ((n > 0)); then pass "netquery lists forwarded connections ($n)"; else fail "netquery lists forwarded connections (got '$n')"; fi
+
 step "Filter lists"
 # Downloading, decoding and storing the lists covers the intel updater, the
 # list decoder and the SQLite cache database.
@@ -182,6 +215,7 @@ if start_core; then
 	wait "$core_pid" 2>/dev/null
 	if rules_present; then
 		echo "  info: rules remain after a crash; reachable meanwhile: $(https_ok "$ALLOWED" && echo yes || echo no)"
+		check "forwarded traffic is blocked while the core is down" bash -c "! nsenter --net=/run/netns/pmguest curl -sS -o /dev/null --max-time 10 --resolve $ALLOWED:443:$allowed_ip https://$ALLOWED/"
 	else
 		echo "  info: no rules left after a crash"
 	fi

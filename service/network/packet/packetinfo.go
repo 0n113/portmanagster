@@ -11,6 +11,10 @@ import (
 type Info struct {
 	Inbound  bool
 	InTunnel bool
+	// Forwarded is set for packets that the host routes between other
+	// devices, e.g. from a VM or container. They are handled as outbound
+	// from the device that sent them: Src is the device, Dst the remote.
+	Forwarded bool
 
 	Version          IPVersion
 	Protocol         IPProtocol

@@ -31,6 +31,8 @@ var (
 	in4Queue  nfQueue
 	out6Queue nfQueue
 	in6Queue  nfQueue
+	fwd4Queue nfQueue
+	fwd6Queue nfQueue
 
 	isRunning      atomic.Bool
 	shutdownSignal = make(chan struct{})
@@ -51,6 +53,8 @@ func init() {
 	v4chains = []string{
 		"mangle PORTMASTER-INGEST-OUTPUT",
 		"mangle PORTMASTER-INGEST-INPUT",
+		"mangle PORTMASTER-INGEST-FORWARD",
+		"mangle PORTMASTER-ENFORCE",
 		"filter PORTMASTER-FILTER",
 		"nat PORTMASTER-REDIRECT",
 	}
@@ -70,6 +74,23 @@ func init() {
 		"mangle PORTMASTER-INGEST-INPUT -m mark ! --mark 0 -m connmark --mark 1709 -j RETURN",
 		"mangle PORTMASTER-INGEST-INPUT -j CONNMARK --restore-mark",
 		"mangle PORTMASTER-INGEST-INPUT -m mark --mark 0 -j NFQUEUE --queue-num 17140 --queue-bypass",
+
+		// Traffic that the host routes for other devices (VMs, containers,
+		// hotspot clients).
+		"mangle PORTMASTER-INGEST-FORWARD -m mark ! --mark 0 -m connmark --mark 1710 -j RETURN",
+		"mangle PORTMASTER-INGEST-FORWARD -j CONNMARK --restore-mark",
+		"mangle PORTMASTER-INGEST-FORWARD -m mark --mark 0 -j NFQUEUE --queue-num 17240 --queue-bypass",
+
+		// Enforce block verdicts once more after the filter table: other
+		// software (e.g. Docker) accepts forwarded packets in the filter
+		// FORWARD chain before the Portmaster rules. Blocked local packets
+		// never get here, as they are dropped in the filter table. ICMP
+		// carries the mark of the connection it rejects.
+		"mangle PORTMASTER-ENFORCE -p icmp -j RETURN",
+		"mangle PORTMASTER-ENFORCE -m mark --mark 1701 -j DROP",
+		"mangle PORTMASTER-ENFORCE -m mark --mark 1702 -j DROP",
+		"mangle PORTMASTER-ENFORCE -m mark --mark 1711 -j DROP",
+		"mangle PORTMASTER-ENFORCE -m mark --mark 1712 -j DROP",
 
 		"filter PORTMASTER-FILTER -m mark --mark 0 -j DROP",
 		// stenya: Preserve original packet marks.
@@ -107,11 +128,16 @@ func init() {
 		"filter OUTPUT -j PORTMASTER-FILTER",
 		"filter INPUT -j PORTMASTER-FILTER",
 		"nat OUTPUT -j PORTMASTER-REDIRECT",
+		"mangle FORWARD -j PORTMASTER-INGEST-FORWARD",
+		"filter FORWARD -j PORTMASTER-FILTER",
+		"mangle POSTROUTING -j PORTMASTER-ENFORCE",
 	}
 
 	v6chains = []string{
 		"mangle PORTMASTER-INGEST-OUTPUT",
 		"mangle PORTMASTER-INGEST-INPUT",
+		"mangle PORTMASTER-INGEST-FORWARD",
+		"mangle PORTMASTER-ENFORCE",
 		"filter PORTMASTER-FILTER",
 		"nat PORTMASTER-REDIRECT",
 	}
@@ -126,6 +152,16 @@ func init() {
 		"mangle PORTMASTER-INGEST-INPUT -m mark ! --mark 0 -m connmark --mark 1709 -j RETURN",
 		"mangle PORTMASTER-INGEST-INPUT -j CONNMARK --restore-mark",
 		"mangle PORTMASTER-INGEST-INPUT -m mark --mark 0 -j NFQUEUE --queue-num 17160 --queue-bypass",
+
+		"mangle PORTMASTER-INGEST-FORWARD -m mark ! --mark 0 -m connmark --mark 1710 -j RETURN",
+		"mangle PORTMASTER-INGEST-FORWARD -j CONNMARK --restore-mark",
+		"mangle PORTMASTER-INGEST-FORWARD -m mark --mark 0 -j NFQUEUE --queue-num 17260 --queue-bypass",
+
+		"mangle PORTMASTER-ENFORCE -p icmpv6 -j RETURN",
+		"mangle PORTMASTER-ENFORCE -m mark --mark 1701 -j DROP",
+		"mangle PORTMASTER-ENFORCE -m mark --mark 1702 -j DROP",
+		"mangle PORTMASTER-ENFORCE -m mark --mark 1711 -j DROP",
+		"mangle PORTMASTER-ENFORCE -m mark --mark 1712 -j DROP",
 
 		"filter PORTMASTER-FILTER -m mark --mark 0 -j DROP",
 		"filter PORTMASTER-FILTER -m connmark --mark 1710 -j RETURN",
@@ -156,6 +192,9 @@ func init() {
 		"filter OUTPUT -j PORTMASTER-FILTER",
 		"filter INPUT -j PORTMASTER-FILTER",
 		"nat OUTPUT -j PORTMASTER-REDIRECT",
+		"mangle FORWARD -j PORTMASTER-INGEST-FORWARD",
+		"filter FORWARD -j PORTMASTER-FILTER",
+		"mangle POSTROUTING -j PORTMASTER-ENFORCE",
 	}
 
 	// Reverse because we'd like to insert in a loop
@@ -421,6 +460,10 @@ func StartNfqueueInterception(packets chan<- packet.Packet) (err error) {
 	if err != nil {
 		return fmt.Errorf("nfqueue(IPv4, in): %w", err)
 	}
+	fwd4Queue, err = nfq.New(17240, false)
+	if err != nil {
+		return fmt.Errorf("nfqueue(IPv4, forward): %w", err)
+	}
 
 	if netenv.IPv6Enabled() {
 		out6Queue, err = nfq.New(17060, true)
@@ -431,10 +474,15 @@ func StartNfqueueInterception(packets chan<- packet.Packet) (err error) {
 		if err != nil {
 			return fmt.Errorf("nfqueue(IPv6, in): %w", err)
 		}
+		fwd6Queue, err = nfq.New(17260, true)
+		if err != nil {
+			return fmt.Errorf("nfqueue(IPv6, forward): %w", err)
+		}
 	} else {
 		log.Warningf("interception: no IPv6 stack detected, disabling IPv6 network integration")
 		out6Queue = &disabledNfQueue{}
 		in6Queue = &disabledNfQueue{}
+		fwd6Queue = &disabledNfQueue{}
 	}
 
 	module.mgr.Go("nfqueue packet handler", func(_ *mgr.WorkerCtx) error {
@@ -490,6 +538,12 @@ func StopNfqueueInterception() error {
 	if in6Queue != nil {
 		in6Queue.Destroy()
 	}
+	if fwd4Queue != nil {
+		fwd4Queue.Destroy()
+	}
+	if fwd6Queue != nil {
+		fwd6Queue.Destroy()
+	}
 
 	err := DeactivateNfqueueFirewall()
 	if err != nil {
@@ -513,6 +567,10 @@ func handleInterception(packets chan<- packet.Packet) error {
 			pkt.SetOutbound()
 		case pkt = <-in6Queue.PacketChannel():
 			pkt.SetInbound()
+		case pkt = <-fwd4Queue.PacketChannel():
+			pkt.SetForwarded()
+		case pkt = <-fwd6Queue.PacketChannel():
+			pkt.SetForwarded()
 		}
 
 		select {

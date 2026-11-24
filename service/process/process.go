@@ -216,6 +216,8 @@ func GetOrFindProcess(ctx context.Context, pid int) (*Process, error) {
 		return GetUnidentifiedProcess(ctx), nil
 	case UnsolicitedProcessID:
 		return GetUnsolicitedProcess(ctx), nil
+	case ForwardedProcessID:
+		return GetForwardedProcess(ctx), nil
 	case SystemProcessID:
 		return GetSystemProcess(ctx), nil
 	}
