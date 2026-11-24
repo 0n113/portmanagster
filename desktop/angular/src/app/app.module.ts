@@ -31,6 +31,7 @@ import { QuickSettingUseSplitTunButtonComponent } from './pages/app-view/qs-use-
 import { DashboardPageComponent } from './pages/dashboard/dashboard.component';
 import { MonitorPageComponent } from './pages/monitor';
 import { SettingsComponent } from './pages/settings/settings';
+import { AppearanceDialogComponent } from './pages/settings/appearance-dialog/appearance-dialog';
 import { SupportPageComponent } from './pages/support';
 import { SupportFormComponent } from './pages/support/form';
 import { NotificationsService } from './services';
@@ -123,6 +124,7 @@ const localeConfig = {
     AppComponent,
     NotificationComponent,
     SettingsComponent,
+    AppearanceDialogComponent,
     MonitorPageComponent,
     SideDashComponent,
     NavigationComponent,

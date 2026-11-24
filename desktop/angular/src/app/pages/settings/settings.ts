@@ -6,6 +6,8 @@ import { StatusService, VersionStatus } from 'src/app/services';
 import { ActionIndicatorService } from 'src/app/shared/action-indicator';
 import { fadeInAnimation } from 'src/app/shared/animations';
 import { SaveSettingEvent } from 'src/app/shared/config/generic-setting/generic-setting';
+import { SfngDialogService } from '@safing/ui';
+import { AppearanceDialogComponent } from './appearance-dialog/appearance-dialog';
 
 @Component({
     templateUrl: './settings.html',
@@ -40,7 +42,16 @@ export class SettingsComponent implements OnInit, OnDestroy {
     public statusService: StatusService,
     private actionIndicator: ActionIndicatorService,
     private route: ActivatedRoute,
+    private dialog: SfngDialogService,
   ) { }
+
+  /** Opens the dialog for theme, accent color, corners, font and text size. */
+  openAppearance(): void {
+    this.dialog.create(AppearanceDialogComponent, {
+      autoclose: true,
+      backdrop: 'light',
+    });
+  }
 
   ngOnInit(): void {
     this.subscription = new Subscription();

@@ -1,6 +1,7 @@
 //
 // Import our complete theme, order is important!
 //
+@import 'theme/_appearance.scss';
 @import 'theme/_colors.scss';
 @import 'theme/_tailwind.scss';
 @import '@angular/cdk/overlay-prebuilt';

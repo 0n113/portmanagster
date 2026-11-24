@@ -1,0 +1,75 @@
+<div class="flex flex-row items-center justify-between">
+  <h1 class="text-base">Appearance</h1>
+  <button class="btn-outline normal-case" type="button" (click)="reset()">Reset to defaults</button>
+</div>
+
+<section>
+  <h2>Theme</h2>
+  <div class="grid grid-cols-2 gap-2">
+    <button type="button" *ngFor="let theme of themes" class="theme-card" [class.selected]="value.theme === theme.id"
+      [attr.aria-pressed]="value.theme === theme.id" (click)="update('theme', theme.id)">
+      <span class="preview" [style.background]="theme.preview[0]">
+        <span class="preview-card" [style.background]="theme.preview[1]">
+          <span class="preview-dot" [style.background]="theme.preview[2]"></span>
+        </span>
+      </span>
+      <span class="flex flex-col items-start">
+        <span class="text-primary">{{ theme.name }}</span>
+        <span class="text-tertiary text-xxs">{{ theme.description }}</span>
+      </span>
+    </button>
+  </div>
+</section>
+
+<section>
+  <h2>Accent color</h2>
+  <div class="flex flex-row flex-wrap items-center gap-2">
+    <button type="button" class="swatch theme-swatch" title="Color of the theme" aria-label="Color of the theme"
+      [class.selected]="!value.accent" (click)="update('accent', null)"></button>
+    <button type="button" *ngFor="let accent of accents" class="swatch" [style.background]="accent.id"
+      [title]="accent.name" [attr.aria-label]="accent.name" [class.selected]="value.accent === accent.id"
+      (click)="update('accent', accent.id)"></button>
+    <label class="custom-swatch" [class.selected]="isCustomAccent" title="Custom color">
+      <input type="color" [value]="customAccent" (input)="update('accent', $any($event.target).value)"
+        aria-label="Custom accent color">
+      <span>Custom</span>
+    </label>
+  </div>
+</section>
+
+<section>
+  <h2>Corners</h2>
+  <div class="segmented" role="group" aria-label="Corners">
+    <button type="button" *ngFor="let r of radii" [class.selected]="value.radius === r.id"
+      [attr.aria-pressed]="value.radius === r.id" (click)="update('radius', r.id)">{{ r.name }}</button>
+  </div>
+</section>
+
+<section>
+  <h2>Font</h2>
+  <div class="segmented" role="group" aria-label="Font">
+    <button type="button" *ngFor="let f of fonts" [class.selected]="value.font === f.id"
+      [attr.aria-pressed]="value.font === f.id" (click)="update('font', f.id)">{{ f.name }}</button>
+  </div>
+</section>
+
+<section>
+  <h2>Text size</h2>
+  <div class="segmented" role="group" aria-label="Text size">
+    <button type="button" *ngFor="let t of textSizes" [class.selected]="value.textSize === t.id"
+      [attr.aria-pressed]="value.textSize === t.id" (click)="update('textSize', t.id)">{{ t.name }}</button>
+  </div>
+</section>
+
+<section class="flex flex-row items-center justify-between">
+  <div class="flex flex-col">
+    <h2 class="mb-0">Reduce motion</h2>
+    <span class="text-tertiary text-xxs">No animations and transitions</span>
+  </div>
+  <sfng-toggle [ngModel]="value.reduceMotion" (ngModelChange)="update('reduceMotion', $event)"></sfng-toggle>
+</section>
+
+<div class="flex flex-row justify-end gap-2 pt-2">
+  <button type="button" (click)="cancel()">Cancel</button>
+  <button type="button" class="bg-blue text-white" (click)="save()">Save</button>
+</div>
