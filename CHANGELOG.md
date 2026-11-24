@@ -7,7 +7,7 @@ pre-releases carry a `-rcN` suffix.
 
 ## [Unreleased]
 
-## [0.2.1] - 2026-11-24
+## [0.3.0] - 2026-11-24
 
 ### Security
 - Linux: after a crash of the core, the firewall rules stay in place, so new connections are
