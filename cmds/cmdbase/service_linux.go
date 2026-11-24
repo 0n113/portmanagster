@@ -35,6 +35,14 @@ func (s *LinuxSystemService) Run() {
 		os.Exit(1)
 	}
 
+	// Tell systemd that the service is ready: with Type=notify, units ordered
+	// after it (network.target, sshd, ...) wait until the firewall rules are in
+	// place, instead of starting unprotected while the core initializes.
+	err = notifySystemd("READY=1")
+	if err != nil {
+		slog.Warn("failed to notify systemd", "err", err)
+	}
+
 	// Subscribe to signals.
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(

@@ -9,7 +9,10 @@ Conflicts=firewalld.service
 Wants=nss-lookup.target
 
 [Service]
-Type=simple
+# The core reports ready (sd_notify) once its firewall rules are in place, so
+# units ordered after network.target do not start before them.
+Type=notify
+TimeoutStartSec=120
 Restart=on-failure
 RestartSec=10
 RestartPreventExitStatus=24
