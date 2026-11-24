@@ -48,12 +48,14 @@ func TestCheckAPISocketHolders(t *testing.T) { //nolint:paralleltest // Replaces
 		attackerPid    = 200 // Any other process of the user.
 		attackerWebPid = 201 // A webview process started by another process.
 		exitedPid      = 300 // A process that exited after the scan.
+		tamperedAppPid = 400 // The app, started with LD_PRELOAD.
 	)
 	processes := map[int]*process.Process{
 		appPid:         {Pid: appPid, ParentPid: 1, Path: newExe("install/portmaster")},
 		webViewPid:     {Pid: webViewPid, ParentPid: appPid, Path: newExe("usr/libexec/webkit2gtk-4.1/WebKitNetworkProcess")},
 		attackerPid:    {Pid: attackerPid, ParentPid: 1, Path: newExe("home/user/evil")},
 		attackerWebPid: {Pid: attackerWebPid, ParentPid: attackerPid, Path: newExe("usr/libexec/webkit2gtk-4.1/WebKitWebProcess")},
+		tamperedAppPid: {Pid: tamperedAppPid, ParentPid: 1, Path: newExe("install/portmaster")},
 	}
 	originalGetAPIProcess := getAPIProcess
 	getAPIProcess = func(_ context.Context, pid int) (*process.Process, error) {
@@ -63,6 +65,16 @@ func TestCheckAPISocketHolders(t *testing.T) { //nolint:paralleltest // Replaces
 		return nil, fmt.Errorf("%w: %d", errTestProcessNotFound, pid)
 	}
 	t.Cleanup(func() { getAPIProcess = originalGetAPIProcess })
+
+	// The pids are made up, so the tamper check must not look at /proc.
+	originalCheckProcessTampered := checkProcessTampered
+	checkProcessTampered = func(pid int) (bool, string) {
+		if pid == tamperedAppPid {
+			return true, "test"
+		}
+		return false, ""
+	}
+	t.Cleanup(func() { checkProcessTampered = originalCheckProcessTampered })
 
 	tests := []struct {
 		name       string
@@ -89,6 +101,11 @@ func TestCheckAPISocketHolders(t *testing.T) { //nolint:paralleltest // Replaces
 			trustedPid: webViewPid,
 			holders:    []int{appPid, webViewPid},
 			wantAccess: true,
+		},
+		{
+			name:       "socket shared with a tampered instance of the app",
+			trustedPid: appPid,
+			holders:    []int{appPid, tamperedAppPid},
 		},
 		{
 			name:       "app inherited the socket of an untrusted parent",

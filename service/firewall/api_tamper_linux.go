@@ -15,6 +15,9 @@ var tamperEnvVars = [][]byte{
 	[]byte("LD_LIBRARY_PATH="),
 }
 
+// checkProcessTampered is replaced in tests, which use made-up pids.
+var checkProcessTampered = processTampered
+
 // processTampered reports whether the process may run foreign code: it is
 // traced (ptrace), or was started with a variable that loads libraries.
 // Anyone can start the trusted app binary like that, so such a process does
