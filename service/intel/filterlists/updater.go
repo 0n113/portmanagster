@@ -173,6 +173,9 @@ func performUpdate(ctx context.Context) error {
 
 	// The list update succeeded, resolve any states.
 	module.states.Clear()
+
+	// Apply the lists to the settings now, instead of on the next retry.
+	runListsUpdatedHooks()
 	return nil
 }
 

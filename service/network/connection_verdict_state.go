@@ -110,8 +110,6 @@ func (conn *Connection) applyPendingVerdictState() {
 	}
 }
 
-// publishVerdictState publishes the current verdict state of the connection.
-// The caller must hold the connection lock.
 // PublishVerdictState publishes the current verdict to the lock-free snapshot
 // right away, instead of on Unlock. The caller must hold the connection lock.
 //
@@ -122,6 +120,8 @@ func (conn *Connection) PublishVerdictState() {
 	conn.publishVerdictState()
 }
 
+// publishVerdictState publishes the current verdict state of the connection.
+// The caller must hold the connection lock.
 func (conn *Connection) publishVerdictState() {
 	for {
 		current := conn.verdictState.Load()
