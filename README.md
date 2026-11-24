@@ -67,8 +67,8 @@ an existing Portmaster installation (same service name and install directory).
 ### Linux (Fedora, Debian, Ubuntu)
 
 ```bash
-sudo dnf install ./portmasterpro_0.2.0.x86_64.rpm   # Fedora
-sudo apt install ./portmasterpro_0.2.0_amd64.deb    # Debian, Ubuntu
+sudo dnf install ./portmasterpro_0.2.1.x86_64.rpm   # Fedora
+sudo apt install ./portmasterpro_0.2.1_amd64.deb    # Debian, Ubuntu
 sudo systemctl start portmaster                     # first install only
 ```
 
@@ -83,9 +83,9 @@ sudo systemctl start portmaster                     # first install only
 - Not filtered: forwarded traffic (containers, VMs with NAT), and the few seconds at boot before
   the core has set its rules.
 - Removing the package deletes the settings and the history in `/var/lib/portmaster`.
-- Upgrading from `0.2.0-rc1` on Fedora: rpm sorts `0.2.0-rc1` above `0.2.0`, so use
-  `sudo dnf downgrade ./portmasterpro_0.2.0.x86_64.rpm`. It keeps the settings; do not remove the
-  old package first. Plain `rpm -U` refuses the unsigned package on Fedora 45.
+- Upgrade: install the new package the same way (`sudo dnf install ./portmasterpro_X.x86_64.rpm`).
+  The settings stay. rpm sorts `0.2.0-rc1` above `0.2.0`; from rc1, upgrade straight to 0.2.1 or
+  later.
 
 ## Build and test
 

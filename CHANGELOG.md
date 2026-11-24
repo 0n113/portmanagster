@@ -7,6 +7,8 @@ pre-releases carry a `-rcN` suffix.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-24
+
 ### Security
 - Linux: after a crash of the core, the firewall rules stay in place, so new connections are
   dropped until the service is back instead of passing unfiltered. Only a clean stop removes
@@ -22,9 +24,17 @@ pre-releases carry a `-rcN` suffix.
   read from regular files; the app calls `/usr/bin/systemctl` through pkexec.
 - Release workflow: build jobs only get read access.
 
+### Added
+- Settings → Appearance: themes (macOS Dark, Graphite, Midnight, Classic), accent color (macOS
+  colors or a custom one), corners, font, text size and reduced motion, with a live preview.
+
 ### Changed
 - UI: the macOS dark appearance is complete: no hard-coded grays left, dark help texts, macOS
   toggles and focus rings.
+
+### Fixed
+- Linux packages: an upgrade no longer logs "fork/exec /usr/bin/iptables: permission denied": the
+  SELinux label is set before the old service stops.
 
 ## [0.2.0] - 2026-11-24
 
