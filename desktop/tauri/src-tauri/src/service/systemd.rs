@@ -8,7 +8,8 @@ use std::{
     process::{Command, ExitStatus, Stdio},
 };
 
-static SYSTEMCTL: &str = "systemctl";
+// Absolute path: pkexec would otherwise take systemctl from the PATH of the user.
+static SYSTEMCTL: &str = "/usr/bin/systemctl";
 static SERVICE_UNIT: &str = "portmaster.service";
 // TODO(ppacher): add support for kdesudo and gksudo
 

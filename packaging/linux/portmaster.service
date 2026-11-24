@@ -14,6 +14,10 @@ Restart=on-failure
 RestartSec=10
 RestartPreventExitStatus=24
 LockPersonality=yes
+ProtectHostname=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
 MemoryDenyWriteExecute=yes
 MemoryLow=2G
 NoNewPrivileges=yes
@@ -22,7 +26,8 @@ PIDFile=/var/lib/portmaster/core-lock.pid
 Environment=LOGLEVEL=info
 EnvironmentFile=-/etc/default/portmaster
 ProtectSystem=true
-ReadWritePaths=/usr/lib/portmaster
+# No ReadWritePaths for /usr/lib/portmaster: the package manager owns the
+# binaries. Upstream software updates would replace this build with Safing's.
 RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
 RestrictNamespaces=yes
 ProtectHome=read-only
@@ -36,7 +41,11 @@ StateDirectory=portmaster
 # TODO(ppacher): add --disable-software-updates once it's merged and the release process changed.
 WorkingDirectory=/var/lib/portmaster
 ExecStart=/usr/lib/portmaster/portmaster-core --log=${LOGLEVEL} --log-dir=/var/lib/portmaster/log
-ExecStopPost=-/usr/lib/portmaster/portmaster-core --recover-iptables
+# Remove the firewall rules only after a clean stop. After a crash they stay:
+# without the core, new connections are dropped instead of passing unfiltered
+# until the service is back (RestartSec). `portmaster-core --recover-iptables`
+# removes them by hand.
+ExecStopPost=-/bin/sh -c 'if [ "$$SERVICE_RESULT" = success ]; then exec /usr/lib/portmaster/portmaster-core --recover-iptables; fi'
 
 [Install]
 WantedBy=multi-user.target

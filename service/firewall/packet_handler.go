@@ -161,9 +161,12 @@ func resetConnectionVerdict(ctx context.Context, conn *network.Connection) (verd
 
 		// Update verdict in OS integration, if an IP connection.
 		if conn.Type == network.IPConnection {
+			// Publish the new verdict first: packets handled without the lock
+			// must not see the old verdict after the kernel forgot it.
+			conn.PublishVerdictState()
 			err := interception.UpdateVerdictOfConnection(conn)
 			if err != nil {
-				log.Debugf("filter: failed to update connection verdict: %s", err)
+				log.Warningf("filter: failed to update connection verdict of %s: %s", conn, err)
 			}
 		}
 

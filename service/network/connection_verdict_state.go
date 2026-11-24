@@ -112,6 +112,16 @@ func (conn *Connection) applyPendingVerdictState() {
 
 // publishVerdictState publishes the current verdict state of the connection.
 // The caller must hold the connection lock.
+// PublishVerdictState publishes the current verdict to the lock-free snapshot
+// right away, instead of on Unlock. The caller must hold the connection lock.
+//
+// Call it before removing the verdict from the OS integration: a packet that
+// arrives in between would otherwise get the old verdict from the snapshot,
+// and a permanent accept would be stored in the kernel again.
+func (conn *Connection) PublishVerdictState() {
+	conn.publishVerdictState()
+}
+
 func (conn *Connection) publishVerdictState() {
 	for {
 		current := conn.verdictState.Load()
