@@ -80,8 +80,9 @@ sudo systemctl start portmaster                     # first install only
 - If the core crashes, its rules stay: new connections are dropped until the service is back,
   about 10 seconds. If it cannot start again, remove the rules with
   `sudo /usr/lib/portmaster/portmaster-core --recover-iptables`.
-- Not filtered: forwarded traffic (containers, VMs with NAT), and the few seconds at boot before
-  the core has set its rules.
+- Not filtered: forwarded traffic (containers, VMs with NAT). At boot, services that start after
+  `network.target` (sshd, ...) wait until the core has set its rules; NetworkManager itself may
+  bring the network up a few seconds earlier.
 - Removing the package deletes the settings and the history in `/var/lib/portmaster`.
 - Upgrade: install the new package the same way (`sudo dnf install ./portmasterpro_X.x86_64.rpm`).
   The settings stay. rpm sorts `0.2.0-rc1` above `0.2.0`; from rc1, upgrade straight to 0.3.0 or
