@@ -7,6 +7,25 @@ pre-releases carry a `-rcN` suffix.
 
 ## [Unreleased]
 
+### Security
+- Linux: after a crash of the core, the firewall rules stay in place, so new connections are
+  dropped until the service is back instead of passing unfiltered. Only a clean stop removes
+  them.
+- The API refuses requests for foreign host names (DNS rebinding from a web page).
+- Linux: the app binary does not get API trust when it runs under a debugger or was started
+  with `LD_PRELOAD`, `LD_AUDIT` or `LD_LIBRARY_PATH`.
+- A permanently allowed connection that a settings change blocks no longer stays allowed when a
+  packet arrives while the verdict is updated.
+- Debug endpoints (`debug/*`, `debug/core`) and the DNS resolver list need user permission;
+  CPU profiles are limited to 5 minutes.
+- Linux service: more systemd hardening, no write access to `/usr/lib/portmaster`; icons are only
+  read from regular files; the app calls `/usr/bin/systemctl` through pkexec.
+- Release workflow: build jobs only get read access.
+
+### Changed
+- UI: the macOS dark appearance is complete: no hard-coded grays left, dark help texts, macOS
+  toggles and focus rings.
+
 ## [0.2.0] - 2026-11-24
 
 First stable release, the same code as 0.2.0-rc1 plus the changes below.

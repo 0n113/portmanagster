@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -166,6 +167,15 @@ func (mh *mainHandler) handle(w http.ResponseWriter, r *http.Request) error {
 				"style-src 'self' 'unsafe-inline'; "+
 				"img-src 'self' data: blob:",
 		)
+	}
+
+	// Only answer requests for the local API address. A web page that rebinds
+	// its own domain to 127.0.0.1 sends its domain as Host (and as Origin), and
+	// would pass the Origin check below (DNS rebinding).
+	if r.RemoteAddr != endpointBridgeRemoteAddress && !isAllowedAPIHost(r.Host) {
+		tracer.Warningf("api: denied request from %s: foreign Host header %q", r.RemoteAddr, r.Host)
+		http.Error(lrw, "Invalid Host.", http.StatusForbidden)
+		return nil
 	}
 
 	// Check Cross-Origin Requests.
@@ -344,4 +354,29 @@ func cleanRequestPath(requestPath string) string {
 	}
 
 	return cleanedRequestPath
+}
+
+// isAllowedAPIHost reports whether host (the Host header, with an optional
+// port) addresses the API directly: empty, an IP address, "localhost", or the
+// host of the configured listen address. Other domain names are refused, as
+// they may be rebound to the local address by a web page.
+func isAllowedAPIHost(host string) bool {
+	if host == "" {
+		return true
+	}
+	hostname := host
+	h, _, err := net.SplitHostPort(host)
+	if err == nil {
+		hostname = h
+	}
+	hostname = strings.TrimSuffix(strings.TrimPrefix(hostname, "["), "]")
+
+	switch {
+	case net.ParseIP(hostname) != nil:
+		return true
+	case strings.EqualFold(hostname, "localhost"):
+		return true
+	}
+	listenHost, _, err := net.SplitHostPort(listenAddressConfig())
+	return err == nil && listenHost != "" && strings.EqualFold(hostname, listenHost)
 }

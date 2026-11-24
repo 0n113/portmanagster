@@ -136,7 +136,7 @@ func TestEndpointRecordFuncNilRecord(t *testing.T) {
 		},
 	}))
 
-	r := httptest.NewRequest(http.MethodGet, apiV1Path+"test/record-nil", nil)
+	r := newLocalTestRequest(http.MethodGet, apiV1Path+"test/record-nil", nil)
 	w := httptest.NewRecorder()
 	testHandler.ServeHTTP(w, r)
 	assert.Equal(t, http.StatusNoContent, w.Code, "body: %s", w.Body.String())
@@ -171,7 +171,7 @@ func TestEndpointBodyLimitWithoutContentLength(t *testing.T) {
 	// A body without a declared length (as with chunked transfer encoding)
 	// must not bypass the body size limit.
 	body := io.LimitReader(zeroReader{}, maxRequestBodySize+1)
-	r := httptest.NewRequest(http.MethodPost, apiV1Path+"test/body-limit", body)
+	r := newLocalTestRequest(http.MethodPost, apiV1Path+"test/body-limit", body)
 	r.ContentLength = -1
 	w := httptest.NewRecorder()
 	testHandler.ServeHTTP(w, r)
@@ -179,7 +179,7 @@ func TestEndpointBodyLimitWithoutContentLength(t *testing.T) {
 
 	// A body at the limit is still accepted.
 	body = io.LimitReader(zeroReader{}, maxRequestBodySize)
-	r = httptest.NewRequest(http.MethodPost, apiV1Path+"test/body-limit", body)
+	r = newLocalTestRequest(http.MethodPost, apiV1Path+"test/body-limit", body)
 	r.ContentLength = -1
 	w = httptest.NewRecorder()
 	testHandler.ServeHTTP(w, r)

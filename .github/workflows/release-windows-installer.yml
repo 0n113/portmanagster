@@ -28,8 +28,9 @@ on:
       - packaging/**
       - desktop/tauri/src-tauri/tauri.conf.json5
 
+# Build jobs, also of pull requests, only read. Only "publish" writes.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-installers-${{ inputs.tag || github.ref }}
@@ -280,6 +281,8 @@ jobs:
     needs: [windows-installer, linux-packages]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:

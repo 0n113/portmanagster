@@ -77,6 +77,11 @@ sudo systemctl start portmaster                     # first install only
   app or in the global settings.
 - On Fedora with SELinux, the package labels `portmaster-core` as `bin_t`.
 - An upgrade starts the service again if it ran before.
+- If the core crashes, its rules stay: new connections are dropped until the service is back,
+  about 10 seconds. If it cannot start again, remove the rules with
+  `sudo /usr/lib/portmaster/portmaster-core --recover-iptables`.
+- Not filtered: forwarded traffic (containers, VMs with NAT), and the few seconds at boot before
+  the core has set its rules.
 - Removing the package deletes the settings and the history in `/var/lib/portmaster`.
 - Upgrading from `0.2.0-rc1` on Fedora: rpm sorts `0.2.0-rc1` above `0.2.0`, so use
   `sudo dnf downgrade ./portmasterpro_0.2.0.x86_64.rpm`. It keeps the settings; do not remove the

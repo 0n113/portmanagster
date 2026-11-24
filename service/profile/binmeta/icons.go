@@ -92,9 +92,22 @@ func UpdateProfileIcon(data []byte, ext string) (filename string, err error) {
 	return filename, os.WriteFile(filepath.Join(ProfileIconStoragePath, filename), data, 0o0644) //nolint:gosec
 }
 
+// errIconNotRegular is returned for icon paths that are not regular files.
+var errIconNotRegular = errors.New("icon is not a regular file")
+
 // LoadAndSaveIcon loads an icon from disk, updates it in the icon database
 // and returns the icon object.
 func LoadAndSaveIcon(ctx context.Context, iconPath string) (*Icon, error) {
+	// Only read regular files: the core runs as root, and icon paths may be in
+	// directories of users, who could link them to any file.
+	info, err := os.Lstat(iconPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read icon %s: %w", iconPath, err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("%w: %s", errIconNotRegular, iconPath)
+	}
+
 	// Load icon and save it.
 	data, err := os.ReadFile(iconPath)
 	if err != nil {

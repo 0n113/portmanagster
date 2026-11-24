@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -188,7 +187,7 @@ func TestCheckAPIKeyShortUnknownKey(t *testing.T) {
 		"Basic ",     // Invalid base64: empty user and pass.
 		"Basic YTo=", // "a:"
 	} {
-		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r := newLocalTestRequest(http.MethodGet, "/", nil)
 		r.Header.Set("Authorization", header)
 
 		func() {

@@ -21,7 +21,7 @@ func TestReadyEndpoint(t *testing.T) { //nolint:paralleltest // Modifies the sha
 	}
 	get := func() *httptest.ResponseRecorder {
 		w := httptest.NewRecorder()
-		testHandler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, apiV1Path+"ready", nil))
+		testHandler.ServeHTTP(w, newLocalTestRequest(http.MethodGet, apiV1Path+"ready", nil))
 		return w
 	}
 
