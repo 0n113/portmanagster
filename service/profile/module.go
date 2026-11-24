@@ -12,6 +12,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/utils"
 	_ "github.com/safing/portmaster/service/core/base"
+	"github.com/safing/portmaster/service/intel/filterlists"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/profile/binmeta"
 )
@@ -105,6 +106,16 @@ func start() error {
 	if err != nil {
 		return err
 	}
+
+	// Apply the global filter lists as soon as the list index is available,
+	// e.g. after the first download. Until then, the lists would only be
+	// applied by the retry of the global config profile, up to 15s later,
+	// and connections in between are not checked against the lists.
+	filterlists.OnListsUpdated(func() {
+		module.mgr.Go("apply updated filter lists", func(w *mgr.WorkerCtx) error {
+			return updateGlobalConfigProfile(w.Ctx())
+		})
+	})
 
 	err = startProfileUpdateChecker()
 	if err != nil {
