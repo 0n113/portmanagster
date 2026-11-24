@@ -31,7 +31,7 @@ what is allowed:
 | Requests to Safing besides intel data updates | none | account, subscription and support services |
 | Intel data (filter lists, GeoIP) | from Safing's update server | from Safing's update server |
 | Automatic app updates | off: Safing's binaries would replace this build | on |
-| Installers | Windows (unsigned); Linux core binary | signed Windows installer, Linux packages |
+| Installers | Windows installer, `.deb`, `.rpm` (all unsigned) | signed Windows installer, Linux packages |
 | Kernel driver (Windows) | Safing's signed stable driver, unchanged | Safing's signed driver |
 | Split Tunnel | off: needs a newer signed driver | as released by Safing |
 | Support | none: no issue tracker, one maintainer | documentation, Discord, support for subscribers |
@@ -53,16 +53,34 @@ what is allowed:
 - No SPN. If you want Safing's multi-hop VPN, use the original.
 - Unsigned installer: Windows SmartScreen warns on first start.
 - No automatic updates of the app; install new releases yourself.
-- No Linux packages in the releases; build them from source (`earthly +installer-linux`).
+- Linux packages are not signed and come without a package repository.
 - Depends on Safing for the signed Windows driver and for intel data.
-- Pre-release quality: a small project with one maintainer and no support channel.
+- A small project with one maintainer and no support channel.
 - Upstream changes arrive with a delay: they are merged weekly by pull request.
 
 ## Download
 
-[Releases](https://github.com/0n113/portmasterpro/releases): Windows x64 installer, core binaries
-for Linux and Windows, `SHA256SUMS.txt`. The Windows installer replaces an existing Portmaster
-installation (same service name and install directory).
+[Releases](https://github.com/0n113/portmasterpro/releases): Windows x64 installer, Linux `.deb`
+and `.rpm` packages, core binaries for Linux and Windows, `SHA256SUMS.txt`. The installers replace
+an existing Portmaster installation (same service name and install directory).
+
+### Linux (Fedora, Debian, Ubuntu)
+
+```bash
+sudo dnf install ./portmasterpro_0.2.0.x86_64.rpm   # Fedora
+sudo apt install ./portmasterpro_0.2.0_amd64.deb    # Debian, Ubuntu
+sudo systemctl start portmaster                     # first install only
+```
+
+- The service `portmaster` replaces the system firewall: it conflicts with `firewalld`, which
+  stops when Portmaster starts. Portmaster blocks incoming connections by default; allow them per
+  app or in the global settings.
+- On Fedora with SELinux, the package labels `portmaster-core` as `bin_t`.
+- An upgrade starts the service again if it ran before.
+- Removing the package deletes the settings and the history in `/var/lib/portmaster`.
+- Upgrading from `0.2.0-rc1` on Fedora: rpm sorts `0.2.0-rc1` above `0.2.0`, so `dnf` refuses
+  the package as a downgrade. Use `sudo rpm -Uvh --oldpackage ./portmasterpro_0.2.0.x86_64.rpm`,
+  which keeps the settings (do not remove the old package first).
 
 ## Build and test
 
