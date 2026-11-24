@@ -3,11 +3,13 @@ import { PortapiService, Record } from '@safing/portmaster-api';
 import { Observable, of } from "rxjs";
 import { catchError, map, switchMap } from "rxjs/operators";
 import { SortTypes } from './../shared/network-scout/network-scout';
+import type { AppearanceSettings } from './appearance.service';
 
 export interface UIState extends Record {
   hideExitScreen?: boolean;
   introScreenFinished?: boolean;
   netscoutSortOrder: SortTypes;
+  appearance?: AppearanceSettings;
 }
 
 const defaultState: UIState = {

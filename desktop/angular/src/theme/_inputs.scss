@@ -19,7 +19,7 @@ select {
     @apply text-primary;
     // macOS focus ring in the accent color.
     @apply bg-gray-400 border-blue;
-    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.35);
+    box-shadow: 0 0 0 3px rgb(var(--pm-accent) / 0.35);
 
     &::placeholder {
       @apply text-tertiary;

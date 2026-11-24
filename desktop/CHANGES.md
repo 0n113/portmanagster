@@ -21,6 +21,19 @@ desktop app in `desktop/tauri`.
   API trust for the app's own webview only.
 - Angular 16 → 20, with ng-zorro, ngx-markdown and Font Awesome updated to match.
 
+## Appearance
+
+The UI looks like macOS in dark mode by default. Settings → Appearance changes it at runtime:
+
+- Themes: macOS Dark, Graphite (lighter gray), Midnight (black, for OLED screens) and Classic
+  (the original Portmaster colors).
+- Accent color: the macOS accent colors or any custom color.
+- Corners (square to round), font (system, Roboto, monospace), text size, reduced motion.
+
+The choice is stored in the UI state of the core (`core:ui/v1`) and as a copy in localStorage, so
+the app starts in the right look. Themes are CSS variables in `src/theme/_appearance.scss`;
+tailwind colors refer to them, so a new theme only needs a new block of variables there.
+
 ## Kept on purpose
 
 Neutral fields of the local connection data (`exit_node`, `tunneled`) and the `SPN` field of the

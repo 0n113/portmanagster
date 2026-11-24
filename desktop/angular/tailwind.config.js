@@ -1,5 +1,8 @@
 const plugin = require("tailwindcss/plugin");
 
+// A theme color as an RGB variable, so that opacity utilities work.
+const v = (name) => `rgb(var(--pm-${name}) / <alpha-value>)`;
+
 module.exports = {
   content: [
     "./src/**/*.{html,scss,css,ts}",
@@ -10,38 +13,39 @@ module.exports = {
       transparent: "transparent",
       current: "currentColor",
       white: "#ffffff",
-      background: "#1a1a1d",
+      background: v("bg"),
 
+      // Theme colors, see src/theme/_appearance.scss.
       gray: {
-        100: "#151517",
-        200: "#1d1d20",
-        300: "#252528",
-        400: "#2c2c2f",
-        500: "#48484c",
-        600: "#8e8e93",
-        700: "#a1a1a6",
-        DEFAULT: "#a1a1a6",
+        100: v("gray-100"),
+        200: v("gray-200"),
+        300: v("gray-300"),
+        400: v("gray-400"),
+        500: v("gray-500"),
+        600: v("gray-600"),
+        700: v("gray-700"),
+        DEFAULT: v("gray-700"),
       },
 
       green: {
-        100: "#0f3a1d",
-        200: "#248a3d",
-        300: "#30d158",
-        DEFAULT: "#248a3d",
+        100: v("green-100"),
+        200: v("green-200"),
+        300: v("green-300"),
+        DEFAULT: v("green-200"),
       },
 
       red: {
-        100: "#3d1715",
-        200: "#a3261e",
-        300: "#ff453a",
-        DEFAULT: "#ff453a",
+        100: v("red-100"),
+        200: v("red-200"),
+        300: v("red-300"),
+        DEFAULT: v("red"),
       },
 
       yellow: {
-        100: "#3d3508",
-        200: "#a68b06",
-        300: "#ffd60a",
-        DEFAULT: "#ffd60a",
+        100: v("yellow-100"),
+        200: v("yellow-200"),
+        300: v("yellow-300"),
+        DEFAULT: v("yellow-300"),
       },
 
       cyan: {
@@ -69,8 +73,9 @@ module.exports = {
         900: "#311b92",
       },
 
+      // The accent color, chosen in the appearance settings.
       blue: {
-        DEFAULT: "#0a84ff",
+        DEFAULT: v("accent"),
       },
 
       // Legacy color definitions
@@ -100,7 +105,7 @@ module.exports = {
     },
     textColor: (theme) => {
       return {
-        primary: "#ededee",
+        primary: v("text-1"),
         secondary: theme("colors.gray.700"),
         tertiary: theme("colors.gray.600"),
 
@@ -115,12 +120,12 @@ module.exports = {
       fontSize: {
         xxs: "0.7rem",
       },
-      // Rounder corners, as in the macOS (WhiteSur) theme.
+      // Corners follow the theme and the appearance settings.
       borderRadius: {
-        sm: "5px",
-        DEFAULT: "7px",
-        md: "8px",
-        lg: "10px",
+        sm: "var(--pm-radius-sm)",
+        DEFAULT: "var(--pm-radius)",
+        md: "var(--pm-radius-md)",
+        lg: "var(--pm-radius-lg)",
       },
     },
   },

@@ -1,0 +1,168 @@
+/**
+ * Appearance: themes and the options of the "Appearance" dialog in the
+ * settings. The AppearanceService sets the data attributes on <html>.
+ *
+ * Colors are RGB triples ("r g b"), so that tailwind can add an alpha value:
+ * rgb(var(--pm-gray-300) / <alpha-value>).
+ */
+
+// macOS dark (WhiteSur, LisaDark): the default theme.
+:root {
+  --pm-bg: 26 26 29;
+  --pm-text-1: 237 237 238;
+
+  --pm-gray-100: 21 21 23;
+  --pm-gray-200: 29 29 32;
+  --pm-gray-300: 37 37 40;
+  --pm-gray-400: 44 44 47;
+  --pm-gray-500: 72 72 76;
+  --pm-gray-600: 142 142 147;
+  --pm-gray-700: 161 161 166;
+  --pm-button-dark: 54 54 58;
+
+  --pm-green-100: 15 58 29;
+  --pm-green-200: 36 138 61;
+  --pm-green-300: 48 209 88;
+  --pm-info-green: 48 209 88;
+
+  --pm-red-100: 61 23 21;
+  --pm-red-200: 163 38 30;
+  --pm-red-300: 255 69 58;
+  --pm-red: 255 69 58;
+
+  --pm-yellow-100: 61 53 8;
+  --pm-yellow-200: 166 139 6;
+  --pm-yellow-300: 255 214 10;
+  --pm-info-yellow: 255 214 10;
+
+  --pm-accent: 10 132 255;
+
+  --pm-radius-sm: 5px;
+  --pm-radius: 7px;
+  --pm-radius-md: 8px;
+  --pm-radius-lg: 10px;
+
+  --pm-font: 'Adwaita Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Roboto', system-ui, sans-serif;
+  --pm-font-size: 16px;
+}
+
+// The colors of the original Portmaster.
+:root[data-theme="classic"] {
+  --pm-bg: 18 18 19;
+  --pm-text-1: 255 255 255;
+
+  --pm-gray-100: 19 17 17;
+  --pm-gray-200: 27 27 27;
+  --pm-gray-300: 34 34 34;
+  --pm-gray-400: 44 44 44;
+  --pm-gray-500: 71 71 71;
+  --pm-gray-600: 136 136 136;
+  --pm-gray-700: 171 171 171;
+  --pm-button-dark: 52 52 52;
+
+  --pm-green-100: 20 61 36;
+  --pm-green-200: 24 130 61;
+  --pm-green-300: 29 233 102;
+  --pm-info-green: 61 245 127;
+
+  --pm-red-100: 61 20 20;
+  --pm-red-200: 129 24 24;
+  --pm-red-300: 224 29 29;
+  --pm-red: 209 46 46;
+
+  --pm-yellow-100: 61 58 20;
+  --pm-yellow-200: 130 121 24;
+  --pm-yellow-300: 233 216 29;
+  --pm-info-yellow: 233 211 29;
+
+  --pm-accent: 78 151 250;
+
+  --pm-radius-sm: 2px;
+  --pm-radius: 4px;
+  --pm-radius-md: 6px;
+  --pm-radius-lg: 8px;
+
+  --pm-font: 'Roboto', sans-serif;
+}
+
+// Black backgrounds, for OLED screens and dark rooms.
+:root[data-theme="midnight"] {
+  --pm-bg: 0 0 0;
+  --pm-gray-100: 0 0 0;
+  --pm-gray-200: 10 10 11;
+  --pm-gray-300: 22 22 24;
+  --pm-gray-400: 30 30 33;
+  --pm-gray-500: 58 58 62;
+  --pm-button-dark: 38 38 41;
+}
+
+// Graphite: a lighter, neutral gray.
+:root[data-theme="graphite"] {
+  --pm-bg: 40 40 43;
+  --pm-gray-100: 34 34 37;
+  --pm-gray-200: 44 44 47;
+  --pm-gray-300: 52 52 56;
+  --pm-gray-400: 60 60 64;
+  --pm-gray-500: 86 86 91;
+  --pm-gray-600: 152 152 158;
+  --pm-gray-700: 174 174 178;
+  --pm-button-dark: 68 68 72;
+}
+
+// Corners, independent of the theme.
+:root[data-radius="square"] {
+  --pm-radius-sm: 2px;
+  --pm-radius: 3px;
+  --pm-radius-md: 4px;
+  --pm-radius-lg: 5px;
+}
+
+:root[data-radius="rounded"] {
+  --pm-radius-sm: 5px;
+  --pm-radius: 7px;
+  --pm-radius-md: 8px;
+  --pm-radius-lg: 10px;
+}
+
+:root[data-radius="round"] {
+  --pm-radius-sm: 8px;
+  --pm-radius: 10px;
+  --pm-radius-md: 12px;
+  --pm-radius-lg: 14px;
+}
+
+// Fonts, independent of the theme.
+:root[data-font="system"] {
+  --pm-font: 'Adwaita Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Roboto', system-ui, sans-serif;
+}
+
+:root[data-font="roboto"] {
+  --pm-font: 'Roboto', sans-serif;
+}
+
+:root[data-font="mono"] {
+  --pm-font: 'Adwaita Mono', 'SF Mono', 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+}
+
+// Text size: tailwind sizes are in rem.
+:root[data-text-size="small"] {
+  --pm-font-size: 14px;
+}
+
+:root[data-text-size="large"] {
+  --pm-font-size: 18px;
+}
+
+html {
+  font-size: var(--pm-font-size);
+}
+
+// Reduced motion: no animations and transitions.
+:root[data-reduce-motion="true"] *,
+:root[data-reduce-motion="true"] *::before,
+:root[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

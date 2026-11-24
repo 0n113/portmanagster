@@ -24,7 +24,7 @@ sfng-toggle {
   }
 
   input:focus-visible+.slider {
-    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.5);
+    box-shadow: 0 0 0 3px rgb(var(--pm-accent) / 0.5);
   }
 
   input:disabled+.slider {

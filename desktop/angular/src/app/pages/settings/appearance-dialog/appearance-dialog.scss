@@ -1,0 +1,94 @@
+:host {
+  @apply flex flex-col gap-4 overflow-auto;
+  width: 30rem;
+  max-width: 100%;
+  max-height: 40rem;
+}
+
+h2 {
+  @apply text-xs text-secondary font-semibold mb-2;
+}
+
+.theme-card {
+  @apply flex flex-row items-center gap-3 p-2 text-left rounded-md bg-gray-300 normal-case;
+  border: 2px solid transparent;
+
+  &.selected {
+    @apply border-blue;
+  }
+}
+
+.preview {
+  @apply flex items-end justify-end rounded flex-shrink-0;
+  width: 3.5rem;
+  height: 2.25rem;
+  padding: 0.3rem;
+  border: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.preview-card {
+  @apply flex items-center justify-end rounded-sm;
+  width: 2.25rem;
+  height: 1.1rem;
+  padding: 0.2rem;
+}
+
+.preview-dot {
+  @apply rounded-full;
+  width: 0.55rem;
+  height: 0.55rem;
+}
+
+.swatch {
+  @apply rounded-full p-0;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid transparent;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25);
+
+  &:hover {
+    background-color: inherit;
+  }
+
+  &.selected {
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgb(var(--pm-text-1));
+  }
+}
+
+.theme-swatch {
+  background: conic-gradient(#0a84ff, #bf5af2, #ff375f, #ff9f0a, #ffd60a, #30d158, #40c8e0, #0a84ff) !important;
+}
+
+.custom-swatch {
+  @apply flex flex-row items-center gap-1 px-2 rounded cursor-pointer text-xxs text-secondary bg-gray-300;
+  height: 1.5rem;
+  border: 2px solid transparent;
+
+  &.selected {
+    @apply border-blue;
+  }
+
+  input[type="color"] {
+    @apply p-0 border-0 bg-transparent cursor-pointer;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+// macOS segmented control.
+.segmented {
+  @apply inline-flex flex-row p-0.5 rounded-md bg-gray-300;
+
+  button {
+    @apply bg-transparent normal-case px-3 rounded;
+
+    &:hover:not(.selected) {
+      @apply bg-gray-400;
+    }
+
+    &.selected {
+      @apply bg-gray-500 text-primary;
+      box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+    }
+  }
+}

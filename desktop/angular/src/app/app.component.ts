@@ -1,3 +1,4 @@
+import { AppearanceService } from './services/appearance.service';
 import { Overlay } from '@angular/cdk/overlay';
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, Inject, NgZone, OnInit, Renderer2, ViewChild } from '@angular/core';
 import { Params, Router } from '@angular/router';
@@ -99,8 +100,10 @@ export class AppComponent implements OnInit, AfterViewInit {
     private stateService: UIStateService,
     private renderer2: Renderer2,
     @Inject(INTEGRATION_SERVICE) private integration: IntegrationService,
+    appearance: AppearanceService,
   ) {
     (window as any).portapi = portapi;
+    appearance.init();
   }
 
   onSideDashChange(state: 'expanded' | 'collapsed' | 'force-overlay') {

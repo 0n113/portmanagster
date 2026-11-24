@@ -1,8 +1,7 @@
 html,
 body {
-  // The system font first (Adwaita Sans on GNOME/KDE, SF Pro on macOS),
-  // Roboto (bundled) as the fallback.
-  font-family: 'Adwaita Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Roboto', system-ui, sans-serif;
+  // The font follows the theme and the appearance settings.
+  font-family: var(--pm-font);
   -webkit-font-smoothing: antialiased;
   @apply text-primary;
   @apply font-medium;
@@ -64,6 +63,6 @@ h4 {
 }
 
 ::selection {
-  background-color: rgba(10, 132, 255, 0.45);
+  background-color: rgb(var(--pm-accent) / 0.45);
   color: #ffffff;
 }
