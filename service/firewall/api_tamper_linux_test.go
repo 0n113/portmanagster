@@ -1,8 +1,12 @@
 package firewall
 
 import (
+	"bytes"
+	"os"
 	"os/exec"
+	"strconv"
 	"testing"
+	"time"
 )
 
 func TestProcessTampered(t *testing.T) {
@@ -19,6 +23,15 @@ func TestProcessTampered(t *testing.T) {
 			_ = cmd.Process.Kill()
 			_ = cmd.Wait()
 		})
+		// Start returns while the kernel may still set up the new program;
+		// until then, /proc/<pid>/environ is empty.
+		environ := "/proc/" + strconv.Itoa(cmd.Process.Pid) + "/environ"
+		for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+			data, err := os.ReadFile(environ)
+			if err == nil && bytes.Contains(data, []byte("PATH=")) {
+				break
+			}
+		}
 		return cmd
 	}
 

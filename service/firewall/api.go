@@ -214,7 +214,7 @@ checkLevelsLoop:
 					// The trusted binary may have been started with foreign
 					// code, check it and the requesting process (a webview).
 					for _, checkPid := range []int{proc.Pid, originalPid} {
-						if tampered, reason := processTampered(checkPid); tampered {
+						if tampered, reason := checkProcessTampered(checkPid); tampered {
 							log.Tracer(ctx).Warningf("filter: denying api access to %s (pid %d): %s", proc.Path, checkPid, reason)
 							return false, originalPid, append(procsChecked, proc.Path)
 						}
