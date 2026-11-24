@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -70,6 +71,15 @@ func (ui *UI) Start() error {
 	err = utils.EnsureDirectory(execDir, utils.PublicWriteExecPermission)
 	if err != nil {
 		log.Warningf("ui: failed to set permissions to directory %s: %s", execDir, err)
+	}
+
+	// Sticky bit, as on /tmp: users may not delete or replace the files of
+	// other users in the shared directory.
+	if runtime.GOOS != "windows" {
+		err = os.Chmod(execDir, 0o777|os.ModeSticky) //nolint:gosec // Shared on purpose, see above.
+		if err != nil {
+			log.Warningf("ui: failed to set sticky bit on %s: %s", execDir, err)
+		}
 	}
 
 	return nil
