@@ -7,6 +7,8 @@ pre-releases carry a `-rcN` suffix.
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-11-25
+
 ### Added
 - Linux: forwarded traffic of VMs, containers and hotspot clients is filtered. It shows up as
   the app "Forwarded Traffic", with the global rules and filter lists and its own settings;
