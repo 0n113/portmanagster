@@ -82,6 +82,12 @@ write_config() {
 }
 write_config "\"- $BLOCKED\",\"- .$CNAME_ZONE\""
 
+step "Boot guard"
+# portmaster-boot-guard.service runs this before the network is configured.
+check "boot guard is set" "$CORE" boot-guard
+check "boot guard blocks the network" bash -c "! curl -sS -o /dev/null --max-time 5 https://$ALLOWED/"
+check "boot guard allows loopback" bash -c "python3 -m http.server -b 127.0.0.1 18999 >/dev/null 2>&1 & p=\$!; sleep 1; curl -s -o /dev/null --max-time 5 http://127.0.0.1:18999/; rc=\$?; kill \$p; exit \$rc"
+
 step "Start"
 if ! start_core; then
 	fail "portmaster-core starts and reports ready"
@@ -89,6 +95,7 @@ if ! start_core; then
 fi
 pass "portmaster-core starts and reports ready"
 check "interception rules installed" rules_present
+check "the core removed the boot guard" bash -c '! { iptables-save; ip6tables-save; } | grep -q PORTMASTER-BOOT'
 check "nfqueue bound" bash -c 'grep -q . /proc/net/netfilter/nfnetlink_queue'
 check "systemd-resolved cache flushed" grep -q 'flushed the systemd-resolved cache' "$LOG"
 
@@ -174,6 +181,18 @@ if [[ "$code" == 403 || "$code" == 401 ]]; then pass "API denies an unauthorized
 auth_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$API/app/auth?app-name=vmtest&read=user&write=user&ttl=1h")
 if [[ "$auth_code" == 000 ]]; then pass "app/auth identifies the caller and waits for the prompt"; else fail "app/auth identifies the caller and waits for the prompt (got HTTP $auth_code)"; fi
 
+step "Rule order"
+# Software like Docker or a VPN client inserts its rules at the top of the
+# chains later on; the core must move its jump rules back.
+iptables -I OUTPUT 1 -m comment --comment pm-smoke -j ACCEPT
+waited=0
+until iptables -S OUTPUT | sed -n 2p | grep -q PORTMASTER-FILTER || ((waited >= 90)); do
+	sleep 5
+	((waited += 5))
+done
+check "jump rule moved back to the top of filter OUTPUT (${waited}s)" bash -c "iptables -S OUTPUT | sed -n 2p | grep -q PORTMASTER-FILTER"
+iptables -D OUTPUT -m comment --comment pm-smoke -j ACCEPT
+
 step "Load"
 load_pids=()
 for i in $(seq 1 40); do
@@ -219,8 +238,9 @@ if start_core; then
 	else
 		echo "  info: no rules left after a crash"
 	fi
+	"$CORE" boot-guard >>"$LOG" 2>&1
 	"$CORE" recover-iptables >>"$LOG" 2>&1
-	check "recover-iptables removes the rules" bash -c '! { iptables-save | grep -q PORTMASTER; }'
+	check "recover-iptables removes the rules and the boot guard" bash -c '! { iptables-save; ip6tables-save; } | grep -q PORTMASTER'
 	check "https://$ALLOWED reachable after recovery" https_ok "$ALLOWED"
 else
 	fail "portmaster-core restarts with existing data"

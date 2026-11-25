@@ -216,6 +216,11 @@ func activateNfqueueFirewall() error {
 		}
 	}
 
+	// The Portmaster rules are in place, the boot guard is not needed anymore.
+	if removeBootGuard() {
+		log.Infof("interception: removed the boot guard, the firewall rules are in place")
+	}
+
 	if err := nfq.InitNFCT(); err != nil {
 		return err
 	}
@@ -255,6 +260,10 @@ func DeactivateNfqueueFirewall() error {
 			result = multierror.Append(result, err)
 		}
 	}
+
+	// Also remove the boot guard, e.g. with recover-iptables when the core
+	// cannot start.
+	removeBootGuard()
 
 	_ = nfq.DeleteAllMarkedConnection()
 	nfq.TeardownNFCT()
@@ -490,30 +499,62 @@ func StartNfqueueInterception(packets chan<- packet.Packet) (err error) {
 	})
 
 	// Safety check: ensure Portmaster's iptables jump rules remain at the top of their chains.
-	// During system boot, other services may insert their own iptables rules, potentially
-	// displacing Portmaster's rules and causing traffic to bypass the firewall.
-	// The check runs a few times after startup with increasing delays to cover this window.
-	// A continuous periodic check is intentionally avoided - it would not react immediately
-	// to rule changes anyway, and the overhead is not justified after the boot stage.
+	// Other software may insert its own rules before them, e.g. during boot or
+	// when Docker or a VPN client (re)starts, so that traffic would bypass the
+	// firewall. The check runs a few times after startup with increasing
+	// delays to cover the boot stage, then every ruleOrderCheckInterval.
 	// TODO: consider a more reactive approach using netlink to detect iptables changes in real time.
-	module.mgr.Go("iptables rule order maintenance (startup)", func(w *mgr.WorkerCtx) error {
-		for _, d := range []time.Duration{5 * time.Second, 10 * time.Second, 30 * time.Second} {
-			select {
-			case <-time.After(d):
-			case <-w.Done():
-				return nil
-			case <-shutdownSignal:
-				return nil
-			}
-			if updatedRules, err := ensureJumpRulesAtTop(); err != nil {
-				log.Errorf("interception: failed to ensure iptables jump rules at top: %v", err)
-			} else if len(updatedRules) > 0 {
-				log.Warningf("interception: the following iptables rules were found out of position and have been reinserted at the top of their chains: %v", updatedRules)
-			}
-		}
-		return nil
+	module.mgr.Go("iptables rule order maintenance", func(w *mgr.WorkerCtx) error {
+		return maintainRuleOrder(w, ruleOrderCheckDelays, ruleOrderCheckInterval)
 	})
 
+	return nil
+}
+
+var (
+	// ruleOrderCheckDelays are the delays of the rule order checks after the
+	// start, which cover the boot stage.
+	ruleOrderCheckDelays = []time.Duration{5 * time.Second, 10 * time.Second, 30 * time.Second}
+	// ruleOrderCheckInterval is the interval of the rule order checks after
+	// the boot stage. A check runs a few iptables commands.
+	ruleOrderCheckInterval = 30 * time.Second
+)
+
+// maintainRuleOrder runs ensureJumpRulesAtTop after each of the delays and
+// then every interval, until the interception stops.
+func maintainRuleOrder(w *mgr.WorkerCtx, delays []time.Duration, interval time.Duration) error {
+	check := func() {
+		updatedRules, err := ensureJumpRulesAtTop()
+		switch {
+		case err != nil:
+			log.Errorf("interception: failed to ensure iptables jump rules at top: %v", err)
+		case len(updatedRules) > 0:
+			log.Warningf("interception: the following iptables rules were found out of position and have been reinserted at the top of their chains: %v", updatedRules)
+		}
+	}
+
+	stop := shutdownSignal
+	wait := func(d time.Duration) bool {
+		timer := time.NewTimer(d)
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+			return true
+		case <-w.Done():
+		case <-stop:
+		}
+		return false
+	}
+
+	for _, d := range delays {
+		if !wait(d) {
+			return nil
+		}
+		check()
+	}
+	for wait(interval) {
+		check()
+	}
 	return nil
 }
 

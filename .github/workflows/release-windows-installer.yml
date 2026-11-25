@@ -264,6 +264,8 @@ jobs:
           dpkg-deb --info $B/deb/*.deb
           dpkg-deb --contents $B/deb/*.deb | grep -E 'usr/lib/portmaster/portmaster-core|portmaster.service|usr/bin/portmaster'
           rpm -qpl $B/rpm/*.rpm | grep -E 'usr/lib/portmaster/portmaster-core|portmaster.service|usr/bin/portmaster'
+          dpkg-deb --contents $B/deb/*.deb | grep -q 'portmaster-boot-guard.service'
+          rpm -qpl $B/rpm/*.rpm | grep -q 'portmaster-boot-guard.service'
 
       - name: Collect assets
         env:

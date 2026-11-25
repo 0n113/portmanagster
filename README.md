@@ -86,8 +86,13 @@ sudo systemctl start portmaster                     # first install only
   their own DNS servers (e.g. Docker) are only matched by IP, country and ASN. Turn it off with
   Settings → Advanced → "Filter Forwarded Traffic". If the core is down, forwarded traffic is
   dropped like local traffic.
-- At boot, services that start after `network.target` (sshd, ...) wait until the core has set its
-  rules; NetworkManager itself may bring the network up a few seconds earlier.
+- At boot, `portmaster-boot-guard.service` blocks the network (except loopback, DHCP and ICMPv6)
+  before it is configured, until the core has set its rules. If the core cannot start, the
+  network stays blocked: remove the rules with
+  `sudo /usr/lib/portmaster/portmaster-core --recover-iptables`, or turn the guard off with
+  `sudo systemctl mask portmaster-boot-guard.service`.
+- The core checks every 30 seconds that its rules are still first in their chains and moves them
+  back if other software (Docker, VPN clients) put rules before them.
 - Removing the package deletes the settings and the history in `/var/lib/portmaster`.
 - Upgrade: install the new package the same way (`sudo dnf install ./portmasterpro_X.x86_64.rpm`).
   The settings stay. rpm sorts `0.2.0-rc1` above `0.2.0`; from rc1, upgrade straight to 0.3.3 or

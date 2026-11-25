@@ -7,6 +7,13 @@ pre-releases carry a `-rcN` suffix.
 
 ## [Unreleased]
 
+### Security
+- Linux: `portmaster-boot-guard.service` blocks the network from early boot until the core has
+  set its rules. Before, NetworkManager could bring the network up a few seconds earlier and
+  apps connected unfiltered. `recover-iptables` also removes the guard.
+- Linux: the core checks every 30 seconds, not only during the first 45 seconds, that its rules
+  are first in their chains, and moves them back if other software put rules before them.
+
 ## [0.3.3] - 2026-11-25
 
 ### Added
