@@ -7,6 +7,8 @@ pre-releases carry a `-rcN` suffix.
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-11-25
+
 ### Security
 - Linux: `portmaster-boot-guard.service` blocks the network from early boot until the core has
   set its rules. Before, NetworkManager could bring the network up a few seconds earlier and
