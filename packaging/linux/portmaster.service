@@ -7,6 +7,9 @@ After=systemd-networkd.service
 Conflicts=shutdown.target
 Conflicts=firewalld.service
 Wants=nss-lookup.target
+# Blocks the network from early boot until the core has set its rules.
+Wants=portmaster-boot-guard.service
+After=portmaster-boot-guard.service
 
 [Service]
 # The core reports ready (sd_notify) once its firewall rules are in place, so

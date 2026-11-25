@@ -60,6 +60,7 @@
         "files": {
           // Service file
           "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
+          "/usr/lib/systemd/system/portmaster-boot-guard.service": "../../../packaging/linux/portmaster-boot-guard.service",
 
           // Binary files
           "/usr/lib/portmaster/portmaster-core": "binary/portmaster-core",
@@ -94,6 +95,7 @@
         "files": {
           // Service file
           "/usr/lib/systemd/system/portmaster.service": "../../../packaging/linux/portmaster.service",
+          "/usr/lib/systemd/system/portmaster-boot-guard.service": "../../../packaging/linux/portmaster-boot-guard.service",
 
           // Binary files
           "/usr/lib/portmaster/portmaster-core": "binary/portmaster-core",

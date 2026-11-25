@@ -1,0 +1,17 @@
+[Unit]
+Description=Portmaster boot guard: no network until the Portmaster has set its rules
+Documentation=https://github.com/0n113/portmasterpro
+# Runs before the network is configured. portmaster.service pulls it in and
+# removes its rules once its own rules are in place; recover-iptables removes
+# them, too. Disable it with: systemctl mask portmaster-boot-guard.service
+DefaultDependencies=no
+After=local-fs.target
+Before=network-pre.target shutdown.target
+Wants=network-pre.target
+Conflicts=shutdown.target
+ConditionPathExists=/usr/lib/portmaster/portmaster-core
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/portmaster/portmaster-core boot-guard
