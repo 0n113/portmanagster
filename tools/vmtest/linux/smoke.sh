@@ -41,7 +41,8 @@ core_pid=""
 
 start_core() {
 	"$CORE" --data-dir "$DATA" --log-stdout --log info \
-		--allowed-clients "$(realpath "$(command -v curl)")" >>"$LOG" 2>&1 &
+		--allowed-clients "$(realpath "$(command -v curl)")" \
+		--allowed-clients "$CORE" >>"$LOG" 2>&1 &
 	core_pid=$!
 	local waited=0
 	until api_ready >/dev/null 2>&1; do
@@ -180,6 +181,22 @@ if [[ "$code" == 403 || "$code" == 401 ]]; then pass "API denies an unauthorized
 # the prompt; without the process (safing/portmaster#2302 B1) it fails at once.
 auth_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$API/app/auth?app-name=vmtest&read=user&write=user&ttl=1h")
 if [[ "$auth_code" == 000 ]]; then pass "app/auth identifies the caller and waits for the prompt"; else fail "app/auth identifies the caller and waits for the prompt (got HTTP $auth_code)"; fi
+
+step "Settings sync"
+# The settings and profile commands of portmaster-core, used by Ansible and
+# RMM tools. The test binary is not in /usr/lib/portmaster, so it is allowed
+# by --allowed-clients; a copy elsewhere must be denied.
+check "settings export (json)" bash -c "'$CORE' settings export --format json -o '$WORK/settings.json' && jq -e '.type == \"settings\"' '$WORK/settings.json'"
+printf 'type: settings\nconfig:\n  filter:\n    askTimeout: 33\n' >"$WORK/import.yaml"
+check "settings import --validate leaves the value" bash -c "'$CORE' settings import --validate '$WORK/import.yaml' && ! '$CORE' settings export --format json --key filter/askTimeout | jq -e '.config.filter.askTimeout == 33'"
+check "settings import sets the value" bash -c "'$CORE' settings import '$WORK/import.yaml' && '$CORE' settings export --format json --key filter/askTimeout | jq -e '.config.filter.askTimeout == 33'"
+check "settings import without --reset keeps other settings" bash -c "printf 'type: settings\nconfig:\n  filter:\n    askWithSystemNotifications: false\n' | '$CORE' settings import - && '$CORE' settings export --format json | jq -e '.config.filter.askTimeout == 33 and .config.filter.askWithSystemNotifications == false'"
+check "settings import from stdin (json)" bash -c "echo '{\"type\":\"settings\",\"config\":{\"filter\":{\"askTimeout\":44}}}' | '$CORE' settings import - && '$CORE' settings export --key filter/askTimeout | grep -q 'askTimeout: 44'"
+check "settings import rejects unknown keys" bash -c "! printf 'type: settings\nconfig:\n  nope:\n    nothing: 1\n' | '$CORE' settings import -"
+check "settings import --reset restores the default" bash -c "'$CORE' settings import --reset '$WORK/settings.json' && ! '$CORE' settings export --format json --key filter/askTimeout | jq -e '.config.filter.askTimeout == 44'"
+check "profile export of a special profile" bash -c "'$CORE' profile export local/_forwarded --format json | jq -e '.type == \"profile\"'"
+cp "$CORE" "$WORK/other-core"
+check "a copy outside the allowed paths is denied" bash -c "! '$WORK/other-core' settings export"
 
 step "Rule order"
 # Software like Docker or a VPN client inserts its rules at the top of the

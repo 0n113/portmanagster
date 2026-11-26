@@ -1,6 +1,6 @@
 name: Upstream Sync
 
-# Checks safing/portmaster `development` for new commits and opens a pull request into the
+# Checks 0n113/portmasterpro `development` for new commits and opens a pull request into the
 # fork mainline so upstream fixes are reviewed and merged regularly.
 # Runs weekly; can be triggered manually. Needs "Allow GitHub Actions to create and approve
 # pull requests" enabled in the repository settings (Settings → Actions → General).
@@ -15,7 +15,7 @@ permissions:
   pull-requests: write
 
 env:
-  UPSTREAM_REPO: https://github.com/safing/portmaster.git
+  UPSTREAM_REPO: https://github.com/0n113/portmasterpro.git
   UPSTREAM_BRANCH: development
   TARGET_BRANCH: development
 
@@ -53,10 +53,10 @@ jobs:
           git push -f origin "$BRANCH"
           if gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --base "$TARGET_BRANCH" --json number --jq 'length' | grep -q '^0$'; then
             {
-              echo "Upstream \`safing/portmaster:$UPSTREAM_BRANCH\` has ${{ steps.diff.outputs.new }} new commit(s) up to \`$UPSTREAM_SHA\`."
+              echo "Upstream \`0n113/portmasterpro:$UPSTREAM_BRANCH\` has ${{ steps.diff.outputs.new }} new commit(s) up to \`$UPSTREAM_SHA\`."
               echo
               echo "Merge checklist:"
-              echo "- [ ] conflicts resolved (typical: \`Cargo.toml\` version, \`service/instance.go\`; upstream changes under \`spn/\` are dropped, the fork removed SPN)"
+              echo "- [ ] conflicts resolved"
               echo "- [ ] no SPN/account references re-introduced into \`service/\` (CI guard)"
               echo "- [ ] all workflows green"
               echo
