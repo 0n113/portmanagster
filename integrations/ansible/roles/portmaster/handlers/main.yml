@@ -1,0 +1,5 @@
+---
+- name: Restart portmaster
+  ansible.builtin.systemd:
+    name: portmaster.service
+    state: restarted

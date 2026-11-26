@@ -12,6 +12,7 @@ import (
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/log"
 	_ "github.com/safing/portmaster/service/core"
+	"github.com/safing/portmaster/service/firewall/interception"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netquery"
 	"github.com/safing/portmaster/service/network"
@@ -66,6 +67,11 @@ func (f *Firewall) Stop() error {
 }
 
 func prep() error {
+	err := registerStatusAPI()
+	if err != nil {
+		return err
+	}
+
 	network.SetDefaultFirewallHandler(defaultFirewallHandler, defaultLockFreeFirewallHandler)
 
 	// Reset connections every time configuration changes
@@ -151,4 +157,8 @@ type instance interface {
 	Network() *network.Network
 	NetQuery() *netquery.NetQuery
 	Resolver() *resolver.ResolverModule
+	IntelUpdates() *updates.Updater
+	Interception() *interception.Interception
+	GetStates() []mgr.StateUpdate
+	Ready() bool
 }

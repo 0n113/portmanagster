@@ -1,0 +1,30 @@
+---
+# Writes the sshd profile to the managed directory. Sets
+# _portmaster_ssh_profile_changed; importing is up to the caller, because on
+# the first start it must run in the same job as the start of the service.
+- name: Find the path of sshd
+  ansible.builtin.shell: |
+    set -e
+    p=$(command -v sshd || true)
+    [ -n "$p" ] || for c in /usr/sbin/sshd /usr/bin/sshd; do [ -x "$c" ] && p=$c && break; done
+    [ -n "$p" ] && readlink -f "$p"
+  register: _portmaster_sshd_which
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Write the sshd profile
+  ansible.builtin.template:
+    src: ssh-profile.yaml.j2
+    dest: "{{ portmaster_managed_dir }}/ssh-profile.yaml"
+    owner: root
+    mode: "0600"
+  vars:
+    _portmaster_sshd_path: "{{ _portmaster_sshd_which.stdout | trim }}"
+  register: _portmaster_ssh_profile_file
+  when: _portmaster_sshd_which.rc == 0 and (_portmaster_sshd_which.stdout | trim | length > 0)
+
+- name: Note whether the sshd profile must be imported
+  ansible.builtin.set_fact:
+    _portmaster_ssh_profile_changed: "{{ _portmaster_ssh_profile_file is changed }}"
+    _portmaster_ssh_profile_present: "{{ _portmaster_ssh_profile_file is not skipped }}"

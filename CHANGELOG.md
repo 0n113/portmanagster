@@ -12,6 +12,15 @@ pre-releases carry a `-rcN` suffix.
   and import the global settings and app profiles of the running Portmaster from the command
   line, for Ansible, Salt and other remote administration tools. See
   [docs/central-management.md](docs/central-management.md).
+- `portmaster-core status` shows the health of the running Portmaster as JSON (version, all
+  modules running, interception active, filter list age, module warnings and errors).
+  `status --check` prints one line and exits 0/1/2/3 (OK, warning, critical, unknown) for
+  Nagios, Icinga, Zabbix and RMM tools. API endpoint `core/status`.
+- Ansible role in `integrations/ansible/`: install the package, apply settings and profiles
+  idempotently, check the health and back up the settings. It imports a profile for sshd that
+  allows incoming SSH from the LAN, so the Portmaster does not lock Ansible out.
+- Salt state in `integrations/salt/` and scripts for RMM and monitoring tools (Tactical RMM,
+  MeshCentral, Zabbix, Icinga/Nagios, Wazuh) in `integrations/rmm/`, for Linux and Windows.
 
 ### Fixed
 - Importing global settings without "reset" replaced all settings: settings missing from the

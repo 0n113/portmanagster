@@ -198,6 +198,13 @@ check "profile export of a special profile" bash -c "'$CORE' profile export loca
 cp "$CORE" "$WORK/other-core"
 check "a copy outside the allowed paths is denied" bash -c "! '$WORK/other-core' settings export"
 
+step "Status"
+check "status reports ready and interception active" bash -c "'$CORE' status | jq -e '.ready and .interception and .filtering and (.problems | type == \"array\")'"
+status_line=$("$CORE" status --check --max-intel-age 0)
+status_rc=$?
+echo "  $status_line"
+if [[ $status_rc -le 1 && "$status_line" =~ ^(OK|WARNING): ]]; then pass "status --check is OK or WARNING (rc $status_rc)"; else fail "status --check is OK or WARNING (rc $status_rc)"; fi
+
 step "Rule order"
 # Software like Docker or a VPN client inserts its rules at the top of the
 # chains later on; the core must move its jump rules back.
@@ -243,6 +250,9 @@ rc=$?
 if ((rc == 0)); then pass "exit code 0"; else fail "exit code $rc"; fi
 check "interception rules removed" bash -c '! { iptables-save | grep -q PORTMASTER; }'
 check "https://$ALLOWED reachable without Portmaster" https_ok "$ALLOWED"
+"$CORE" status --check >/dev/null 2>&1
+rc=$?
+if ((rc == 3)); then pass "status --check is UNKNOWN when stopped"; else fail "status --check is UNKNOWN when stopped (rc $rc)"; fi
 
 step "Crash recovery"
 write_config ""
