@@ -23,3 +23,9 @@ Notes:
 - Settings are merged unless `settings_reset: True`. Only keys in the pillar are managed.
 - The rendered file contains no `_jess-checksum`; do not add one.
 - Use `state.apply portmaster test=True` to preview; the import runs only when the file changes.
+- After starting the service, `portmaster-ready` waits up to 180s until `portmaster-core status`
+  reports `ready`; the settings import and the health check run only after that.
+- The health check (`status --check`, exit 0 or 1 is success) runs on every apply and so is
+  always reported as changed.
+- Tested with Salt 3007 (`salt-call --local`) on Fedora 45: first apply, repeated apply (only
+  the health check reports a change) and apply with the service stopped.

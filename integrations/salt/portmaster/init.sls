@@ -26,6 +26,21 @@ portmaster-service:
     - require:
       - pkg: portmaster-pkg
 
+# The core needs some seconds after the start until its API answers and it is
+# ready; the settings import and the status check need that.
+portmaster-ready:
+  cmd.run:
+    - name: |
+        for i in $(seq 1 90); do
+          {{ pm.get('core_path', '/usr/lib/portmaster/portmaster-core') }} status 2>/dev/null | grep -q '"ready":true' && exit 0
+          sleep 2
+        done
+        echo "Portmaster is not ready after 180s"
+        exit 1
+    - require:
+      - service: portmaster-service
+    - unless: {{ pm.get('core_path', '/usr/lib/portmaster/portmaster-core') }} status 2>/dev/null | grep -q '"ready":true'
+
 include:
   - .settings
   - .status
