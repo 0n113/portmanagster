@@ -69,6 +69,28 @@ Critical: not all modules running, interception not active, or a module reports 
 Warning: filtering is off, a module reports a warning, or the filter lists are older than
 `--max-intel-age` (0 turns this check off). The API endpoint behind it is `core/status`.
 
+## Connection history
+
+```bash
+# Connections of the last hour as JSON lines (one connection per line, oldest first).
+sudo /usr/lib/portmaster/portmaster-core connections --since 1h
+# Only blocked, dropped and failed connections.
+sudo /usr/lib/portmaster/portmaster-core connections --since 1h --blocked
+# Periodic export: each run prints only connections not printed before.
+sudo /usr/lib/portmaster/portmaster-core connections --cursor /var/lib/portmaster/connections-export.cursor
+```
+
+Each line has the computer (`host`), the app (`app`, `path`, `pid`), the destination
+(`domain`, `remoteIP`, `remotePort`, `country`, `asn`), the `verdict`, the `reason` and the
+filter lists that blocked it (`filterLists`). With `--cursor`, each run queries the last two
+minutes again, because the Portmaster saves some connections with a delay, and skips the ones
+it already exported. By default it reads the recent connections the Portmaster keeps in memory;
+`--history` also searches the network history, if it is enabled.
+
+[integrations/siem/](../integrations/siem/README.md) runs the export every minute into
+`/var/log/portmaster/connections.json` and has the Wazuh rules. The log contains every domain the
+computer connects to; restrict access to it and keep it only as long as needed.
+
 ## Remote access
 
 The Portmaster blocks incoming connections by default. Tools whose agent connects out to a

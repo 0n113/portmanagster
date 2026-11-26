@@ -15,9 +15,11 @@ command as root can manage the Portmaster with it.
 - Done: Ansible role in `integrations/ansible/` (install, settings, profiles, health check,
   settings backup).
 - Done: `portmaster-core status` and `status --check` with monitoring exit codes.
-- Ansible collection on Galaxy.
-- Salt state and examples for MeshCentral and Tactical RMM scripts.
-- Read-only export of connection history for the tools below.
+- Done: Salt state and scripts for Tactical RMM, MeshCentral, Zabbix, Icinga/Nagios and Wazuh
+  (`integrations/salt/`, `integrations/rmm/`).
+- Done: `portmaster-core connections`, a read-only export of the connection history as JSON
+  lines, with a cursor for periodic export.
+- Open: Ansible collection on Galaxy.
 
 ## Step 2: network-wide monitoring of malware connections
 
@@ -25,10 +27,11 @@ The Portmaster sees which app on which computer connects where, and which connec
 lists (malware, phishing, trackers) block. Sent to a central place, this shows infected
 computers early.
 
-- Export of connection events as JSON lines (syslog or file), with computer, app, destination,
-  verdict and the matching filter list.
-- Integration with an existing SIEM/EDR instead of an own analysis: Wazuh (decoder and rules),
-  Graylog, Elastic, Loki.
+- Done: export of connection events as JSON lines to a file (systemd timer), with computer, app,
+  destination, verdict, reason and the matching filter lists (`integrations/siem/`).
+- Done, not yet tested on a Wazuh server: Wazuh agent config and rules; snippets for
+  Fluent Bit, Loki, Filebeat and Graylog.
+- Open: syslog output, testing the Wazuh rules with wazuh-logtest, dashboards.
 - Alerts for blocked connections to malware domains, new apps with network access, and many
   denied connections from one app.
 

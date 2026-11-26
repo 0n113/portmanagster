@@ -21,6 +21,12 @@ pre-releases carry a `-rcN` suffix.
   allows incoming SSH from the LAN, so the Portmaster does not lock Ansible out.
 - Salt state in `integrations/salt/` and scripts for RMM and monitoring tools (Tactical RMM,
   MeshCentral, Zabbix, Icinga/Nagios, Wazuh) in `integrations/rmm/`, for Linux and Windows.
+- `portmaster-core connections` exports the connection history as JSON lines (computer, app,
+  destination, verdict, reason, filter lists). `--cursor FILE` exports each connection once
+  across runs, for periodic export; `--blocked` exports only blocked connections.
+- `integrations/siem/`: systemd timer and logrotate config for the export, Wazuh agent config
+  and rules (blocks by malware lists, many blocks from one app, status check), and snippets for
+  Fluent Bit, Loki, Filebeat and Graylog.
 
 ### Fixed
 - Importing global settings without "reset" replaced all settings: settings missing from the

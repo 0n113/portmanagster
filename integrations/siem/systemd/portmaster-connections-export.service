@@ -1,0 +1,16 @@
+[Unit]
+Description=Export Portmaster connections as JSON lines (for SIEM shipping)
+Documentation=file:///usr/share/doc/portmaster/siem/README.md
+After=portmaster.service
+Wants=portmaster.service
+
+[Service]
+Type=oneshot
+# Add --blocked to ExecStart to export only blocked connections (less data).
+# /var/log/portmaster must exist before systemd opens the output file below;
+# tmpfiles/portmaster-connections.conf creates it.
+ExecStart=/usr/lib/portmaster/portmaster-core connections --cursor /var/lib/portmaster/connections-export.cursor
+# The cursor makes every run export only new connections; append to the log.
+# The file is reopened on every run, so plain logrotate rotation is safe.
+StandardOutput=append:/var/log/portmaster/connections.json
+UMask=0077
