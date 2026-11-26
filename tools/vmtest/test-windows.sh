@@ -39,7 +39,7 @@ fi
 if [[ "$what" == smoke || "$what" == all ]]; then
 	log "building portmaster-core.exe"
 	(cd "$VMTEST_REPO" && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 "$(go_bin)" build -o "$results/portmaster-core.exe" ./cmds/portmaster-core)
-	vm_scp "$WINDOWS_SSH_PORT" "$WINDOWS_USER" "$results/portmaster-core.exe" "$VMTEST_REPO/tools/vmtest/windows/smoke.ps1" "$VMTEST_REPO/tools/vmtest/windows/smoke-task.ps1" 'C:/vmtest/'
+	vm_scp "$WINDOWS_SSH_PORT" "$WINDOWS_USER" "$results/portmaster-core.exe" "$VMTEST_REPO/tools/vmtest/windows/smoke.ps1" "$VMTEST_REPO/tools/vmtest/windows/smoke-task.ps1" "$VMTEST_REPO/integrations/rmm/windows/portmaster-check.ps1" 'C:/vmtest/'
 	# WINDOWS_CORE_DLL: test this core DLL instead of the downloaded one.
 	vm_ssh "$WINDOWS_SSH_PORT" "$WINDOWS_USER" 'Remove-Item C:\vmtest\portmaster-core.dll -ErrorAction SilentlyContinue' || true
 	if [[ -n "${WINDOWS_CORE_DLL:-}" ]]; then
