@@ -7,6 +7,16 @@ pre-releases carry a `-rcN` suffix.
 
 ## [Unreleased]
 
+### Added
+- `portmaster-core settings export|import` and `portmaster-core profile export|import`: export
+  and import the global settings and app profiles of the running Portmaster from the command
+  line, for Ansible, Salt and other remote administration tools. See
+  [docs/central-management.md](docs/central-management.md).
+
+### Fixed
+- Importing global settings without "reset" replaced all settings: settings missing from the
+  import were set back to their defaults. They now stay; "reset" replaces all settings.
+
 ## [0.3.4] - 2026-11-25
 
 ### Security

@@ -65,7 +65,8 @@ func main() {
 	rootCmd.Flags().AddGoFlagSet(flag.CommandLine)
 
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		// Stderr, so that an error does not end up in an export on stdout.
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -238,7 +239,11 @@ func ImportSettings(r *SettingsImportRequest) (*ImportResult, error) {
 			return result, nil
 		}
 
-		// Import to global config.
+		// Import to global config. ReplaceConfig replaces all settings, so
+		// keep the current ones unless a reset was requested.
+		if !r.Reset {
+			settings = mergeWithGlobalSettings(settings)
+		}
 		vErrs, restartRequired := config.ReplaceConfig(settings)
 		if len(vErrs) > 0 {
 			s := make([]string, 0, len(vErrs))
@@ -304,6 +309,32 @@ func ImportSettings(r *SettingsImportRequest) (*ImportResult, error) {
 	}
 
 	return result, nil
+}
+
+// mergeWithGlobalSettings returns the global settings the user has set,
+// overlaid with the given flat settings.
+func mergeWithGlobalSettings(settings map[string]any) map[string]any {
+	return mergeSettings(globalUserSettings(), settings)
+}
+
+// globalUserSettings returns the flat global settings the user has set.
+func globalUserSettings() map[string]any {
+	current := make(map[string]any)
+	_ = config.ForEachOption(func(option *config.Option) error {
+		if v := option.UserValue(); v != nil {
+			current[option.Key] = v
+		}
+		return nil
+	})
+	return current
+}
+
+// mergeSettings returns a new map with current, overlaid with settings.
+func mergeSettings(current, settings map[string]any) map[string]any {
+	merged := make(map[string]any, len(current)+len(settings))
+	maps.Copy(merged, current)
+	maps.Copy(merged, settings)
+	return merged
 }
 
 func checkSettings(settings map[string]any) (result *ImportResult, globalOnlySettingFound bool, err error) {

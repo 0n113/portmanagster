@@ -1,4 +1,12 @@
-# portmasterpro
+# portmanagster
+
+Central management for [portmasterpro](https://github.com/0n113/portmasterpro): manage the
+Portmaster on all computers of a network from one place, with the remote administration tools
+you already use. See [docs/central-management.md](docs/central-management.md) and the
+[roadmap](docs/ROADMAP.md). The rest of this README describes portmasterpro, which this
+project builds on.
+
+## portmasterpro
 
 A fork of the application firewall [Portmaster](https://github.com/safing/portmaster) by Safing,
 **without SPN, Safing accounts, subscriptions or telemetry**. The features that upstream sells
@@ -106,8 +114,8 @@ sudo systemctl start portmaster                     # first install only
 
 ## Repository
 
-- `development` is the main branch. A weekly workflow opens a pull request when upstream
-  `safing/portmaster:development` has new commits.
+- `development` is the main branch. A weekly workflow opens a pull request when
+  `0n113/portmasterpro:development` has new commits.
 - `release-candidate/*` branches are frozen release candidates.
 - Changes go in by pull request; CI must be green before merging.
 
