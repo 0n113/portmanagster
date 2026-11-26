@@ -1,0 +1,24 @@
+---
+- name: Manage Portmaster
+  hosts: portmaster
+  become: true
+  roles:
+    - role: portmaster
+      vars:
+        portmaster_install: true
+        portmaster_package_rpm: https://example.org/portmaster/portmaster.rpm
+        portmaster_package_deb: https://example.org/portmaster/portmaster.deb
+        portmaster_backup: true
+        portmaster_settings:
+          filter:
+            askTimeout: 33
+            lists: [TRAC, MAL]
+          dns:
+            nameservers:
+              - dot://dns.quad9.net?ip=9.9.9.9&name=Quad9
+        portmaster_profiles:
+          - files/profiles/browser.yaml
+  post_tasks:
+    - name: Show the Portmaster status
+      ansible.builtin.debug:
+        msg: "Portmaster {{ portmaster_status.version }}, filtering={{ portmaster_status.filtering }}"

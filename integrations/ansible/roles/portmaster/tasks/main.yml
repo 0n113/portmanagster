@@ -1,0 +1,57 @@
+---
+- name: Create the directory for managed files
+  ansible.builtin.file:
+    path: "{{ portmaster_managed_dir }}"
+    state: directory
+    owner: root
+    mode: "0700"
+
+- name: Write the sshd profile
+  ansible.builtin.include_tasks: ssh_profile.yml
+  when: portmaster_ssh_access | bool
+
+- name: Install and start Portmaster
+  ansible.builtin.include_tasks: install.yml
+  when: portmaster_install | bool
+
+- name: Wait until Portmaster is ready
+  ansible.builtin.include_tasks: wait.yml
+
+- name: Import the sshd profile
+  when:
+    - portmaster_ssh_access | bool
+    - _portmaster_ssh_profile_changed | default(false) | bool
+  block:
+    - name: Import the sshd profile
+      ansible.builtin.command:
+        argv: ["{{ portmaster_core_path }}", profile, import, --allow-replace, "{{ portmaster_managed_dir }}/ssh-profile.yaml"]
+  rescue:
+    # Without the file, the next run writes and imports it again.
+    - name: Remove the sshd profile file after a failed import
+      ansible.builtin.file:
+        path: "{{ portmaster_managed_dir }}/ssh-profile.yaml"
+        state: absent
+    - name: Fail after the failed import
+      ansible.builtin.fail:
+        msg: "Importing the sshd profile failed: {{ ansible_failed_result.stderr | default('') }}"
+
+- name: Back up settings
+  ansible.builtin.include_tasks: backup.yml
+  when: portmaster_backup | bool
+
+- name: Apply settings
+  ansible.builtin.include_tasks: settings.yml
+  when: (portmaster_settings | length > 0) or (portmaster_settings_reset | bool)
+
+- name: Import profiles
+  ansible.builtin.include_tasks: profiles.yml
+  when: portmaster_profiles | length > 0
+
+- name: Run pending restarts
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait again after a possible restart
+  ansible.builtin.include_tasks: wait.yml
+
+- name: Check health
+  ansible.builtin.include_tasks: health.yml

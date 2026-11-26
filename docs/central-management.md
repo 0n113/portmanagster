@@ -56,7 +56,37 @@ config:
       - dot://dns.quad9.net?ip=9.9.9.9&name=Quad9
 ```
 
-## Ansible example
+## Health check
+
+```bash
+# Health as JSON: version, all modules running, interception active, filter list age, problems.
+sudo /usr/lib/portmaster/portmaster-core status
+# One line and a monitoring exit code: 0 OK, 1 warning, 2 critical, 3 unknown (not running).
+sudo /usr/lib/portmaster/portmaster-core status --check --max-intel-age 336h
+```
+
+Critical: not all modules running, interception not active, or a module reports an error.
+Warning: filtering is off, a module reports a warning, or the filter lists are older than
+`--max-intel-age` (0 turns this check off). The API endpoint behind it is `core/status`.
+
+## Remote access
+
+The Portmaster blocks incoming connections by default. Tools whose agent connects out to a
+server (Salt minion, MeshCentral, Tactical RMM, Wazuh) keep working. Tools that connect in,
+like Ansible over SSH, need a rule for sshd. The Ansible role imports one by default, allowing
+SSH from the LAN only. Note the path: `/usr/bin/sshd` on current Fedora (tested on 45; sbin is merged into bin),
+`/usr/sbin/sshd` on Debian; a profile with the wrong path does not apply.
+
+Ready-made integrations are in [integrations/](../integrations/README.md): the Ansible role, a
+Salt state, and scripts for RMM and monitoring tools (Linux shell and PowerShell).
+
+## Ansible
+
+The role in [integrations/ansible/roles/portmaster](../integrations/ansible/roles/portmaster/README.md)
+installs Portmaster, applies settings and profiles idempotently, backs up settings and checks the
+health (`portmaster-core status --check`); see its
+[example playbook](../integrations/ansible/example-playbook.yml). Without the role, a minimal
+task list looks like this:
 
 ```yaml
 - hosts: portmaster

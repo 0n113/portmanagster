@@ -1,0 +1,44 @@
+---
+- name: Back up the settings to the controller
+  block:
+    - name: Create a temp file for the export
+      ansible.builtin.tempfile:
+        state: file
+        prefix: portmaster-backup.
+        suffix: .yaml
+      register: _portmaster_backup_tmp
+      check_mode: false
+      changed_when: false
+
+    - name: Export all settings
+      ansible.builtin.command:
+        argv: ["{{ portmaster_core_path }}", settings, export, -o, "{{ _portmaster_backup_tmp.path }}"]
+      changed_when: false
+      check_mode: false
+
+    - name: Fetch the export
+      ansible.builtin.fetch:
+        src: "{{ _portmaster_backup_tmp.path }}"
+        dest: "{{ _portmaster_backup_file }}"
+        flat: true
+      vars:
+        _portmaster_backup_file: >-
+          {{ portmaster_backup_dir }}/{{ inventory_hostname }}-settings-{{ now(utc=true).strftime('%Y-%m-%d') }}.yaml
+      check_mode: false
+
+    - name: Restrict the backup file on the controller
+      ansible.builtin.file:
+        path: "{{ portmaster_backup_dir }}/{{ inventory_hostname }}-settings-{{ now(utc=true).strftime('%Y-%m-%d') }}.yaml"
+        mode: "0600"
+      delegate_to: localhost
+      become: false
+      check_mode: false
+
+  always:
+    - name: Remove the export temp file
+      ansible.builtin.file:
+        path: "{{ _portmaster_backup_tmp.path }}"
+        state: absent
+      when: _portmaster_backup_tmp.path is defined
+      check_mode: false
+      changed_when: false

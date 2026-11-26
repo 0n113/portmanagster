@@ -1,0 +1,11 @@
+{#- One slash-joined key per line for every leaf of portmaster_settings. Lists are leaves. -#}
+{% macro walk(d, prefix) %}
+{% for k, v in d.items() %}
+{% if v is mapping %}
+{{ walk(v, prefix ~ k ~ '/') }}
+{% else %}
+{{ prefix ~ k }}
+{% endif %}
+{% endfor %}
+{% endmacro %}
+{{ walk(portmaster_settings, '') }}

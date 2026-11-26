@@ -1,0 +1,10 @@
+# Example pillar, e.g. /srv/pillar/portmaster.sls
+portmaster:
+  pkg_name: portmaster
+  # source: salt://files/portmaster-0.3.4.x86_64.rpm
+  # source_hash: sha256=<hash>
+  max_intel_age: 336h
+  settings_reset: False      # True = replace all settings (import --reset)
+  settings:                  # becomes the `config:` map of the settings export
+    filter:
+      askTimeout: 33

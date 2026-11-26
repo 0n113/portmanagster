@@ -1,0 +1,57 @@
+---
+# Path of the Portmaster core binary (the API only trusts calls from here).
+portmaster_core_path: /usr/lib/portmaster/portmaster-core
+
+# --- Install (optional) ---
+portmaster_install: false
+# Package to install: URL or path (on the managed host) of an rpm/deb.
+portmaster_package_url: ""
+# Per OS family; each falls back to portmaster_package_url when empty.
+portmaster_package_rpm: ""
+portmaster_package_deb: ""
+# Only for unsigned local rpm files (dnf).
+portmaster_disable_gpg_check: false
+
+# Directory on the host for the profile files the role imports. A profile is
+# imported again only when its file changes here.
+portmaster_managed_dir: /etc/portmaster/ansible
+
+# --- SSH access ---
+# The Portmaster blocks incoming connections by default, which would lock out
+# Ansible. With this on, the role imports a profile for sshd that allows
+# incoming SSH by the rules below, before the first start of the service.
+portmaster_ssh_access: true
+# Incoming rules for sshd, first match wins (filter/serviceEndpoints).
+portmaster_ssh_rules: ["+ LAN", "+ Localhost", "- *"]
+
+# --- Wait until ready ---
+portmaster_ready_retries: 30
+portmaster_ready_delay: 5
+
+# --- Settings ---
+# Nested dict, same structure as `config:` in a settings export.
+portmaster_settings: {}
+# Remove every setting that is not in portmaster_settings (--reset).
+portmaster_settings_reset: false
+# Pass --allow-unknown to the import.
+portmaster_settings_allow_unknown: false
+# Slash-joined keys compared for idempotency. Empty = derived from portmaster_settings.
+portmaster_settings_keys: []
+# Restart the service when an import reports restartRequired.
+portmaster_restart_if_required: false
+
+# --- Profiles ---
+# Profile export files on the controller (YAML or JSON).
+portmaster_profiles: []
+portmaster_profiles_allow_unknown: false
+# Import all profiles on every run, not only changed files (e.g. to undo
+# changes made in the Portmaster UI).
+portmaster_profiles_force: false
+
+# --- Health check ---
+portmaster_fail_on_critical: true
+portmaster_max_intel_age: 336h
+
+# --- Backup ---
+portmaster_backup: false
+portmaster_backup_dir: "{{ playbook_dir }}/portmaster-backups"

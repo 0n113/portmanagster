@@ -1,0 +1,21 @@
+---
+- name: Wait until portmaster-core reports ready
+  ansible.builtin.command:
+    argv: ["{{ portmaster_core_path }}", status]
+  register: _portmaster_ready
+  until: >-
+    _portmaster_ready.rc == 0 and
+    (_portmaster_ready.stdout | length > 0) and
+    ((_portmaster_ready.stdout | from_json).ready | default(false))
+  retries: "{{ portmaster_ready_retries }}"
+  delay: "{{ portmaster_ready_delay }}"
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Fail when Portmaster did not become ready
+  ansible.builtin.fail:
+    msg: "Portmaster is not ready: {{ _portmaster_ready.stdout | default('') }} {{ _portmaster_ready.stderr | default('') }}"
+  when: >-
+    _portmaster_ready.rc != 0 or
+    not ((_portmaster_ready.stdout | from_json).ready | default(false))

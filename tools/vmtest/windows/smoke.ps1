@@ -121,7 +121,7 @@ Set-Content -Path (Join-Path $Data 'config.json') -Encoding ASCII `
 Step 'Start'
 $proc = Start-Process -FilePath $Core -PassThru -WindowStyle Hidden `
     -RedirectStandardOutput $Log -RedirectStandardError "$Log.err" `
-    -ArgumentList @('--bin-dir', $Bin, '--data-dir', $Data, '--log-stdout', '--log', 'info', '--allowed-clients', $Curl)
+    -ArgumentList @('--bin-dir', $Bin, '--data-dir', $Data, '--log-stdout', '--log', 'info', '--allowed-clients', $Curl, '--allowed-clients', $Core)
 # Without querying the handle, ExitCode stays empty after WaitForExit.
 $null = $proc.Handle
 $waited = 0
@@ -183,6 +183,33 @@ if ($code -eq 403 -or $code -eq 401) { Pass "API denies an unauthorized local cl
 # the prompt; without the process (safing/portmaster#2302 B1) it fails at once.
 $authCode = & $Curl -s -o NUL -w '%{http_code}' --max-time 5 "$Api/app/auth?app-name=vmtest&read=user&write=user&ttl=1h" 2>$null
 if ($authCode -eq '000') { Pass 'app/auth identifies the caller and waits for the prompt' } else { Fail "app/auth identifies the caller and waits for the prompt (got HTTP $authCode)" }
+
+Step 'Status and settings commands'
+# portmaster-core status, settings and the RMM check script. The test binary
+# is not in the bin dir, so it is allowed by --allowed-clients.
+$statusJson = & $Core status 2>$null | Out-String
+$status = $null
+try { $status = $statusJson | ConvertFrom-Json } catch {}
+Check 'status reports ready and interception active' { $status -and $status.ready -and $status.interception -and $status.filtering }
+$checkLine = & $Core status --check --max-intel-age 0 2>$null | Out-String
+$checkRc = $LASTEXITCODE
+Write-Output "  $($checkLine.Trim())"
+Check "status --check is OK or WARNING (rc $checkRc)" { $checkRc -le 1 -and $checkLine -match '^(OK|WARNING):' }
+$CheckScript = Join-Path (Split-Path $Core) 'portmaster-check.ps1'
+if (Test-Path $CheckScript) {
+    $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $CheckScript -CorePath $Core -MaxIntelAge 0 2>$null | Out-String
+    $rc = $LASTEXITCODE
+    Check "portmaster-check.ps1 passes the exit code (rc ${rc}: $($out.Trim()))" { $rc -le 1 -and $out -match '^(OK|WARNING):' }
+    $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $CheckScript -CorePath 'C:\nonexistent\portmaster-core.exe' 2>$null | Out-String
+    Check "portmaster-check.ps1 reports UNKNOWN for a missing core (rc $LASTEXITCODE)" { $LASTEXITCODE -eq 3 }
+} else {
+    Write-Output "  info: $CheckScript not found, skipped"
+}
+$importFile = Join-Path $Work 'import.yaml'
+Set-Content -Path $importFile -Encoding ASCII -Value "type: settings`nconfig:`n  filter:`n    askTimeout: 33`n"
+& $Core settings import $importFile 2>$null | Out-Null
+Check 'settings import and export' { (& $Core settings export --format json --key filter/askTimeout 2>$null | Out-String | ConvertFrom-Json).config.filter.askTimeout -eq 33 }
+Check 'settings import keeps the endpoint rules (merge)' { (& $Core settings export --format json 2>$null | Out-String | ConvertFrom-Json).config.filter.endpoints.Count -ge 2 }
 
 Step 'Load'
 $jobs = 1..40 | ForEach-Object { Start-Process -FilePath $Curl -PassThru -WindowStyle Hidden -ArgumentList @('-s', '-o', 'NUL', '--max-time', '10', "https://$Allowed/?n=$_") }

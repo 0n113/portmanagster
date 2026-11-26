@@ -1,0 +1,91 @@
+---
+- name: Derive the settings keys to compare
+  ansible.builtin.set_fact:
+    _portmaster_export_keys: >-
+      {{ [] if (portmaster_settings_reset | bool)
+         else (portmaster_settings_keys
+               if (portmaster_settings_keys | length > 0)
+               else (lookup('ansible.builtin.template', 'settings_keys.j2') | trim).split()) }}
+
+- name: Apply settings through a root-only temp file
+  block:
+    - name: Create a temp file for the settings
+      ansible.builtin.tempfile:
+        state: file
+        prefix: portmaster-settings.
+        suffix: .yaml
+      register: _portmaster_settings_tmp
+      check_mode: false
+      changed_when: false
+
+    - name: Write the requested settings
+      ansible.builtin.copy:
+        content: "{{ lookup('ansible.builtin.template', 'settings.yaml.j2') }}"
+        dest: "{{ _portmaster_settings_tmp.path }}"
+        owner: root
+        mode: "0600"
+      check_mode: false
+      changed_when: false
+
+    - name: Validate the settings import
+      ansible.builtin.command:
+        argv: >-
+          {{ [portmaster_core_path, 'settings', 'import', '--validate', _portmaster_settings_tmp.path]
+             + (['--reset'] if (portmaster_settings_reset | bool) else [])
+             + (['--allow-unknown'] if (portmaster_settings_allow_unknown | bool) else []) }}
+      changed_when: false
+      check_mode: false
+
+    - name: Export the current values of the requested settings
+      ansible.builtin.command:
+        cmd: >-
+          {{ portmaster_core_path }} settings export --format json
+          {{ _portmaster_export_keys | map('quote') | map('regex_replace', '^', '--key ') | join(' ') }}
+      register: _portmaster_settings_current
+      changed_when: false
+      check_mode: false
+
+    - name: Compare current and requested settings
+      ansible.builtin.set_fact:
+        _portmaster_settings_cur: "{{ (_portmaster_settings_current.stdout | from_json).config | default({}, true) }}"
+
+    - name: Decide whether the settings differ
+      ansible.builtin.set_fact:
+        _portmaster_settings_differ: >-
+          {{ (_portmaster_settings_cur != portmaster_settings)
+             if (portmaster_settings_reset | bool)
+             else ((_portmaster_settings_cur | combine(portmaster_settings, recursive=True)) != _portmaster_settings_cur) }}
+
+    - name: Import the settings
+      ansible.builtin.command:
+        argv: >-
+          {{ [portmaster_core_path, 'settings', 'import', _portmaster_settings_tmp.path]
+             + (['--reset'] if (portmaster_settings_reset | bool) else [])
+             + (['--allow-unknown'] if (portmaster_settings_allow_unknown | bool) else []) }}
+      register: _portmaster_settings_import
+      when: _portmaster_settings_differ | bool
+      changed_when: true
+
+    - name: Report the settings import
+      ansible.builtin.debug:
+        msg: "Settings import result: {{ _portmaster_settings_import.stdout }}"
+      when: _portmaster_settings_import is not skipped
+
+    - name: Restart Portmaster when the import requires it
+      ansible.builtin.debug:
+        msg: "The settings import requires a restart of Portmaster."
+      changed_when: true
+      notify: Restart portmaster
+      when:
+        - portmaster_restart_if_required | bool
+        - _portmaster_settings_import is not skipped
+        - (_portmaster_settings_import.stdout | from_json).restartRequired | default(false)
+
+  always:
+    - name: Remove the settings temp file
+      ansible.builtin.file:
+        path: "{{ _portmaster_settings_tmp.path }}"
+        state: absent
+      when: _portmaster_settings_tmp.path is defined
+      check_mode: false
+      changed_when: false

@@ -1,0 +1,62 @@
+---
+# The profile files are kept in portmaster_managed_dir/profiles. A profile is
+# imported when its file there changed, or on every run with
+# portmaster_profiles_force.
+- name: Create the directory for managed profiles
+  ansible.builtin.file:
+    path: "{{ portmaster_managed_dir }}/profiles"
+    state: directory
+    owner: root
+    mode: "0700"
+
+- name: Copy the profile files to the host
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ portmaster_managed_dir }}/profiles/{{ idx + 1 }}-{{ item | basename }}"
+    owner: root
+    mode: "0600"
+  loop: "{{ portmaster_profiles }}"
+  loop_control:
+    index_var: idx
+  register: _portmaster_profile_files
+
+- name: Import the changed profiles
+  vars:
+    _portmaster_to_import: >-
+      {{ _portmaster_profile_files.results
+         if (portmaster_profiles_force | bool)
+         else (_portmaster_profile_files.results | selectattr('changed') | list) }}
+  block:
+    - name: Validate the profile imports
+      ansible.builtin.command:
+        argv: >-
+          {{ [portmaster_core_path, 'profile', 'import', '--validate', '--allow-replace', item.dest]
+             + (['--allow-unknown'] if (portmaster_profiles_allow_unknown | bool) else []) }}
+      loop: "{{ _portmaster_to_import }}"
+      loop_control:
+        label: "{{ item.dest | basename }}"
+      changed_when: false
+      check_mode: false
+
+    - name: Import the profiles
+      ansible.builtin.command:
+        argv: >-
+          {{ [portmaster_core_path, 'profile', 'import', '--allow-replace', item.dest]
+             + (['--allow-unknown'] if (portmaster_profiles_allow_unknown | bool) else []) }}
+      loop: "{{ _portmaster_to_import }}"
+      loop_control:
+        label: "{{ item.dest | basename }}"
+
+  rescue:
+    # Without the files, the next run copies and imports them again.
+    - name: Remove the profile files after a failed import
+      ansible.builtin.file:
+        path: "{{ item.dest }}"
+        state: absent
+      loop: "{{ _portmaster_to_import }}"
+      loop_control:
+        label: "{{ item.dest | basename }}"
+
+    - name: Fail after the failed import
+      ansible.builtin.fail:
+        msg: "Importing a profile failed: {{ ansible_failed_result.results | default([]) | selectattr('failed', 'defined') | selectattr('failed') | map(attribute='stderr') | list }}"

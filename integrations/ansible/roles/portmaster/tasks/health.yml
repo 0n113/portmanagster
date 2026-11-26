@@ -1,0 +1,32 @@
+---
+- name: Read the Portmaster status
+  ansible.builtin.command:
+    argv: ["{{ portmaster_core_path }}", status]
+  register: _portmaster_status_raw
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Expose the status as portmaster_status
+  ansible.builtin.set_fact:
+    portmaster_status: "{{ _portmaster_status_raw.stdout | from_json if _portmaster_status_raw.rc == 0 and _portmaster_status_raw.stdout | length > 0 else {} }}"
+
+- name: Run the status check
+  ansible.builtin.command:
+    argv: ["{{ portmaster_core_path }}", status, --check, --max-intel-age, "{{ portmaster_max_intel_age }}"]
+  register: _portmaster_check
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Warn about a Portmaster WARNING status
+  ansible.builtin.debug:
+    msg: "{{ _portmaster_check.stdout }}"
+  when: _portmaster_check.rc == 1
+
+- name: Fail on a CRITICAL or UNKNOWN Portmaster status
+  ansible.builtin.fail:
+    msg: "Portmaster status check (rc={{ _portmaster_check.rc }}): {{ _portmaster_check.stdout }} {{ _portmaster_check.stderr }}"
+  when:
+    - _portmaster_check.rc in [2, 3]
+    - portmaster_fail_on_critical | bool

@@ -1,0 +1,12 @@
+# Managed by Ansible (role portmaster). Allows incoming SSH by portmaster_ssh_rules.
+type: profile
+source: local
+name: {{ (_portmaster_sshd_path | basename | capitalize) | to_json }}
+fingerprints:
+  - type: path
+    operation: equals
+    value: {{ _portmaster_sshd_path | to_json }}
+config:
+  filter:
+    blockInbound: false
+    serviceEndpoints: {{ portmaster_ssh_rules | to_json }}

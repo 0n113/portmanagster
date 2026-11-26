@@ -12,10 +12,11 @@ command as root can manage the Portmaster with it.
 
 ## Step 1: integration with remote administration tools
 
-- Ansible role and collection: install the package, apply settings and profiles, check state.
+- Done: Ansible role in `integrations/ansible/` (install, settings, profiles, health check,
+  settings backup).
+- Done: `portmaster-core status` and `status --check` with monitoring exit codes.
+- Ansible collection on Galaxy.
 - Salt state and examples for MeshCentral and Tactical RMM scripts.
-- `portmaster-core status` with machine-readable health (running, interception active, version,
-  filter list age) for monitoring and RMM dashboards.
 - Read-only export of connection history for the tools below.
 
 ## Step 2: network-wide monitoring of malware connections

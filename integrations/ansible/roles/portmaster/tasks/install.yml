@@ -1,0 +1,89 @@
+---
+- name: Gather the OS family
+  ansible.builtin.setup:
+    gather_subset: [min]
+  when: ansible_facts['os_family'] is not defined
+
+- name: Select the package for this OS family
+  ansible.builtin.set_fact:
+    _portmaster_package: >-
+      {{ (portmaster_package_rpm | default(portmaster_package_url, true))
+         if ansible_facts['os_family'] == 'RedHat'
+         else (portmaster_package_deb | default(portmaster_package_url, true)) }}
+
+- name: Check the install inputs
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] in ['RedHat', 'Debian']
+      - _portmaster_package | length > 0
+    fail_msg: >-
+      portmaster_install needs an rpm (RedHat family) or deb (Debian family) package:
+      set portmaster_package_url, portmaster_package_rpm or portmaster_package_deb.
+
+- name: Install the Portmaster rpm
+  ansible.builtin.dnf:
+    name: "{{ _portmaster_package }}"
+    state: present
+    disable_gpg_check: "{{ portmaster_disable_gpg_check | bool }}"
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Install the Portmaster deb
+  ansible.builtin.apt:
+    deb: "{{ _portmaster_package }}"
+    state: present
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Check whether portmaster.service runs
+  ansible.builtin.command:
+    argv: [systemctl, is-active, portmaster.service]
+  register: _portmaster_active
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Enable portmaster.service
+  ansible.builtin.systemd:
+    name: portmaster.service
+    enabled: true
+    daemon_reload: true
+
+# Once the service starts, it blocks incoming connections, including the SSH
+# connection of Ansible, until the sshd profile is imported. Start it, wait
+# until it is ready and import the profile in one job on the host, which
+# keeps running when the connection drops.
+- name: Start portmaster.service and allow SSH (first start)
+  ansible.builtin.shell: |
+    set -u
+    systemctl start portmaster.service || exit 1
+    for i in $(seq 1 {{ (portmaster_ready_retries | int) * (portmaster_ready_delay | int) }}); do
+      {{ portmaster_core_path | quote }} status 2>/dev/null | grep -q '"ready":true' && break
+      sleep 1
+    done
+    {% if portmaster_ssh_access | bool and _portmaster_ssh_profile_present | default(false) | bool %}
+    {{ portmaster_core_path | quote }} profile import --allow-replace {{ (portmaster_managed_dir ~ '/ssh-profile.yaml') | quote }}
+    {% endif %}
+  async: "{{ (portmaster_ready_retries | int) * (portmaster_ready_delay | int) + 120 }}"
+  poll: 0
+  register: _portmaster_start_job
+  when: _portmaster_active.stdout | trim != 'active'
+
+- name: Wait for the first start
+  ansible.builtin.async_status:
+    jid: "{{ _portmaster_start_job.ansible_job_id }}"
+  register: _portmaster_start_result
+  until: _portmaster_start_result.finished
+  retries: "{{ (portmaster_ready_retries | int) * 2 + 24 }}"
+  delay: 5
+  when: _portmaster_start_job is not skipped
+
+- name: Fail when the first start failed
+  ansible.builtin.fail:
+    msg: "Starting Portmaster failed: {{ _portmaster_start_result.stdout | default('') }} {{ _portmaster_start_result.stderr | default('') }}"
+  when:
+    - _portmaster_start_job is not skipped
+    - _portmaster_start_result.rc | default(0) != 0
+
+- name: Note that the sshd profile was imported with the first start
+  ansible.builtin.set_fact:
+    _portmaster_ssh_profile_changed: false
+  when: _portmaster_start_job is not skipped
