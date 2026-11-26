@@ -35,7 +35,7 @@ require (
 	github.com/jaswdr/faker/v2 v2.9.1
 	github.com/lmittmann/tint v1.1.3
 	github.com/maruel/panicparse/v2 v2.5.0
-	github.com/mattn/go-colorable v0.1.15
+	github.com/mattn/go-colorable v0.1.16
 	github.com/mattn/go-isatty v0.0.24
 	github.com/mdlayher/netlink v1.8.0
 	github.com/miekg/dns v1.1.72
