@@ -205,6 +205,16 @@ status_rc=$?
 echo "  $status_line"
 if [[ $status_rc -le 1 && "$status_line" =~ ^(OK|WARNING): ]]; then pass "status --check is OK or WARNING (rc $status_rc)"; else fail "status --check is OK or WARNING (rc $status_rc)"; fi
 
+step "Connections export"
+check "connections lists $ALLOWED" bash -c "'$CORE' connections --since 30m | jq -e -s 'map(select((.domain // \"\") | test(\"$ALLOWED\"))) | length > 0'"
+check "connections --blocked lists the block of $BLOCKED" bash -c "'$CORE' connections --since 30m --blocked | jq -e -s 'length > 0 and all(.verdict != \"accepted\") and any((.domain // \"\") | test(\"$BLOCKED\"))'"
+"$CORE" connections --since 30m --cursor "$WORK/cursor.json" >"$WORK/conn1.jsonl"
+curl -s -o /dev/null --max-time 10 "https://$ALLOWED/?cursor=1" || true
+sleep 3
+"$CORE" connections --cursor "$WORK/cursor.json" >"$WORK/conn2.jsonl"
+dup=$(cat "$WORK/conn1.jsonl" "$WORK/conn2.jsonl" | jq -r .id | sort | uniq -d | wc -l)
+if [[ -s "$WORK/conn1.jsonl" && "$dup" == 0 ]]; then pass "connections --cursor exports each connection once ($(wc -l <"$WORK/conn1.jsonl") + $(wc -l <"$WORK/conn2.jsonl") lines)"; else fail "connections --cursor exports each connection once (duplicates: $dup)"; fi
+
 step "Rule order"
 # Software like Docker or a VPN client inserts its rules at the top of the
 # chains later on; the core must move its jump rules back.
