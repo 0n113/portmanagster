@@ -19,7 +19,7 @@ portmaster-managed-settings:
         type: settings
         config: {{ settings | json }}
     - require:
-        - service: portmaster-service
+      - cmd: portmaster-ready
 
 portmaster-import-settings:
   cmd.run:
@@ -27,5 +27,5 @@ portmaster-import-settings:
     - onchanges:
       - file: portmaster-managed-settings
     - require:
-      - service: portmaster-service
+      - cmd: portmaster-ready
 {%- endif %}

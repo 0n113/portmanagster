@@ -8,4 +8,4 @@ portmaster-status-check:
     - name: {{ core }} status --check --max-intel-age {{ pm.get('max_intel_age', '336h') }}
     - success_retcodes: [0, 1]
     - require:
-      - service: portmaster-service
+      - cmd: portmaster-ready
