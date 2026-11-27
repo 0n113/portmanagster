@@ -21,6 +21,11 @@ pre-releases carry a `-rcN` suffix.
   (`portmanagster-server group rules`), evaluated before all other rules. The report lists
   overridden policy defaults and refused settings instead of drift. `manage leave` keeps the
   policy values and rules as user settings.
+- The app shows the management policy (management phase B4): locked settings are read-only and
+  marked "Managed by your organisation" in the global and the app settings, policy defaults are
+  marked "Default set by your organisation" and reset to the policy value, and the global
+  settings show a panel with the server, group, policy version, last update, changed defaults
+  and settings not applied.
 - Management server (phase A, `docs/management-server.md`): `portmanagster-server` with
   enrollment, groups, signed policies with settings and app profiles, and client reports;
   `portmaster-core manage enroll|status|pull|leave` applies the policy, corrects local changes and
@@ -55,6 +60,11 @@ pre-releases carry a `-rcN` suffix.
   `portmaster_app_rules` writes and imports such rule profiles per host.
 
 ### Fixed
+- With a locked filter list setting, the global config profile could not be saved ("managed by
+  policy"), so the app settings showed outdated global values: special profiles written by the
+  Portmaster are exempt from the check for locked settings.
+- `portmaster-core profile import FILE` without flags failed with "failed to parse import
+  request": the API read the export as an import request.
 - Firewall: blocked ICMPv6 packets are dropped like ICMP; before, the iptables rules let them
   pass. Inbound LAN and localhost connections blocked by scope are dropped silently instead of
   rejected. The DNS tunnel heuristic scores the subdomain, not the start of the domain. DNS

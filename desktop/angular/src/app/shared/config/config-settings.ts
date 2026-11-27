@@ -20,6 +20,7 @@ import {
   PortapiService,
   Setting,
   StringSetting,
+  getActualValue,
   releaseLevelFromName,
 } from '@safing/portmaster-api';
 import { BehaviorSubject, Subscription, combineLatest } from 'rxjs';
@@ -428,15 +429,11 @@ export class ConfigSettingsViewComponent
                   (s) => s.Key === subsys.ToggleOptionKey
                 );
                 if (toggleOption) {
-                  // Determine the effective enabled state: per-app value takes
-                  // priority, then the globally-configured value (GlobalDefault),
-                  // and finally the hardcoded DefaultValue.
-                  const effectiveEnabled =
-                    toggleOption.Value !== undefined
-                      ? !!toggleOption.Value
-                      : toggleOption.GlobalDefault !== undefined
-                        ? !!toggleOption.GlobalDefault
-                        : !!toggleOption.DefaultValue;
+                  // Determine the effective enabled state: a value locked by
+                  // the management policy, the per-app value, the
+                  // globally-configured value (GlobalDefault), the policy
+                  // default and finally the hardcoded DefaultValue.
+                  const effectiveEnabled = !!getActualValue(toggleOption);
                   if (!effectiveEnabled) {
                     subsys.isDisabled = true;
 

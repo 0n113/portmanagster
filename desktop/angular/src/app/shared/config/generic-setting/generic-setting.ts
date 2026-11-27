@@ -213,6 +213,28 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
   private _touched = false;
 
   /**
+   * Returns true if the management policy of the organisation locks the
+   * setting. Its value cannot be changed, neither globally nor per app.
+   */
+  @HostBinding('class.policy-locked')
+  get policyLocked(): boolean {
+    return !!this._setting?.Locked;
+  }
+
+  /**
+   * Returns true if the management policy sets the default value of the
+   * setting, which a user value may still override.
+   */
+  get policyDefault(): boolean {
+    return !this.policyLocked && this._setting?.PolicyValue !== undefined && this._setting?.PolicyValue !== null;
+  }
+
+  /** Returns true if the value cannot be changed in the view. */
+  get isReadonly(): boolean {
+    return this.disabled || this.policyLocked;
+  }
+
+  /**
    * Returns true if the settings is currently locked.
    */
   @HostBinding('class.locked')
@@ -265,7 +287,7 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
    * emit the default value to be safed for the setting.
    */
   unlock() {
-    if (!this.isLocked || !this.setting) {
+    if (!this.isLocked || !this.setting || this.policyLocked) {
       return;
     }
 
@@ -410,19 +432,26 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
       return this._defaultValue;
     }
 
+    // In the global settings, a value of the management policy replaces
+    // the default.
+    const policyValue = this.setting?.PolicyValue;
+    const globalDefault = policyValue !== undefined && policyValue !== null
+      ? policyValue
+      : this.setting?.DefaultValue;
+
     // Stackable options are displayed differently.
     if (this.stackable) {
-      if (this.setting?.GlobalDefault === undefined && this.setting?.DefaultValue !== null) {
-        return this.setting?.DefaultValue;
+      if (this.setting?.GlobalDefault === undefined && globalDefault !== null) {
+        return globalDefault;
       }
       return [] as SettingValueType<S>;
     }
 
-    // Return global, then default value.
+    // Return global (in the app settings, the value in force), then default value.
     if (this.setting?.GlobalDefault !== undefined) {
       return this.setting.GlobalDefault
     }
-    return this.setting?.DefaultValue
+    return globalDefault
   }
 
   /* An optional default value overwrite */
@@ -477,7 +506,7 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
    * value.
    */
   resetValue() {
-    if (!this._setting) {
+    if (!this._setting || this.policyLocked) {
       return;
     }
     this._touched = true;
@@ -506,7 +535,7 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
    * @param qs The quick-settting to apply
    */
   applyQuickSetting(qs: QuickSetting<SettingValueType<S>>) {
-    if (this.disabled) {
+    if (this.isReadonly) {
       return;
     }
 
@@ -625,6 +654,9 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
    * @param value The new value as emitted by the view
    */
   updateValue(value: SettingValueType<S>, save = false) {
+    if (this.policyLocked) {
+      return;
+    }
     this._touched = true;
 
     this._changeAccepted = false;
@@ -673,9 +705,20 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
 
     const s = this.setting;
 
-    const value = s.Value === undefined
+    let value = s.Value === undefined
       ? this.defaultValue
       : s.Value;
+
+    // A locked policy value is in force: show it instead of a user or app
+    // value, which has no effect while the setting is locked. In the app
+    // settings, GlobalDefault already is the value in force.
+    if (this.policyLocked) {
+      if (s.GlobalDefault !== undefined) {
+        value = this.stackable ? [] as SettingValueType<S> : s.GlobalDefault;
+      } else {
+        value = s.PolicyValue;
+      }
+    }
 
 
     this._currentValue = value;

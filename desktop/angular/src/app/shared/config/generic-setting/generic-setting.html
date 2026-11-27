@@ -1,6 +1,6 @@
 <div
   class="relative flex flex-row flex-wrap items-center h-full px-5 py-5 bg-gray-200 border-l border-transparent rounded-r"
-  [class.pr-8]="lockDefaults" [ngClass]="{
+  [class.pr-8]="lockDefaults && !policyLocked" [ngClass]="{
     'border-blue': enableActiveBorder && _setting?.Value !== undefined && !rejected,
     'border-red': enableActiveBorder &&  rejected,
     'border-yellow-300': selected,
@@ -41,6 +41,23 @@
         </svg>
         Invalid Value: {{ rejected }}
       </span>
+
+      <span *ngIf="policyLocked"
+        class="px-1.5 py-0.5 border border-blue text-blue rounded inline-flex items-center text-xxs mb-0.5"
+        sfng-tooltip="Your organisation set this value with its management policy. It cannot be changed here.">
+        <svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-3 h-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd"
+            d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+            clip-rule="evenodd" />
+        </svg>
+        Managed by your organisation
+      </span>
+
+      <span *ngIf="policyDefault"
+        class="px-1.5 py-0.5 border border-gray-500 text-secondary rounded inline-flex items-center text-xxs mb-0.5"
+        sfng-tooltip="The default value of this setting comes from the management policy of your organisation. You can change it; your organisation sees that it was changed.">
+        Default set by your organisation
+      </span>
     </div>
 
     <span class="flex flex-row items-center justify-start space-x-2" *ngIf="setting?.ReleaseLevel !== releaseLevel.Stable ||
@@ -67,7 +84,7 @@
 
 
   <!-- Quick Settings -->
-  <div *ngIf="(quickSettings || []).length > 0 && !disabled">
+  <div *ngIf="(quickSettings || []).length > 0 && !isReadonly">
     <app-menu-trigger [menu]="quickSettingsMenu" useContent="true" class="text-secondary hover:text-primary">
       <svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4" fill="none" viewBox="0 0 24 24"
         stroke="currentColor">
@@ -89,7 +106,7 @@
 
     <!-- Rule lists -->
     <ng-container *ngSwitchCase="optionHint.EndpointList">
-      <app-rule-list class="w-full mt-4" [readonly]="disabled" [ngModel]="_currentValue"
+      <app-rule-list class="w-full mt-4" [readonly]="isReadonly" [ngModel]="_currentValue"
         (ngModelChange)="updateValue($event, true)" [symbolMap]="symbolMap"></app-rule-list>
 
       <div class="stacked-values" *ngIf="showStackable">
@@ -102,7 +119,8 @@
 
     <!-- Filter lists -->
     <ng-container *ngSwitchCase="optionHint.FilterList">
-      <app-filter-list class="w-full" [class.mt-4]="showHeader" [ngModel]="_currentValue"
+      <app-filter-list class="w-full" [class.mt-4]="showHeader" [class.pointer-events-none]="isReadonly"
+        [class.opacity-75]="isReadonly" [ngModel]="_currentValue"
         (ngModelChange)="updateValue($event, true)">
       </app-filter-list>
     </ng-container>
@@ -110,7 +128,7 @@
     <!-- Ordered string lists -->
     <ng-container *ngSwitchCase="optionHint.OrderedList">
       <app-ordered-list class="w-full mt-4" [ngModel]="_currentValue" (ngModelChange)="updateValue($event, true)"
-        [readonly]="disabled"></app-ordered-list>
+        [readonly]="isReadonly"></app-ordered-list>
 
       <div class="stacked-values" *ngIf="showStackable">
         <h4>This setting stacks on top of the following <a class="underline text-tertiary hover:text-primary"
@@ -124,7 +142,7 @@
       <!-- basic string array with fixed order on optional stacking -->
       <ng-container *ngIf="setting?.OptType === optionType.StringArray; else: basicSetting">
         <app-ordered-list class="w-full mt-4" fixedOrder="true" [ngModel]="_currentValue"
-          (ngModelChange)="updateValue($event, true)" [readonly]="disabled">
+          (ngModelChange)="updateValue($event, true)" [readonly]="isReadonly">
         </app-ordered-list>
 
         <div class="stacked-values" *ngIf="showStackable">
@@ -137,7 +155,7 @@
 
       <ng-template #basicSetting>
         <!-- basic inputs -->
-        <app-basic-setting class="block" [setting]="_setting" [disabled]="disabled" [ngModel]="_currentValue"
+        <app-basic-setting class="block" [setting]="_setting" [disabled]="isReadonly" [ngModel]="_currentValue"
           (ngModelChange)="updateValue($event)"
           (blured)="updateValue(_basicSettingsValueCache!, _currentValue !== _basicSettingsValueCache)">
         </app-basic-setting>
@@ -145,7 +163,7 @@
     </ng-container>
   </ng-container>
 
-  <span class="unlock-button" [class.bg-blue]="!isLocked" [class.bg-gray-500]="isLocked" *ngIf="lockDefaults"
+  <span class="unlock-button" [class.bg-blue]="!isLocked" [class.bg-gray-500]="isLocked" *ngIf="lockDefaults && !policyLocked"
     snfgTooltipPosition="left" [sfng-tooltip]="lockTooltip" (click)="toggleLock()">
 
     <svg viewBox="0 0 24 24" class="w-4 h-4 text-white" stroke="currentColor" *ngIf="isLocked">
@@ -177,9 +195,9 @@
   </ng-template>
 </div>
 
-<div *ngIf="userConfigured" class="flex justify-end mt-2" [@fadeIn] [@fadeOut]>
+<div *ngIf="userConfigured && !policyLocked" class="flex justify-end mt-2" [@fadeIn] [@fadeOut]>
   <span class="cursor-pointer text-tertiary hover:text-yellow" tabindex="0" (click)="resetValue()">
-    {{resetLabelText}}
+    {{ policyDefault && setting?.GlobalDefault === undefined ? 'Reset to organisation default' : resetLabelText }}
   </span>
 </div>
 

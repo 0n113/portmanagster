@@ -139,4 +139,10 @@ func TestCheckLockedChanges(t *testing.T) {
 			t.Errorf("%s: got %v", c.name, err)
 		}
 	}
+	// The Portmaster writes special profiles, e.g. the global config
+	// profile with the values in force.
+	err := checkLockedProfileChanges(&Profile{Source: SourceSpecial, ID: "global-config", Config: set})
+	if err != nil {
+		t.Errorf("special profile refused: %v", err)
+	}
 }
