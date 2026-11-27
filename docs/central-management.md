@@ -20,6 +20,9 @@ sudo /usr/lib/portmaster/portmaster-core settings export -o settings.yaml
 # Export selected settings only.
 sudo /usr/lib/portmaster/portmaster-core settings export --key filter/lists --key dns/nameservers
 
+# The values in force, including defaults and values of a management policy.
+sudo /usr/lib/portmaster/portmaster-core settings export --effective --key filter/askTimeout
+
 # Check an import and see what it would change, without applying it.
 sudo /usr/lib/portmaster/portmaster-core settings import --validate settings.yaml
 
@@ -27,6 +30,7 @@ sudo /usr/lib/portmaster/portmaster-core settings import --validate settings.yam
 sudo /usr/lib/portmaster/portmaster-core settings import settings.yaml
 
 # Apply and remove every setting that is not in the file (the file is the full config).
+# Settings locked by a management policy cannot be imported ("managed by policy").
 sudo /usr/lib/portmaster/portmaster-core settings import --reset settings.yaml
 
 # App profiles: export by scoped ID, import (--allow-replace overwrites an existing one).

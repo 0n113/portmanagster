@@ -211,6 +211,9 @@ func ImportSingeSetting(r *SingleSettingImportRequest) (*ImportResult, error) {
 	if err := option.ValidateValue(r.Export.Value); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidSettingValue, err)
 	}
+	if option.IsLocked() {
+		return nil, fmt.Errorf("%s: %w", r.Export.ID, config.ErrLockedByPolicy)
+	}
 
 	// Import single global setting.
 	if r.Target == ExportTargetGlobal {

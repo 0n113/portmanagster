@@ -160,6 +160,10 @@ func handleOptionUpdate(option *Option, push bool) {
 // pushUpdate pushes an database update notification for option.
 // The caller must hold the option lock.
 func pushUpdate(option *Option) {
+	// Not registered as a database yet (e.g. the policy is set at boot).
+	if dbController == nil {
+		return
+	}
 	r, err := option.export()
 	if err != nil {
 		log.Errorf("failed to export option to push update: %s", err)

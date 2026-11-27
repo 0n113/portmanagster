@@ -40,16 +40,7 @@ func getValueCache(name string, option *Option, requestedType OptionType) (*Opti
 	option.Lock()
 	defer option.Unlock()
 
-	// check release level
-	if option.ReleaseLevel <= getReleaseLevel() && option.activeValue != nil {
-		return option, option.activeValue
-	}
-
-	if option.activeDefaultValue != nil {
-		return option, option.activeDefaultValue
-	}
-
-	return option, option.activeFallbackValue
+	return option, option.effectiveValueCache()
 }
 
 // cachedValue is an immutable snapshot of an option value, valid as long as
