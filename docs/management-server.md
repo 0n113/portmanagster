@@ -208,6 +208,12 @@ values, `settings export --effective` the values in force. Locked settings canno
 configuration: locked values and defaults without a user value become user values, and the
 policy rules are put before the global rules.
 
+The app shows the policy: locked settings are read-only and marked "Managed by your
+organisation" (also in the app settings), policy defaults are marked "Default set by your
+organisation" and "Reset" returns to the policy value. The global settings start with a panel
+showing the server, group, policy version, last update, changed defaults and settings not
+applied.
+
 ## Phases
 
 | Phase | Content | Done when |
@@ -268,7 +274,7 @@ Endpoint rules: policy rules, then app profile rules, then global rules.
 | Step | Content | Done when |
 |---|---|---|
 | B1 | `base/config`: per option `policyValue` and `locked`; `config.SetPolicy(values, locked)` replaces the layer atomically, keeps values of keys not yet registered and applies them at registration; `getValueCache` order as above. `setConfigOption` and `sync.ImportSettings` refuse locked keys (`config.ErrLockedByPolicy`); `ReplaceConfig` keeps them stored but inert. The option record gets `PolicyValue`, `Locked` and an annotation for the UI. `settings export` exports user values only, with `--effective` for the values in force. | Unit tests: precedence, refused writes, pending keys, release level, concurrent reads (race test) |
-| B2 | `service/profile`: `wrap*Option` and `MatchFilterLists` skip the app layers for locked keys; `MatchEndpoint` / `MatchServiceEndpoint` check the policy rules first. `PrePut` refuses a save that sets or changes a locked key (existing values stay, inert), so the UI and `profile import` get a clear error. A change of the policy bumps the revision of all active layered profiles. | Unit tests with a layered profile: locked key ignores the app value, unlocked key does not; policy rule wins over an app allow rule |
+| B2 | `service/profile`: `wrap*Option` and `MatchFilterLists` skip the app layers for locked keys; `MatchEndpoint` / `MatchServiceEndpoint` check the policy rules first. `PrePut` refuses a save that sets or changes a locked key (existing values stay, inert), so the UI and `profile import` get a clear error. A change of the policy bumps the revision of all active layered profiles. Special profiles written by the Portmaster itself (the global config profile, the built-in profiles) are exempt from the `PrePut` check. | Unit tests with a layered profile: locked key ignores the app value, unlocked key does not; policy rule wins over an app allow rule |
 | B3 | Managed module and server: apply through `SetPolicy` instead of the settings import; apply the stored policy in `managed.New`, i.e. before interception starts, so there is no unmanaged window at boot; `policy.Policy.Rules` and `portmanagster-server group rules NAME FILE`; the report lists overridden unlocked keys instead of corrected ones; `leave` copies the values. | End to end test client/server: locked, unlocked and rules arrive; leave keeps the values |
 | B4 | UI (Angular): locked settings are read-only with "Managed by your organisation" in the global and the app settings; policy defaults show their origin; a small "Managed" panel (server, group, policy version, last pull). | UI build; manual check in the browser against a managed core |
 | B5 | VM tests Linux and Windows, step "Management" extended: a locked setting cannot be changed through the config API, `settings import` or an app profile; a policy rule blocks a domain that an app profile allows (curl from a profiled binary); an overridden unlocked setting is reported; the full smoke test without enrollment is unchanged. | Both VMs pass |

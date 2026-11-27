@@ -1,0 +1,44 @@
+<ng-container *ngIf="status$ | async as status">
+  <div *ngIf="status.enrolled" class="flex flex-col gap-1 px-4 py-3 mb-4 bg-gray-200 border-l-4 rounded border-blue">
+    <div class="flex flex-row items-center gap-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue" viewBox="0 0 20 20" fill="currentColor"
+        aria-hidden="true">
+        <path fill-rule="evenodd"
+          d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+          clip-rule="evenodd" />
+      </svg>
+      <span class="font-semibold">Managed by your organisation</span>
+    </div>
+    <p class="text-xs text-secondary">
+      Settings marked "Managed by your organisation" are set by the management policy and cannot be changed here.
+      Settings marked "Default set by your organisation" can be changed; the change is reported to your organisation.
+    </p>
+    <dl class="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-0.5 text-xs mt-1">
+      <dt class="text-secondary">Server</dt>
+      <dd>{{ status.server }}</dd>
+      <ng-container *ngIf="status.group">
+        <dt class="text-secondary">Group</dt>
+        <dd>{{ status.group }}</dd>
+      </ng-container>
+      <dt class="text-secondary">Policy version</dt>
+      <dd>{{ status.appliedVersion || 'none' }}</dd>
+      <dt class="text-secondary">Last update</dt>
+      <dd>
+        <ng-container *ngIf="status.lastSuccess; else: never">{{ status.lastSuccess | date:'medium' }}</ng-container>
+        <ng-template #never>never</ng-template>
+      </dd>
+      <ng-container *ngIf="status.lastError">
+        <dt class="text-secondary">Last error</dt>
+        <dd class="text-red">{{ status.lastError }}</dd>
+      </ng-container>
+      <ng-container *ngIf="(status.overridden || []).length > 0">
+        <dt class="text-secondary">Changed defaults</dt>
+        <dd>{{ status.overridden!.join(', ') }}</dd>
+      </ng-container>
+      <ng-container *ngIf="(status.refused || []).length > 0">
+        <dt class="text-secondary">Not applied</dt>
+        <dd class="text-yellow">{{ status.refused!.join(', ') }}</dd>
+      </ng-container>
+    </dl>
+  </div>
+</ng-container>

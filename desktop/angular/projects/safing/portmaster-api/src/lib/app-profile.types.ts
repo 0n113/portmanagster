@@ -145,11 +145,19 @@ export function getAppSetting<T extends OptionValueType>(
 export function getActualValue<S extends BaseSetting<any, any>>(
   s: S
 ): SettingValueType<S> {
+  // A value locked by the management policy wins over all others. In the
+  // app settings, GlobalDefault already is the value in force.
+  if (s.Locked) {
+    return s.GlobalDefault !== undefined ? s.GlobalDefault : s.PolicyValue;
+  }
   if (s.Value !== undefined) {
     return s.Value;
   }
   if (s.GlobalDefault !== undefined) {
     return s.GlobalDefault;
+  }
+  if (s.PolicyValue !== undefined && s.PolicyValue !== null) {
+    return s.PolicyValue;
   }
   return s.DefaultValue;
 }

@@ -115,6 +115,9 @@ var profileImportCmd = &cobra.Command{
 	SilenceErrors: true, // main prints the error.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		q := url.Values{}
+		// The API reads the body as a raw export only if the request has
+		// query parameters; without them it expects a JSON import request.
+		q.Set("raw", "true")
 		addImportFlags(q)
 		if syncAllowRepl {
 			q.Set("allowReplace", "true")

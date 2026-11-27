@@ -145,6 +145,7 @@ export enum WellKnown {
   RestartPending = "safing/portbase:options:restart-pending",
   EndpointListVerdictNames = "safing/portmaster:ui:endpoint-list:verdict-names",
   RequiresUIReload = "safing/portmaster:ui:requires-reload",
+  Policy = "safing/portmaster:config:policy",
 }
 
 /**
@@ -233,6 +234,13 @@ export interface BaseSetting<T extends OptionValueType, O extends OptionType> ex
   // JavaScript as well.
   ValidationRegex?: string;
   PossibleValues?: PossilbeValue[];
+
+  // PolicyValue is the value set by the management policy of the
+  // organisation, if any.
+  PolicyValue?: T;
+  // Locked is true if the management policy locks the setting: the
+  // PolicyValue is in force and cannot be changed.
+  Locked?: boolean;
 
   // GlobalDefault holds the global default value and is used in the app settings
   // This property is NOT defined inside the portmaster!
