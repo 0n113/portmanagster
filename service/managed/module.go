@@ -60,10 +60,12 @@ type Status struct {
 	LastReport     time.Time `json:"lastReport,omitzero"`
 	// LastReportError is the error of the last report, empty if it was sent.
 	LastReportError string `json:"lastReportError,omitempty"`
-	// LastCorrected lists the settings set again at the last apply because
-	// they were changed locally (drift); empty when a new policy version
-	// was applied.
-	LastCorrected []string `json:"lastCorrected,omitempty"`
+	// Overridden lists the policy defaults (unlocked settings) a local
+	// admin set to another value.
+	Overridden []string `json:"overridden,omitempty"`
+	// Refused lists the policy settings that are not in force (invalid
+	// value or unknown setting).
+	Refused []string `json:"refused,omitempty"`
 }
 
 type instance interface {
@@ -92,6 +94,15 @@ func New(instance instance) (*Managed, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Set the policy layer before the other modules start, so that no
+	// worker ever sees the values without the policy. The profiles are
+	// imported in Start, when the database is available.
+	if m.dir.enrolled() {
+		err = m.applyStored(false)
+		if err != nil {
+			log.Warningf("managed: failed to apply the stored policy: %s", err)
+		}
+	}
 	return m, nil
 }
 
@@ -108,7 +119,7 @@ func (m *Managed) Start() error {
 	}
 	// Apply the last policy first, so the computer is configured even when
 	// the server cannot be reached.
-	err := m.applyStored()
+	err := m.applyStored(true)
 	if err != nil {
 		log.Warningf("managed: failed to apply the stored policy: %s", err)
 	}
@@ -154,14 +165,25 @@ func (m *Managed) Enroll(ctx context.Context, r *EnrollRequest) (Status, error) 
 	return m.Status(), err
 }
 
-// Leave removes the enrollment. The applied settings stay as they are.
+// Leave removes the enrollment. The values of the last applied policy stay
+// as user settings, which the user may change from then on.
 func (m *Managed) Leave() error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	if !m.dir.enrolled() {
 		return errNotEnrolled
 	}
-	err := m.dir.remove()
+	p, err := m.storedPolicy()
+	if err != nil {
+		// Leaving must work even if the stored policy is broken.
+		log.Warningf("managed: stored policy not kept: %s", err)
+		p = nil
+	}
+	err = leavePolicy(m.applier, p)
+	if err != nil {
+		return fmt.Errorf("keep the policy values: %w", err)
+	}
+	err = m.dir.remove()
 	if err != nil {
 		return err
 	}
@@ -220,7 +242,8 @@ func (m *Managed) reportLocked(ctx context.Context) {
 		Time:           time.Now().UTC().Truncate(time.Second),
 		AppliedVersion: st.AppliedVersion,
 		CoreVersion:    info.Version(),
-		Drift:          m.status.LastCorrected,
+		Overridden:     m.status.Overridden,
+		Refused:        m.status.Refused,
 		Error:          m.status.LastError,
 	}
 	m.statusLock.Unlock()
@@ -252,11 +275,12 @@ func (m *Managed) pullLocked(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return m.verifyAndApply(st, data, true)
+	return m.verifyAndApply(st, data, true, true)
 }
 
-// applyStored applies the stored policy again.
-func (m *Managed) applyStored() error {
+// applyStored applies the stored policy again; the profiles only if
+// withProfiles is set.
+func (m *Managed) applyStored(withProfiles bool) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	st, err := m.dir.loadState()
@@ -270,13 +294,35 @@ func (m *Managed) applyStored() error {
 	if err != nil {
 		return err
 	}
-	// Force the profiles to be imported again: they may have been changed
-	// while the Portmaster was not running.
-	st.AppliedProfilesHash = ""
-	return m.verifyAndApply(st, data, false)
+	if withProfiles {
+		// Force the profiles to be imported again: they may have been
+		// changed while the Portmaster was not running.
+		st.AppliedProfilesHash = ""
+	}
+	return m.verifyAndApply(st, data, false, withProfiles)
 }
 
-func (m *Managed) verifyAndApply(st *State, data []byte, store bool) error {
+// storedPolicy returns the verified stored policy, or nil if there is none.
+func (m *Managed) storedPolicy() (*policy.Policy, error) {
+	st, err := m.dir.loadState()
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(m.dir.path(filePolicy))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil //nolint:nilnil // No policy is not an error.
+	}
+	if err != nil {
+		return nil, err
+	}
+	pk, err := m.dir.policyKey(st)
+	if err != nil {
+		return nil, fmt.Errorf("pinned policy key: %w", err)
+	}
+	return policy.Verify(data, pk, st.ComputerID)
+}
+
+func (m *Managed) verifyAndApply(st *State, data []byte, store, withProfiles bool) error {
 	pk, err := m.dir.policyKey(st)
 	if err != nil {
 		return fmt.Errorf("pinned policy key: %w", err)
@@ -290,12 +336,17 @@ func (m *Managed) verifyAndApply(st *State, data []byte, store bool) error {
 		return fmt.Errorf("policy refused: %w", err)
 	}
 
-	res, hash, err := applyPolicy(m.applier, p, st.AppliedProfilesHash)
+	res, hash, err := applyPolicy(m.applier, p, st.AppliedProfilesHash, withProfiles)
 	if err != nil {
 		return fmt.Errorf("apply policy %d: %w", p.Version, err)
 	}
-	if len(res.Corrected) > 0 || res.Profiles > 0 {
-		log.Infof("managed: applied policy %d: %d settings set, %d profiles imported", p.Version, len(res.Corrected), res.Profiles)
+	if p.Version != st.AppliedVersion || res.Profiles > 0 {
+		log.Infof("managed: applied policy %d: %d settings (%d locked), %d profiles imported", p.Version, len(p.Settings), len(p.Locked), res.Profiles)
+	}
+	// Early at boot not all settings are registered yet; they are checked
+	// again by the full apply in Start.
+	if len(res.Refused) > 0 && withProfiles {
+		log.Warningf("managed: policy %d: not in force: %v", p.Version, res.Refused)
 	}
 
 	if store {
@@ -304,9 +355,10 @@ func (m *Managed) verifyAndApply(st *State, data []byte, store bool) error {
 			return err
 		}
 	}
-	previous := st.AppliedVersion
 	st.AppliedVersion = p.Version
-	st.AppliedProfilesHash = hash
+	if withProfiles {
+		st.AppliedProfilesHash = hash
+	}
 	err = m.dir.saveState(st)
 	if err != nil {
 		return err
@@ -314,13 +366,8 @@ func (m *Managed) verifyAndApply(st *State, data []byte, store bool) error {
 
 	m.statusLock.Lock()
 	m.status.Group = p.Group
-	// Drift is a local change of an applied policy. Settings set because
-	// a new policy version arrived are not drift.
-	if p.Version == previous {
-		m.status.LastCorrected = res.Corrected
-	} else {
-		m.status.LastCorrected = nil
-	}
+	m.status.Overridden = res.Overridden
+	m.status.Refused = res.Refused
 	m.statusLock.Unlock()
 	return nil
 }

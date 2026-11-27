@@ -46,10 +46,28 @@ type Policy struct {
 	// Settings are global settings with slash-joined keys, e.g.
 	// "filter/blockInbound".
 	Settings map[string]any `json:"settings"`
-	// Locked lists the settings keys a local admin must not change.
+	// Locked lists the settings keys a local admin must not change. The
+	// other settings are defaults a local admin may override.
 	Locked []string `json:"locked,omitempty"`
+	// Rules are endpoint rules evaluated before the rules of all app
+	// profiles and the global rules.
+	Rules *Rules `json:"rules,omitempty"`
 	// Profiles are app profiles in the format of the profile export.
 	Profiles []json.RawMessage `json:"profiles,omitempty"`
+}
+
+// Rules are the endpoint rules of a policy, in the format of the
+// filter/endpoints and filter/serviceEndpoints settings.
+type Rules struct {
+	// Endpoints apply to outgoing connections.
+	Endpoints []string `json:"endpoints,omitempty" yaml:"endpoints,omitempty"`
+	// ServiceEndpoints apply to incoming connections.
+	ServiceEndpoints []string `json:"serviceEndpoints,omitempty" yaml:"serviceEndpoints,omitempty"`
+}
+
+// Empty returns whether there are no rules.
+func (r *Rules) Empty() bool {
+	return r == nil || (len(r.Endpoints) == 0 && len(r.ServiceEndpoints) == 0)
 }
 
 // GenerateKey creates a new policy signing key.
@@ -190,9 +208,12 @@ type Report struct {
 	// AppliedVersion is the version of the policy in force on the client.
 	AppliedVersion uint64 `json:"appliedVersion"`
 	CoreVersion    string `json:"coreVersion"`
-	// Drift lists the settings that differed from the policy at the last
-	// apply and were set again.
-	Drift []string `json:"drift,omitempty"`
+	// Overridden lists the policy defaults (unlocked settings) a local
+	// admin changed.
+	Overridden []string `json:"overridden,omitempty"`
+	// Refused lists policy settings the client did not apply because their
+	// value is invalid or the setting is unknown to this version.
+	Refused []string `json:"refused,omitempty"`
 	// Error is the error of the last pull or apply, empty if it succeeded.
 	Error string `json:"error,omitempty"`
 	// Status is the health of the Portmaster, as returned by core/status.

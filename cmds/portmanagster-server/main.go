@@ -13,6 +13,7 @@ import (
 	"maps"
 	"os"
 	"os/signal"
+	"slices"
 	"sort"
 	"strings"
 	"syscall"
@@ -22,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/safing/portmaster/mgmt/policy"
 	"github.com/safing/portmaster/mgmt/server"
 )
 
@@ -36,10 +38,13 @@ var (
 	lockAll    bool
 	serverURL  string
 	clearProfs bool
+	clearRules bool
 
 	errNoConfig     = errors.New("the file has no config section")
 	errNoProfile    = errors.New("the file is not a profile export (type: profile, name)")
 	errProfileFiles = errors.New("give profile files or --clear")
+	errRulesFile    = errors.New("give a rules file or --clear")
+	errRuleFormat   = errors.New(`a rule must start with "+ " (allow) or "- " (block)`)
 )
 
 var rootCmd = &cobra.Command{
@@ -144,6 +149,28 @@ var groupProfilesCmd = &cobra.Command{
 		}
 		return withStore(func(s *server.Store) error {
 			return s.SetGroupProfiles(args[0], profiles, time.Now())
+		})
+	},
+}
+
+var groupRulesCmd = &cobra.Command{
+	Use:   "rules NAME [RULES-FILE]",
+	Short: "Set the endpoint rules of a group (YAML or JSON with endpoints and serviceEndpoints); they come before all app and global rules",
+	Args:  cobra.RangeArgs(1, 2),
+	RunE: func(_ *cobra.Command, args []string) error {
+		var rules *policy.Rules
+		switch {
+		case len(args) == 2:
+			var err error
+			rules, err = readRulesFile(args[1])
+			if err != nil {
+				return err
+			}
+		case !clearRules:
+			return errRulesFile
+		}
+		return withStore(func(s *server.Store) error {
+			return s.SetGroupRules(args[0], rules, time.Now())
 		})
 	},
 }
@@ -265,12 +292,13 @@ func init() {
 	groupSetCmd.Flags().StringSliceVar(&lockKeys, "lock", nil, "settings key a local admin must not change (repeatable)")
 	groupSetCmd.Flags().BoolVar(&lockAll, "lock-all", false, "lock all settings of the file")
 	groupProfilesCmd.Flags().BoolVar(&clearProfs, "clear", false, "remove all profiles of the group")
+	groupRulesCmd.Flags().BoolVar(&clearRules, "clear", false, "remove the rules of the group")
 	tokenCreateCmd.Flags().StringVar(&tokenGroup, "group", "", "group of the computer (required)")
 	_ = tokenCreateCmd.MarkFlagRequired("group")
 	tokenCreateCmd.Flags().DurationVar(&tokenValid, "valid", 24*time.Hour, "validity of the token")
 	tokenCreateCmd.Flags().StringVar(&serverURL, "url", "https://<server>:8443", "server URL for the printed enroll command")
 
-	groupCmd.AddCommand(groupCreateCmd, groupSetCmd, groupProfilesCmd, groupListCmd)
+	groupCmd.AddCommand(groupCreateCmd, groupSetCmd, groupProfilesCmd, groupRulesCmd, groupListCmd)
 	tokenCmd.AddCommand(tokenCreateCmd)
 	computerCmd.AddCommand(computerListCmd, computerShowCmd, computerRevokeCmd)
 	rootCmd.AddCommand(initCmd, serveCmd, fingerprintsCmd, groupCmd, tokenCmd, computerCmd)
@@ -417,11 +445,38 @@ func health(c *server.Computer) string {
 	if len(st.Problems) > 0 {
 		parts = append(parts, fmt.Sprintf("%d problems", len(st.Problems)))
 	}
-	if len(c.Report.Drift) > 0 {
-		parts = append(parts, fmt.Sprintf("drift %d", len(c.Report.Drift)))
+	if len(c.Report.Overridden) > 0 {
+		parts = append(parts, fmt.Sprintf("%d overridden", len(c.Report.Overridden)))
+	}
+	if len(c.Report.Refused) > 0 {
+		parts = append(parts, fmt.Sprintf("%d refused", len(c.Report.Refused)))
 	}
 	if len(parts) == 0 {
 		return "ok"
 	}
 	return strings.Join(parts, ", ")
+}
+
+// readRulesFile reads endpoint rules (YAML or JSON) and checks their form;
+// the client validates them fully.
+func readRulesFile(path string) (*policy.Rules, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	rules := &policy.Rules{}
+	// YAML is a superset of JSON.
+	err = yaml.Unmarshal(data, rules)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	for _, rule := range append(slices.Clone(rules.Endpoints), rules.ServiceEndpoints...) {
+		if !strings.HasPrefix(rule, "+ ") && !strings.HasPrefix(rule, "- ") {
+			return nil, fmt.Errorf("%s: %q: %w", path, rule, errRuleFormat)
+		}
+	}
+	if rules.Empty() {
+		return nil, nil //nolint:nilnil // No rules.
+	}
+	return rules, nil
 }

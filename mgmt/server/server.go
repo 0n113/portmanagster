@@ -249,6 +249,7 @@ func (s *Server) PolicyFor(c *Computer, now time.Time) ([]byte, error) {
 		Group:    g.Name,
 		Settings: g.Settings,
 		Locked:   g.Locked,
+		Rules:    g.Rules,
 		Profiles: g.Profiles,
 	}, s.PolicyKey)
 }
@@ -380,8 +381,11 @@ func (s *Server) handleReport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "cannot store report")
 		return
 	}
-	if len(report.Drift) > 0 {
-		s.Log.Info("drift corrected", "id", c.ID, "hostname", c.Hostname, "settings", report.Drift)
+	if len(report.Overridden) > 0 {
+		s.Log.Info("policy defaults overridden locally", "id", c.ID, "hostname", c.Hostname, "settings", report.Overridden)
+	}
+	if len(report.Refused) > 0 {
+		s.Log.Warn("client refused policy settings", "id", c.ID, "hostname", c.Hostname, "settings", report.Refused)
 	}
 	if report.Error != "" {
 		s.Log.Warn("client reports an error", "id", c.ID, "hostname", c.Hostname, "err", report.Error)

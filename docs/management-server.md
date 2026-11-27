@@ -74,7 +74,7 @@ Non-goals (for now):
 - Pull loop: every 5 minutes (server-tunable, with jitter) and a long-poll so a policy change
   arrives in seconds while online. Backoff on errors; the last good policy stays in force.
 - Reports with each pull: version, `core/status` (the same data as `status`), applied policy
-  version, and drift (settings that differ from the policy). Optional per group: summary of
+  version, overridden policy defaults and refused settings. Optional per group: summary of
   blocked connections (counts per app/list/domain), or the connection export lines.
 
 ### Enrollment
@@ -124,11 +124,12 @@ A policy is a JSON document per computer, built by the server from the computer'
 
 ### Enforcement: the policy layer (phase B)
 
-Phase A enforces by **drift correction**: the client sets the policy settings again when they
-differ and reports the drift. A local admin can still change a setting until the next pull,
-and an app profile can override a global setting, because app profile values win over
-global ones. Phase B adds a **policy layer** that the config system and the profiles respect.
-See [Phase B plan](#phase-b-plan) for the details and the order of work.
+Phase A enforced by **drift correction**: the client set the policy settings again when they
+differed and reported the drift. A local admin could still change a setting until the next
+pull, and an app profile could override a global setting. Since phase B (B3) the client sets a
+**policy layer** that the config system and the profiles respect: locked settings cannot be
+changed at all, unlocked ones are defaults a local admin may override (reported, not
+reverted). See [Phase B plan](#phase-b-plan) for the details.
 
 ## Server commands
 
@@ -147,6 +148,12 @@ portmanagster-server group list
 portmanagster-server group profiles office restic.yaml sshd.yaml
 portmanagster-server group profiles office --clear
 
+# Endpoint rules of a group, evaluated before all app profile and global rules. The file is
+# YAML or JSON: {endpoints: ["- *.ads.example"], serviceEndpoints: ["- *"]}; every rule
+# starts with "+ " or "- ".
+portmanagster-server group rules office office-rules.yaml
+portmanagster-server group rules office --clear
+
 # One-time enrollment token; prints the enroll command for the client.
 portmanagster-server token create --group office --valid 24h --url https://pm.example.lan:8443
 
@@ -164,10 +171,12 @@ host only and the server has no admin port. Policy versions come from one sequen
 increases with every change of a group or an enrollment.
 
 After every pull the client sends a report (`POST /v1/report`): the applied policy version,
-the core version, the settings it had to set again (drift), the last error and the
-`core/status` data. The server keeps the last report per computer. `computer list` shows the
-applied version (`current` when it is the newest) and a health summary (`ok`, or e.g.
-`no interception, 2 problems, drift 1`); drift and client errors are also logged by `serve`.
+the core version, the policy defaults a local admin overrode (`overridden`), the policy
+settings that are not in force (`refused`: invalid value or unknown to this core version, or
+invalid rules), the last error and the `core/status` data. The server keeps the last report
+per computer. `computer list` shows the applied version (`current` when it is the newest) and a
+health summary (`ok`, or e.g. `no interception, 2 problems, 1 overridden`); overrides, refused
+settings and client errors are also logged by `serve`.
 
 ## Client commands
 
@@ -177,19 +186,27 @@ portmaster-core manage enroll --server https://pm.example.lan:8443 --token <toke
   --server-fp sha256:... --policy-key-fp sha256:...
 portmaster-core manage status
 portmaster-core manage pull    # pull and apply now, send a report
-portmaster-core manage leave   # the applied settings stay
+portmaster-core manage leave   # the policy values stay as user settings
 ```
 
 Before it sends the token, the client fetches the policy key (`GET /v1/policy-key`) and checks
 it against the pin, so a wrong pin does not use up the token.
 
 The client keeps its state in `<data dir>/managed/` (0700, files 0600): `state.json`,
-`client.key`, `client.crt`, `ca.crt` and the last verified `policy.json`. At start it applies
-the stored policy first, so an offline computer stays configured, then pulls every 5 minutes.
+`client.key`, `client.crt`, `ca.crt` and the last verified `policy.json`. When the core is
+created, before interception starts, it sets the policy layer (settings and rules) from the
+stored policy, so there is no unmanaged window at boot and an offline computer stays
+configured; at start it imports the profiles of the stored policy, then pulls every 5 minutes.
 A policy is applied only if its signature matches the pinned policy key, it names this
-computer and its version is not lower than the applied one. Settings that differ from the
-policy are set again; when the policy version did not change, they are drift and listed as
-`lastCorrected` in the status and in the report.
+computer and its version is not lower than the applied one; otherwise the previous policy
+stays in force (at boot: none, so the user values apply).
+
+The policy values are a layer above the user settings: `settings export` shows the user
+values, `settings export --effective` the values in force. Locked settings cannot be changed
+(`managed by policy`); a local admin may override an unlocked one, which is listed as
+`overridden` in the status and in the report. `manage leave` removes the layer and keeps the
+configuration: locked values and defaults without a user value become user values, and the
+policy rules are put before the global rules.
 
 ## Phases
 
