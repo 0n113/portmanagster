@@ -22,7 +22,8 @@ import (
 // Portmaster. The API grants full access to requests from programs installed
 // in the Portmaster directory, so these commands need no token. They are
 // meant for configuration management tools (Ansible, Salt, RMM agents) that
-// run them as root on each machine.
+// run them as root on each machine. While the computer is managed, the
+// imports are only accepted from root (Linux, see api.RequireRoot).
 
 const (
 	mimeJSON = "application/json"
@@ -82,6 +83,9 @@ var settingsImportCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true, // main prints the error.
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := checkRunAsRootIfManaged(cmd.Context(), "import settings"); err != nil {
+			return err
+		}
 		q := url.Values{}
 		q.Set("to", "global")
 		addImportFlags(q)
@@ -114,6 +118,9 @@ var profileImportCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true, // main prints the error.
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := checkRunAsRootIfManaged(cmd.Context(), "import profiles"); err != nil {
+			return err
+		}
 		q := url.Values{}
 		addImportFlags(q)
 		if syncAllowRepl {

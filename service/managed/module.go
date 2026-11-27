@@ -344,6 +344,9 @@ func (m *Managed) registerAPI() error {
 		Path:        "managed/enroll",
 		Write:       api.PermitAdmin,
 		StructFunc: func(ar *api.Request) (any, error) {
+			if err := api.RequireRoot(ar, api.RootActionManage, true); err != nil {
+				return nil, err
+			}
 			var r EnrollRequest
 			err := json.Unmarshal(ar.InputData, &r)
 			if err != nil {
@@ -361,6 +364,9 @@ func (m *Managed) registerAPI() error {
 		Path:        "managed/pull",
 		Write:       api.PermitAdmin,
 		StructFunc: func(ar *api.Request) (any, error) {
+			if err := api.RequireRoot(ar, api.RootActionManage, true); err != nil {
+				return nil, err
+			}
 			if !m.dir.enrolled() {
 				return nil, errNotEnrolled
 			}
@@ -379,7 +385,10 @@ func (m *Managed) registerAPI() error {
 		Description: "Removes the enrollment of this computer. The applied settings stay.",
 		Path:        "managed/leave",
 		Write:       api.PermitAdmin,
-		StructFunc: func(_ *api.Request) (any, error) {
+		StructFunc: func(ar *api.Request) (any, error) {
+			if err := api.RequireRoot(ar, api.RootActionManage, true); err != nil {
+				return nil, err
+			}
 			err := m.Leave()
 			if err != nil {
 				return nil, err

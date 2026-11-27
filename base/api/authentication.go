@@ -86,6 +86,14 @@ type AuthToken struct {
 	Read       Permission
 	Write      Permission
 	ValidUntil *time.Time
+
+	// CallerUID is the user ID of the local process that sent the request. It
+	// is only valid if CallerUIDKnown is set. The authenticator only sets it
+	// where the user of the process can be determined reliably (Linux). Tokens
+	// of API keys, of the dev mode and of the database bridge have no caller.
+	// Do not use the zero value of CallerUID without CallerUIDKnown: 0 is root.
+	CallerUID      int
+	CallerUIDKnown bool
 }
 
 type session struct {
@@ -236,8 +244,10 @@ func authenticateRequest(w http.ResponseWriter, r *http.Request, targetHandler h
 	// Make a copy of the AuthToken in order mitigate the handler poisoning the
 	// token, as changes would apply to future requests.
 	return &AuthToken{
-		Read:  token.Read,
-		Write: token.Write,
+		Read:           token.Read,
+		Write:          token.Write,
+		CallerUID:      token.CallerUID,
+		CallerUIDKnown: token.CallerUIDKnown,
 	}
 }
 

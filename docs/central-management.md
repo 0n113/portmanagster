@@ -13,6 +13,13 @@ the local API of the running Portmaster at `127.0.0.1:817` (`--api` changes it).
 them because they are run from the Portmaster installation directory
 (`/usr/lib/portmaster/portmaster-core` on Linux); a copy elsewhere is denied.
 
+On Linux, while the computer is enrolled at a management server (see
+[management-server.md](management-server.md)), the API accepts the imports (`settings import`,
+`profile import`, `backup restore`) only from processes running as root; others get
+"only root may …" (HTTP 403). On a computer that is not managed, and for exports, the user is not
+checked. On Windows the API does not check the user yet (open): there any user can run the
+commands from the installation directory.
+
 ```bash
 # Export all global settings that differ from the defaults (YAML, or --format json).
 sudo /usr/lib/portmaster/portmaster-core settings export -o settings.yaml

@@ -524,6 +524,15 @@ func (i *Instance) Managed() *managed.Managed {
 	return i.managed
 }
 
+// The sync module needs to know whether the computer is managed, see
+// sync.ManagedInstance.
+var _ sync.ManagedInstance = &Instance{}
+
+// IsManaged returns whether this computer is enrolled at a management server.
+func (i *Instance) IsManaged() bool {
+	return i.managed != nil && i.managed.Status().Enrolled
+}
+
 // Core returns the core module.
 func (i *Instance) Core() *core.Core {
 	return i.core
