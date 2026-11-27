@@ -210,6 +210,33 @@ Set-Content -Path $importFile -Encoding ASCII -Value "type: settings`nconfig:`n 
 & $Core settings import $importFile 2>$null | Out-Null
 Check 'settings import and export' { (& $Core settings export --format json --key filter/askTimeout 2>$null | Out-String | ConvertFrom-Json).config.filter.askTimeout -eq 33 }
 Check 'settings import keeps the endpoint rules (merge)' { (& $Core settings export --format json 2>$null | Out-String | ConvertFrom-Json).config.filter.endpoints.Count -ge 2 }
+$ApplyScript = Join-Path (Split-Path $Core) 'portmaster-apply-settings.ps1'
+$BackupScript = Join-Path (Split-Path $Core) 'portmaster-backup.ps1'
+if ((Test-Path $ApplyScript) -and (Test-Path $BackupScript)) {
+    Set-Content -Path $importFile -Encoding ASCII -Value "type: settings`nconfig:`n  filter:`n    askTimeout: 34`n"
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ApplyScript -File $importFile -CorePath $Core 2>$null | Out-Null
+    $rc = $LASTEXITCODE
+    Check "portmaster-apply-settings.ps1 imports the file (rc $rc)" { $rc -eq 0 -and (& $Core settings export --format json --key filter/askTimeout 2>$null | Out-String | ConvertFrom-Json).config.filter.askTimeout -eq 34 }
+    $badFile = Join-Path $Work 'bad.yaml'
+    Set-Content -Path $badFile -Encoding ASCII -Value "type: settings`nconfig:`n  filter:`n    noSuchSetting: 1`n"
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ApplyScript -File $badFile -CorePath $Core 2>$null | Out-Null
+    $rc = $LASTEXITCODE
+    Check "portmaster-apply-settings.ps1 rejects an unknown key and imports nothing (rc $rc)" { $rc -ne 0 -and (& $Core settings export --format json --key filter/askTimeout 2>$null | Out-String | ConvertFrom-Json).config.filter.askTimeout -eq 34 }
+    $backupDir = Join-Path $Work 'backup'
+    foreach ($i in 1..3) {
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $BackupScript -Dir $backupDir -CorePath $Core -Keep 2 2>$null | Out-Null
+        $rc = $LASTEXITCODE
+        if ($rc -ne 0) { break }
+        Start-Sleep -Seconds 1
+    }
+    $backups = @(Get-ChildItem -LiteralPath $backupDir -Filter 'portmaster-settings-*.yaml' -ErrorAction SilentlyContinue)
+    Check "portmaster-backup.ps1 writes backups and keeps 2 (rc $rc, $($backups.Count) files)" { $rc -eq 0 -and $backups.Count -eq 2 }
+    Check 'the backup contains the imported setting' { $backups.Count -gt 0 -and (Get-Content -Raw -LiteralPath $backups[-1].FullName) -match 'askTimeout:\s*34' }
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ApplyScript -File $backups[-1].FullName -CorePath $Core 2>$null | Out-Null
+    Check "a backup can be imported again (rc $LASTEXITCODE)" { $LASTEXITCODE -eq 0 }
+} else {
+    Write-Output "  info: apply or backup script not found, skipped"
+}
 
 Step 'Load'
 $jobs = 1..40 | ForEach-Object { Start-Process -FilePath $Curl -PassThru -WindowStyle Hidden -ArgumentList @('-s', '-o', 'NUL', '--max-time', '10', "https://$Allowed/?n=$_") }
