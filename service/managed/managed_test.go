@@ -153,9 +153,10 @@ func newTestEnv(t *testing.T) *testEnv {
 	}
 	a := newFakeApplier()
 	m := &Managed{
-		mgr:     mgr.New("managed-test"),
-		dir:     stateDir(filepath.Join(dir, "client", stateDirName)),
-		applier: a,
+		mgr:        mgr.New("managed-test"),
+		dir:        stateDir(filepath.Join(dir, "client", stateDirName)),
+		applier:    a,
+		coreStatus: func() any { return map[string]any{"ready": true, "interception": true} },
 	}
 	return &testEnv{srv: srv, ts: ts, token: token, keyFP: keyFP, crtFP: crtFP, m: m, a: a}
 }
@@ -238,6 +239,34 @@ func TestEnrollPullApply(t *testing.T) {
 	}
 	if got := e.m.Status().LastCorrected; len(got) != 1 {
 		t.Fatalf("corrected not reported: %v", got)
+	}
+
+	// The report reaches the server with the drift and the core status.
+	c, err := e.srv.Store.Computer(e.m.Status().ComputerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Report == nil || c.AppliedVersion != e.m.Status().AppliedVersion ||
+		len(c.Report.Drift) != 1 || !strings.Contains(string(c.Report.Status), `"ready":true`) {
+		t.Fatalf("report not stored on the server: %+v", c)
+	}
+	if e.m.Status().LastReport.IsZero() || e.m.Status().LastReportError != "" {
+		t.Fatalf("report not shown in the status: %+v", e.m.Status())
+	}
+
+	// Profiles of the group are imported once, and again when they change.
+	err = e.srv.Store.SetGroupProfiles("office", []json.RawMessage{json.RawMessage(`{"type":"profile","name":"restic"}`)}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		err = e.m.pull(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(e.a.profiles) != 1 || !strings.Contains(e.a.profiles[0], "restic") {
+		t.Fatalf("group profile not imported once: %v", e.a.profiles)
 	}
 
 	// A change on the server arrives with a higher version.

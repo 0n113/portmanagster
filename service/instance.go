@@ -513,6 +513,13 @@ func (i *Instance) Sync() *sync.Sync {
 }
 
 // Managed returns the management client module.
+// CoreStatus returns the health of the Portmaster for the reports of the
+// managed module.
+func (i *Instance) CoreStatus() any {
+	return firewall.CoreStatus()
+}
+
+// Managed returns the managed module.
 func (i *Instance) Managed() *managed.Managed {
 	return i.managed
 }

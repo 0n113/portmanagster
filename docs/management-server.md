@@ -2,7 +2,8 @@
 
 Status: phase A in progress. Done: the server side of enrollment and policies (A1, see
 [Server commands](#server-commands)) and the client module in portmaster-core (A2, see
-[Client commands](#client-commands)). Next: profiles per group and reports (A3), VM tests (A4).
+[Client commands](#client-commands)), profiles per group and reports (A3). Next: VM tests on
+Linux and Windows (A4).
 This document fixes the architecture and the order of work; details of each phase are settled
 in its PR.
 
@@ -148,12 +149,18 @@ portmanagster-server group create office
 portmanagster-server group set office office-settings.yaml --lock filter/lists
 portmanagster-server group list
 
+# App profiles of a group (profile exports from `portmaster-core profile export`), e.g. the
+# backup agent rules from integrations/backup-agents; replaces the previous ones.
+portmanagster-server group profiles office restic.yaml sshd.yaml
+portmanagster-server group profiles office --clear
+
 # One-time enrollment token; prints the enroll command for the client.
 portmanagster-server token create --group office --valid 24h --url https://pm.example.lan:8443
 
 # Client API on :8443 (mutual TLS); computers and revocation.
 portmanagster-server serve --listen :8443
-portmanagster-server computer list
+portmanagster-server computer list          # with policy version and health of the last report
+portmanagster-server computer show <id>     # last report as JSON
 portmanagster-server computer revoke <id>
 ```
 
@@ -162,6 +169,12 @@ secrets; `portmanagster.db` holds groups, token hashes and computers. Back it up
 tools from step 3. The admin commands open the database directly, so they run on the server
 host only and the server has no admin port. Policy versions come from one sequence that
 increases with every change of a group or an enrollment.
+
+After every pull the client sends a report (`POST /v1/report`): the applied policy version,
+the core version, the settings it had to set again (drift), the last error and the
+`core/status` data. The server keeps the last report per computer. `computer list` shows the
+applied version (`current` when it is the newest) and a health summary (`ok`, or e.g.
+`no interception, 2 problems, drift 1`); drift and client errors are also logged by `serve`.
 
 ## Client commands
 

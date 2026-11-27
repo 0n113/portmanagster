@@ -12,6 +12,8 @@ import (
 
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
+
+	"github.com/safing/portmaster/mgmt/policy"
 )
 
 var (
@@ -33,6 +35,7 @@ CREATE TABLE IF NOT EXISTS groups (
 	name     TEXT PRIMARY KEY,
 	settings TEXT NOT NULL DEFAULT '{}',
 	locked   TEXT NOT NULL DEFAULT '[]',
+	profiles TEXT NOT NULL DEFAULT '[]',
 	updated  INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS tokens (
@@ -51,9 +54,22 @@ CREATE TABLE IF NOT EXISTS computers (
 	cert_fp      TEXT NOT NULL,
 	enrolled     INTEGER NOT NULL,
 	last_seen    INTEGER NOT NULL DEFAULT 0,
-	revoked      INTEGER NOT NULL DEFAULT 0
+	revoked      INTEGER NOT NULL DEFAULT 0,
+	applied_version INTEGER NOT NULL DEFAULT 0,
+	last_report  INTEGER NOT NULL DEFAULT 0,
+	report       TEXT NOT NULL DEFAULT ''
 );
 `
+
+// migrations add the columns of later versions to an existing database.
+const tableComputers = "computers"
+
+var migrations = []struct{ table, column, def string }{
+	{"groups", "profiles", `TEXT NOT NULL DEFAULT '[]'`},
+	{tableComputers, "applied_version", `INTEGER NOT NULL DEFAULT 0`},
+	{tableComputers, "last_report", `INTEGER NOT NULL DEFAULT 0`},
+	{tableComputers, "report", `TEXT NOT NULL DEFAULT ''`},
+}
 
 // Store holds the server state in SQLite. The admin commands and the
 // running server open the same file; SQLite (WAL) handles the concurrency.
@@ -67,7 +83,10 @@ type Group struct {
 	Name     string         `json:"name"`
 	Settings map[string]any `json:"settings"`
 	Locked   []string       `json:"locked"`
-	Updated  time.Time      `json:"updated"`
+	// Profiles are profile exports (JSON) imported on every computer of
+	// the group.
+	Profiles []json.RawMessage `json:"profiles"`
+	Updated  time.Time         `json:"updated"`
 }
 
 // Computer is an enrolled computer.
@@ -81,6 +100,11 @@ type Computer struct {
 	Enrolled    time.Time `json:"enrolled"`
 	LastSeen    time.Time `json:"lastSeen,omitzero"`
 	Revoked     bool      `json:"revoked"`
+	// AppliedVersion is the policy version in force according to the last report.
+	AppliedVersion uint64    `json:"appliedVersion,omitempty"`
+	LastReport     time.Time `json:"lastReport,omitzero"`
+	// Report is the last report of the computer, nil if none arrived yet.
+	Report *policy.Report `json:"report,omitempty"`
 }
 
 // OpenStore opens or creates the database file.
@@ -95,7 +119,37 @@ func OpenStore(path string) (*Store, error) {
 		_ = conn.Close()
 		return nil, fmt.Errorf("create schema: %w", err)
 	}
+	err = migrate(conn)
+	if err != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("migrate schema: %w", err)
+	}
 	return &Store{conn: conn}, nil
+}
+
+func migrate(conn *sqlite.Conn) error {
+	for _, m := range migrations {
+		var n int64
+		err := sqlitex.Execute(conn, `SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?`, &sqlitex.ExecOptions{
+			Args: []any{m.table, m.column},
+			ResultFunc: func(stmt *sqlite.Stmt) error {
+				n = stmt.ColumnInt64(0)
+				return nil
+			},
+		})
+		if err != nil {
+			return err
+		}
+		if n > 0 {
+			continue
+		}
+		// Table, column and definition are constants above.
+		err = sqlitex.ExecuteTransient(conn, `ALTER TABLE `+m.table+` ADD COLUMN `+m.column+` `+m.def, nil)
+		if err != nil {
+			return fmt.Errorf("add %s.%s: %w", m.table, m.column, err)
+		}
+	}
+	return nil
 }
 
 // Close closes the database.
@@ -173,7 +227,7 @@ func (s *Store) Groups() ([]*Group, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var groups []*Group
-	err := sqlitex.Execute(s.conn, `SELECT name, settings, locked, updated FROM groups ORDER BY name`, &sqlitex.ExecOptions{
+	err := sqlitex.Execute(s.conn, `SELECT name, settings, locked, profiles, updated FROM groups ORDER BY name`, &sqlitex.ExecOptions{
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			g, err := scanGroup(stmt)
 			if err != nil {
@@ -189,11 +243,15 @@ func (s *Store) Groups() ([]*Group, error) {
 func scanGroup(stmt *sqlite.Stmt) (*Group, error) {
 	g := &Group{
 		Name:    stmt.ColumnText(0),
-		Updated: time.Unix(stmt.ColumnInt64(3), 0).UTC(),
+		Updated: time.Unix(stmt.ColumnInt64(4), 0).UTC(),
 	}
 	err := json.Unmarshal([]byte(stmt.ColumnText(1)), &g.Settings)
 	if err != nil {
 		return nil, fmt.Errorf("group %s settings: %w", g.Name, err)
+	}
+	err = json.Unmarshal([]byte(stmt.ColumnText(3)), &g.Profiles)
+	if err != nil {
+		return nil, fmt.Errorf("group %s profiles: %w", g.Name, err)
 	}
 	err = json.Unmarshal([]byte(stmt.ColumnText(2)), &g.Locked)
 	if err != nil {
@@ -277,7 +335,7 @@ func (s *Store) Enroll(token string, c *Computer, now time.Time, issue func(id s
 	return s.bumpSeq()
 }
 
-const computerColumns = `id, grp, hostname, os, core_version, cert_fp, enrolled, last_seen, revoked`
+const computerColumns = `id, grp, hostname, os, core_version, cert_fp, enrolled, last_seen, revoked, applied_version, last_report, report`
 
 func scanComputer(stmt *sqlite.Stmt) *Computer {
 	c := &Computer{
@@ -289,11 +347,64 @@ func scanComputer(stmt *sqlite.Stmt) *Computer {
 		CertFP:      stmt.ColumnText(5),
 		Enrolled:    time.Unix(stmt.ColumnInt64(6), 0).UTC(),
 		Revoked:     stmt.ColumnInt64(8) != 0,
+		// The version is stored from a uint64 and never negative.
+		AppliedVersion: uint64(stmt.ColumnInt64(9)), //nolint:gosec // See above.
 	}
 	if seen := stmt.ColumnInt64(7); seen > 0 {
 		c.LastSeen = time.Unix(seen, 0).UTC()
 	}
+	if reported := stmt.ColumnInt64(10); reported > 0 {
+		c.LastReport = time.Unix(reported, 0).UTC()
+	}
+	if text := stmt.ColumnText(11); text != "" {
+		r := &policy.Report{}
+		// A report that cannot be read is left out; it was checked when stored.
+		if json.Unmarshal([]byte(text), r) == nil {
+			c.Report = r
+		}
+	}
 	return c
+}
+
+// SetGroupProfiles replaces the profiles of a group.
+func (s *Store) SetGroupProfiles(name string, profiles []json.RawMessage, now time.Time) (err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if profiles == nil {
+		profiles = []json.RawMessage{}
+	}
+	data, err := json.Marshal(profiles)
+	if err != nil {
+		return err
+	}
+	defer sqlitex.Save(s.conn)(&err)
+	err = s.exec(`UPDATE groups SET profiles = ?, updated = ? WHERE name = ?`, string(data), now.Unix(), name)
+	if err != nil {
+		return err
+	}
+	if s.conn.Changes() == 0 {
+		return fmt.Errorf("group %s: %w", name, ErrNotFound)
+	}
+	return s.bumpSeq()
+}
+
+// SaveReport stores the last report of a computer.
+func (s *Store) SaveReport(id string, r *policy.Report, now time.Time) error {
+	data, err := json.Marshal(r)
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	err = s.exec(`UPDATE computers SET applied_version = ?, core_version = ?, last_report = ?, last_seen = ?, report = ? WHERE id = ?`,
+		int64(r.AppliedVersion), r.CoreVersion, now.Unix(), now.Unix(), string(data), id) //nolint:gosec // Versions are far below 2^63.
+	if err != nil {
+		return err
+	}
+	if s.conn.Changes() == 0 {
+		return fmt.Errorf("computer %s: %w", id, ErrNotFound)
+	}
+	return nil
 }
 
 // Computer returns a computer.
@@ -367,7 +478,7 @@ func (s *Store) group(name string) (*Group, error) {
 		g     *Group
 		inner error
 	)
-	err := sqlitex.Execute(s.conn, `SELECT name, settings, locked, updated FROM groups WHERE name = ?`, &sqlitex.ExecOptions{
+	err := sqlitex.Execute(s.conn, `SELECT name, settings, locked, profiles, updated FROM groups WHERE name = ?`, &sqlitex.ExecOptions{
 		Args: []any{name},
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			g, inner = scanGroup(stmt)

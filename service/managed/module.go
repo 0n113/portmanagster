@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/info"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/mgmt/policy"
 	"github.com/safing/portmaster/service/mgr"
@@ -34,6 +35,8 @@ type Managed struct {
 	instance instance
 	dir      stateDir
 	applier  applier
+	// coreStatus returns the core/status data for the reports; nil in tests.
+	coreStatus func() any
 
 	// lock serializes enroll, leave and pulls.
 	lock   sync.Mutex
@@ -54,6 +57,9 @@ type Status struct {
 	LastPull       time.Time `json:"lastPull,omitzero"`
 	LastSuccess    time.Time `json:"lastSuccess,omitzero"`
 	LastError      string    `json:"lastError,omitempty"`
+	LastReport     time.Time `json:"lastReport,omitzero"`
+	// LastReportError is the error of the last report, empty if it was sent.
+	LastReportError string `json:"lastReportError,omitempty"`
 	// LastCorrected lists the settings set again at the last apply because
 	// they differed from the policy.
 	LastCorrected []string `json:"lastCorrected,omitempty"`
@@ -61,6 +67,9 @@ type Status struct {
 
 type instance interface {
 	DataDir() string
+	// CoreStatus returns the health of the Portmaster (core/status) for
+	// the reports.
+	CoreStatus() any
 }
 
 var shimLoaded atomic.Bool
@@ -75,6 +84,8 @@ func New(instance instance) (*Managed, error) {
 		instance: instance,
 		dir:      stateDir(filepath.Join(instance.DataDir(), stateDirName)),
 		applier:  coreApplier{},
+
+		coreStatus: instance.CoreStatus,
 	}
 	err := m.registerAPI()
 	if err != nil {
@@ -191,7 +202,44 @@ func (m *Managed) pull(ctx context.Context) error {
 	if err != nil {
 		log.Warningf("managed: policy pull failed: %s", err)
 	}
+	m.reportLocked(ctx)
 	return err
+}
+
+// reportLocked sends the report of the last pull to the server. Errors are
+// only logged and shown in the status: the policy is in force either way.
+func (m *Managed) reportLocked(ctx context.Context) {
+	st, err := m.dir.loadState()
+	if err != nil {
+		return
+	}
+	m.statusLock.Lock()
+	r := &policy.Report{
+		Type:           policy.TypeReport,
+		Time:           time.Now().UTC().Truncate(time.Second),
+		AppliedVersion: st.AppliedVersion,
+		CoreVersion:    info.Version(),
+		Drift:          m.status.LastCorrected,
+		Error:          m.status.LastError,
+	}
+	m.statusLock.Unlock()
+	if m.coreStatus != nil {
+		data, err := json.Marshal(m.coreStatus())
+		if err == nil {
+			r.Status = data
+		}
+	}
+
+	err = sendReport(ctx, m.dir, st, r)
+	m.statusLock.Lock()
+	defer m.statusLock.Unlock()
+	if err != nil {
+		m.status.LastReportError = err.Error()
+		log.Debugf("managed: report failed: %s", err)
+		return
+	}
+	m.status.LastReport = r.Time
+	m.status.LastReportError = ""
 }
 
 func (m *Managed) pullLocked(ctx context.Context) error {

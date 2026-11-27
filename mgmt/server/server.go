@@ -204,6 +204,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/enroll", s.handleEnroll)
 	mux.HandleFunc("GET /v1/policy", s.handlePolicy)
+	mux.HandleFunc("POST /v1/report", s.handleReport)
 	return mux
 }
 
@@ -247,6 +248,7 @@ func (s *Server) PolicyFor(c *Computer, now time.Time) ([]byte, error) {
 		Group:    g.Name,
 		Settings: g.Settings,
 		Locked:   g.Locked,
+		Profiles: g.Profiles,
 	}, s.PolicyKey)
 }
 
@@ -350,4 +352,38 @@ func (s *Server) handlePolicy(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(signed) //nolint:gosec // Signed JSON policy, served as application/json.
+}
+
+func (s *Server) handleReport(w http.ResponseWriter, r *http.Request) {
+	c, err := s.authenticate(r)
+	if err != nil {
+		s.Log.Warn("report denied", "remote", r.RemoteAddr, "err", err)
+		writeError(w, http.StatusForbidden, "access denied")
+		return
+	}
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxRequestSize))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "cannot read request")
+		return
+	}
+	var report policy.Report
+	err = json.Unmarshal(body, &report)
+	if err != nil || report.Type != policy.TypeReport {
+		writeError(w, http.StatusBadRequest, "invalid report")
+		return
+	}
+	now := s.Now()
+	err = s.Store.SaveReport(c.ID, &report, now)
+	if err != nil {
+		s.Log.Error("store report", "id", c.ID, "err", err)
+		writeError(w, http.StatusInternalServerError, "cannot store report")
+		return
+	}
+	if len(report.Drift) > 0 {
+		s.Log.Info("drift corrected", "id", c.ID, "hostname", c.Hostname, "settings", report.Drift)
+	}
+	if report.Error != "" {
+		s.Log.Warn("client reports an error", "id", c.ID, "hostname", c.Hostname, "err", report.Error)
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

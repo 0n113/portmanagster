@@ -50,6 +50,11 @@ func registerStatusAPI() error {
 	})
 }
 
+// CoreStatus returns the health of the Portmaster, as served by core/status.
+func CoreStatus() *Status {
+	return getStatus()
+}
+
 func getStatus() *Status {
 	s := &Status{
 		Version:      info.Version(),
