@@ -1,0 +1,17 @@
+# Managed by Ansible (role portmaster, portmaster_app_rules).
+type: profile
+source: local
+name: {{ item.name | to_json }}
+fingerprints:
+  - type: path
+    operation: equals
+    value: {{ item.path | to_json }}
+config:
+  filter:
+{% if item.endpoints is defined %}
+    endpoints: {{ item.endpoints | to_json }}
+{% endif %}
+{% if item.service_endpoints is defined %}
+    blockInbound: false
+    serviceEndpoints: {{ item.service_endpoints | to_json }}
+{% endif %}

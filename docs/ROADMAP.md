@@ -44,7 +44,9 @@ portmanagster will support them where the firewall is involved:
 - Done: `portmaster-core backup create|restore`: the global settings and all local app
   profiles in one directory; restore validates everything first.
 - Done: the Ansible role and the RMM backup scripts use it.
-- Examples for allowing exactly the backup agent to reach the backup server, per computer.
+- Done: profiles that let only the backup agent (restic, Borg, UrBackup) reach the backup
+  server (`integrations/backup-agents/`), and `portmaster_app_rules` in the Ansible role to set
+  them per computer.
 - Optionally, the backup state of each computer in the central view (step 4).
 
 ## Step 4: own management server and agent

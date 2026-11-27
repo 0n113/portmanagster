@@ -1,0 +1,15 @@
+# Borg runs its connection through the ssh client, so the Portmaster sees /usr/bin/ssh, not borg.
+# This profile limits the ssh client of this computer to the backup server. Use it only on
+# computers where ssh is not needed for other destinations, or list those too.
+type: profile
+source: local
+name: OpenSSH client (backup only)
+fingerprints:
+  - type: path
+    operation: equals
+    value: /usr/bin/ssh
+config:
+  filter:
+    endpoints:
+      - "+ backup.example.lan TCP/22"
+      - "- *"

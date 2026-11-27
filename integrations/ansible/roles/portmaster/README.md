@@ -45,6 +45,7 @@ See [example-playbook.yml](../../example-playbook.yml).
 | `portmaster_profiles` | `[]` | Profile export files on the controller. |
 | `portmaster_profiles_allow_unknown` | `false` | `--allow-unknown` for profiles. |
 | `portmaster_profiles_force` | `false` | Import all profiles on every run, not only changed files. |
+| `portmaster_app_rules` | `[]` | Profiles from `{name, path, endpoints, service_endpoints}` that limit an app to given destinations, e.g. a backup agent to the backup server; see [backup-agents](../../../backup-agents/README.md). Imported like `portmaster_profiles`. |
 | `portmaster_ssh_access` | `true` | Import a profile for sshd that allows incoming SSH (see above). |
 | `portmaster_ssh_rules` | `["+ LAN", "+ Localhost", "- *"]` | Incoming rules for sshd; first match wins. |
 | `portmaster_managed_dir` | `/etc/portmaster/ansible` | Host directory for the profile files the role imports. |

@@ -1,0 +1,15 @@
+# restic on Linux: may connect only to the backup repository (here a rest-server or S3 endpoint
+# on backup.example.lan, port 8000), everything else is blocked.
+# Adjust the domain/IP and port, then: portmaster-core profile import --allow-replace restic-linux.yaml
+type: profile
+source: local
+name: restic
+fingerprints:
+  - type: path
+    operation: equals
+    value: /usr/bin/restic
+config:
+  filter:
+    endpoints:
+      - "+ backup.example.lan TCP/8000"
+      - "- *"

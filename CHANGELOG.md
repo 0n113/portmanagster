@@ -33,6 +33,9 @@ pre-releases carry a `-rcN` suffix.
   profiles with their scoped IDs (API endpoint `sync/profile/list`).
   The Ansible role (`portmaster_backup`) and the RMM backup scripts now back up the app
   profiles too.
+- `integrations/backup-agents/`: app profiles that let only the backup agent (restic, Borg,
+  UrBackup; Linux and Windows) reach the backup server. Ansible role variable
+  `portmaster_app_rules` writes and imports such rule profiles per host.
 
 ### Fixed
 - Importing global settings without "reset" replaced all settings: settings missing from the

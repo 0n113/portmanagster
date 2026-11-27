@@ -55,3 +55,9 @@ portmaster_max_intel_age: 336h
 # --- Backup ---
 portmaster_backup: false
 portmaster_backup_dir: "{{ playbook_dir }}/portmaster-backups"
+
+# Profiles that limit an app to given destinations, e.g. a backup agent that may only reach
+# the backup server. Each item: name, path (real path of the binary, no symlink), endpoints
+# (outgoing rules) and/or service_endpoints (incoming rules; also sets blockInbound: false).
+# Rules: "+ <domain|IP|range|*> [TCP/<port>[-<port>]]", first match wins, end with "- *".
+portmaster_app_rules: []
