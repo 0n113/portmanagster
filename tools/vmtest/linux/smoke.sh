@@ -250,7 +250,15 @@ if [[ -x "$SERVER" && -f "$MPROFILE" ]]; then
 	MSTATE="$DATA/managed"
 	# user_value KEY: the value the user set; effective KEY: the value in force.
 	user_value() { "$CORE" settings export --format json --key "$1" | jq -c ".config.${1/\//.} // \"unset\""; }
-	effective() { "$CORE" settings export --effective --format json --key "$1" | jq -c ".config.${1/\//.}"; }
+	# Right after a start the API may not identify the client yet; retry.
+	effective() {
+		local out
+		for _ in 1 2 3; do
+			out=$("$CORE" settings export --effective --format json --key "$1" 2>/dev/null) && break
+			sleep 1
+		done
+		jq -c ".config.${1/\//.}" <<<"$out"
+	}
 	set_ask_timeout() { printf 'type: settings\nconfig:\n  filter:\n    askTimeout: %s\n' "$1" | "$CORE" settings import - >/dev/null; }
 	new_token() { "$SERVER" --dir "$SD" token create --group office --url "$MURL" | sed -n 's/^token.*: //p'; }
 	start_server() {
@@ -268,8 +276,10 @@ if [[ -x "$SERVER" && -f "$MPROFILE" ]]; then
 	export CORE
 	"$SERVER" --dir "$SD" init --host 127.0.0.1 >/dev/null
 	"$SERVER" --dir "$SD" group create office
-	printf 'type: settings\nconfig:\n  filter:\n    askTimeout: 77\n    askWithSystemNotifications: false\n' >"$WORK/mgmt-group.yaml"
-	"$SERVER" --dir "$SD" group set office "$WORK/mgmt-group.yaml" --lock filter/askTimeout
+	# The locked filter lists differ from the default, so the global config
+	# profile changes a locked setting when the policy arrives.
+	printf 'type: settings\nconfig:\n  filter:\n    askTimeout: 77\n    askWithSystemNotifications: false\n    lists: [TRAC, MAL, UNBREAK]\n' >"$WORK/mgmt-group.yaml"
+	"$SERVER" --dir "$SD" group set office "$WORK/mgmt-group.yaml" --lock filter/askTimeout --lock filter/lists
 	"$SERVER" --dir "$SD" group profiles office "$MPROFILE"
 	printf 'endpoints:\n  - "- %s"\n' "$ALLOWED" >"$WORK/mgmt-rules.yaml"
 	"$SERVER" --dir "$SD" group rules office "$WORK/mgmt-rules.yaml"
@@ -278,6 +288,14 @@ if [[ -x "$SERVER" && -f "$MPROFILE" ]]; then
 	kfp=$("$SERVER" --dir "$SD" fingerprints | sed -n 's/^policy key: *//p')
 	set_ask_timeout 33
 
+	# An app profile for curl that allows $ALLOWED and blocks example.net.
+	curl_profile() { # curl_profile ENDPOINTS-YAML
+		printf 'type: profile\nsource: local\nname: smoke curl\nfingerprints:\n  - type: path\n    operation: equals\n    value: %s\nconfig:\n  filter:\n    endpoints: %s\n' \
+			"$(realpath "$(command -v curl)")" "$1" | "$CORE" profile import --allow-replace - >/dev/null
+	}
+	curl_profile "[\"+ $ALLOWED\", \"- example.net\"]"
+	check "the curl app profile applies (example.net blocked, $ALLOWED allowed)" bash -c "! curl -sS -o /dev/null --max-time 10 https://example.net/ && curl -sS -o /dev/null --max-time 15 https://$ALLOWED/"
+
 	check "enroll with a wrong policy key pin is refused" bash -c "! '$CORE' manage enroll --server $MURL --token '$(new_token)' --server-fp '$sfp' --policy-key-fp sha256:00 && [[ ! -e '$MSTATE/state.json' ]]"
 	check "enroll succeeds" "$CORE" manage enroll --server "$MURL" --token "$(new_token)" --server-fp "$sfp" --policy-key-fp "$kfp"
 	cid=$("$CORE" manage status | jq -r '.computerId // empty')
@@ -285,7 +303,10 @@ if [[ -x "$SERVER" && -f "$MPROFILE" ]]; then
 	check "the locked setting is in force over the user value (77, user 33)" bash -c '[[ $(effective filter/askTimeout) == 77 && $(user_value filter/askTimeout) == 33 ]]'
 	check "the policy default is in force without a user value" bash -c '[[ $(effective filter/askWithSystemNotifications) == false && $(user_value filter/askWithSystemNotifications) == \"unset\" ]]'
 	check "the locked setting cannot be changed" bash -c "! printf 'type: settings\nconfig:\n  filter:\n    askTimeout: 15\n' | '$CORE' settings import - && [[ \$(effective filter/askTimeout) == 77 ]]"
-	check "the policy rule blocks https://$ALLOWED" bash -c "! curl -sS -o /dev/null --max-time 10 https://$ALLOWED/"
+	check "the policy rule blocks https://$ALLOWED although the app profile of curl allows it" bash -c "! curl -sS -o /dev/null --max-time 10 https://$ALLOWED/"
+	check "the config API refuses a locked setting" bash -c "! curl -sf --max-time 10 -X POST '$API/sync/single-setting/import?to=global' -H 'Content-Type: application/json' -d '{\"type\":\"single-setting\",\"id\":\"filter/askTimeout\",\"value\":15}' && [[ \$(effective filter/askTimeout) == 77 ]]"
+	check "an app profile cannot set a locked setting" bash -c "! printf 'type: profile\nsource: local\nname: smoke locked\nfingerprints:\n  - type: path\n    operation: equals\n    value: /usr/bin/true\nconfig:\n  filter:\n    lists: [DECEP]\n' | '$CORE' profile import - && ! '$CORE' profile list | jq -e 'any(.name == \"smoke locked\")'"
+	check "the global config profile shows the locked filter lists" bash -c "'$CORE' profile export special/global-config --format json | jq -e '.config.filter.lists == [\"TRAC\",\"MAL\",\"UNBREAK\"]' && ! grep -q 'global-config: managed by policy' '$LOG'"
 	check "group profile imported" bash -c "'$CORE' profile list | jq -e 'any(.name == \"restic\")'"
 	check "state files are root-only" bash -c "[[ \$(stat -c %a '$MSTATE') == 700 && \$(stat -c %a '$MSTATE/client.key') == 600 ]]"
 	check "report arrived on the server, nothing overridden" bash -c "'$SERVER' --dir '$SD' computer show '$cid' | jq -e '.report.status.ready and .report.status.interception and .appliedVersion > 0 and .report.overridden == null and .report.refused == null'"
@@ -299,7 +320,7 @@ if [[ -x "$SERVER" && -f "$MPROFILE" ]]; then
 	cp "$MSTATE/policy.json" "$WORK/mgmt-old-policy.json"
 	v1=$("$CORE" manage status | jq .appliedVersion)
 	sed -i 's/77/88/' "$WORK/mgmt-group.yaml"
-	"$SERVER" --dir "$SD" group set office "$WORK/mgmt-group.yaml" --lock filter/askTimeout
+	"$SERVER" --dir "$SD" group set office "$WORK/mgmt-group.yaml" --lock filter/askTimeout --lock filter/lists
 	"$CORE" manage pull >/dev/null
 	check "a server change arrives with a higher version" bash -c "[[ \$('$CORE' manage status | jq .appliedVersion) -gt $v1 && \$(effective filter/askTimeout) == 88 ]]"
 	cp "$MSTATE/policy.json" "$WORK/mgmt-good-policy.json"
@@ -341,11 +362,14 @@ if [[ -x "$SERVER" && -f "$MPROFILE" ]]; then
 	check "manage leave removes the enrollment" bash -c "'$CORE' manage leave | jq -e '.enrolled == false' && [[ ! -e '$MSTATE' ]]"
 	check "leave keeps the locked value as a user value" bash -c '[[ $(user_value filter/askTimeout) == 88 && $(effective filter/askTimeout) == 88 ]]'
 	check "leave keeps the overridden default as set by the admin" bash -c '[[ $(user_value filter/askWithSystemNotifications) == true ]]'
-	check "leave keeps the policy rule in the global rules" bash -c "'$CORE' settings export --format json --key filter/endpoints | jq -e '.config.filter.endpoints[0] == \"- $ALLOWED\"' && ! curl -sS -o /dev/null --max-time 10 https://$ALLOWED/"
+	# After leave the rule is a global rule; the allow rule of the curl app
+	# profile wins over it, as for any global rule.
+	check "leave keeps the policy rule in the global rules" bash -c "'$CORE' settings export --format json --key filter/endpoints | jq -e '.config.filter.endpoints[0] == \"- $ALLOWED\"'"
 	check "the settings can be changed after leave" bash -c "printf 'type: settings\nconfig:\n  filter:\n    askTimeout: 15\n' | '$CORE' settings import - && [[ \$(effective filter/askTimeout) == 15 ]]"
 	stop_server
 	check "no panics or errors in the server log" bash -c "! grep -qE '^panic:|level=ERROR' '$WORK/mgmt-server.log'"
 	"$CORE" settings import --reset "$WORK/settings.json" >/dev/null
+	curl_profile "[]"
 	check "https://$ALLOWED is reachable again after the reset" https_ok "$ALLOWED"
 else
 	echo "  info: $SERVER or $MPROFILE not found, skipped"

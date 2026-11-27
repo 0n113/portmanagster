@@ -21,6 +21,9 @@ pre-releases carry a `-rcN` suffix.
   (`portmanagster-server group rules`), evaluated before all other rules. The report lists
   overridden policy defaults and refused settings instead of drift. `manage leave` keeps the
   policy values and rules as user settings.
+- VM smoke tests of the management policy (management phase B5), Linux and Windows: locked
+  settings refused through settings import, config API and app profiles, a policy rule wins over
+  an app profile allow rule, locked filter lists, override reports.
 - The app shows the management policy (management phase B4): locked settings are read-only and
   marked "Managed by your organisation" in the global and the app settings, policy defaults are
   marked "Default set by your organisation" and reset to the policy value, and the global
