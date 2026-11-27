@@ -1,7 +1,9 @@
 # Design: management server and agent (roadmap step 4)
 
-Status: plan, not implemented. This document fixes the architecture and the order of work;
-details of each phase are settled in its PR.
+Status: phase A in progress. Done: the server side of enrollment and policies (A1, see
+[Server commands](#server-commands)). Next: the client module in portmaster-core (A2).
+This document fixes the architecture and the order of work; details of each phase are settled
+in its PR.
 
 ## Why
 
@@ -97,7 +99,7 @@ A policy is a JSON document per computer, built by the server from the computer'
   "type": "policy",
   "version": 42,
   "issued": "2026-12-01T10:00:00Z",
-  "computer": "<client cert fingerprint>",
+  "computer": "<computer ID, the CN of its client certificate>",
   "settings": { "filter/lists": ["TRAC", "MAL", "BAD"], "filter/blockInbound": true },
   "locked": ["filter/lists", "filter/blockInbound"],
   "rules": { "endpoints": ["- MAL"], "serviceEndpoints": [] },
@@ -132,6 +134,33 @@ enforcement, the core gets a **policy layer** on top of both:
 Until phase B, enforcement is by **drift correction**: the client re-applies the policy
 settings and profiles when they differ (on every pull and on config change), and reports the
 drift.
+
+## Server commands
+
+```bash
+# Once: CA, server certificate for the given names/IPs, policy signing key, database.
+portmanagster-server --dir /var/lib/portmanagster init --host pm.example.lan --host 192.168.1.10
+portmanagster-server fingerprints
+
+# Groups and their settings (a settings export from `portmaster-core settings export`).
+portmanagster-server group create office
+portmanagster-server group set office office-settings.yaml --lock filter/lists
+portmanagster-server group list
+
+# One-time enrollment token; prints the enroll command for the client.
+portmanagster-server token create --group office --valid 24h --url https://pm.example.lan:8443
+
+# Client API on :8443 (mutual TLS); computers and revocation.
+portmanagster-server serve --listen :8443
+portmanagster-server computer list
+portmanagster-server computer revoke <id>
+```
+
+The data directory is root-only (0700): `ca.key`, `server.key` and `policy.key` are the
+secrets; `portmanagster.db` holds groups, token hashes and computers. Back it up with the
+tools from step 3. The admin commands open the database directly, so they run on the server
+host only and the server has no admin port. Policy versions come from one sequence that
+increases with every change of a group or an enrollment.
 
 ## Phases
 
