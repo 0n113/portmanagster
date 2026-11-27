@@ -1,5 +1,6 @@
 ---
-# The profile files are kept in portmaster_managed_dir/profiles. A profile is
+# The profile files (portmaster_profiles) and the profiles rendered from
+# portmaster_app_rules are kept in portmaster_managed_dir/profiles. A profile is
 # imported when its file there changed, or on every run with
 # portmaster_profiles_force.
 - name: Create the directory for managed profiles
@@ -20,12 +21,24 @@
     index_var: idx
   register: _portmaster_profile_files
 
+- name: Write the app rule profiles
+  ansible.builtin.template:
+    src: app-rules-profile.yaml.j2
+    dest: "{{ portmaster_managed_dir }}/profiles/rules-{{ item.name | regex_replace('[^A-Za-z0-9._-]', '_') }}.yaml"
+    owner: root
+    mode: "0600"
+  loop: "{{ portmaster_app_rules }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: _portmaster_rule_files
+
 - name: Import the changed profiles
   vars:
+    _portmaster_all_files: "{{ _portmaster_profile_files.results + _portmaster_rule_files.results }}"
     _portmaster_to_import: >-
-      {{ _portmaster_profile_files.results
+      {{ _portmaster_all_files
          if (portmaster_profiles_force | bool)
-         else (_portmaster_profile_files.results | selectattr('changed') | list) }}
+         else (_portmaster_all_files | selectattr('changed') | list) }}
   block:
     - name: Validate the profile imports
       ansible.builtin.command:

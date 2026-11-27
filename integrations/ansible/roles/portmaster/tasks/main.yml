@@ -45,7 +45,7 @@
 
 - name: Import profiles
   ansible.builtin.include_tasks: profiles.yml
-  when: portmaster_profiles | length > 0
+  when: (portmaster_profiles | length > 0) or (portmaster_app_rules | length > 0)
 
 - name: Run pending restarts
   ansible.builtin.meta: flush_handlers

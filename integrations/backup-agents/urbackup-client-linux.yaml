@@ -1,0 +1,23 @@
+# UrBackup client on Linux. The server connects in (TCP 35621, 35623; UDP 35622 for discovery),
+# and in internet mode the client connects out to the server (TCP 55415).
+# Allow only the backup server (here 192.168.1.10). The binary path depends on the installer
+# (/usr/local/sbin/urbackupclientbackend or /usr/sbin/urbackupclientbackend); check it.
+type: profile
+source: local
+name: UrBackup client
+fingerprints:
+  - type: path
+    operation: equals
+    value: /usr/local/sbin/urbackupclientbackend
+config:
+  filter:
+    blockInbound: false
+    serviceEndpoints:
+      - "+ 192.168.1.10 TCP/35621"
+      - "+ 192.168.1.10 TCP/35623"
+      - "+ 192.168.1.10 UDP/35622"
+      - "- *"
+    endpoints:
+      - "+ 192.168.1.10 TCP/55413-55415"
+      - "+ 192.168.1.10 UDP/35622"
+      - "- *"

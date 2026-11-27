@@ -1,0 +1,15 @@
+# restic on Windows: may connect only to the backup repository on backup.example.lan, port 8000.
+# The path depends on how restic was installed (winget, Chocolatey, manual copy); check it in the
+# Portmaster app list and adjust "value".
+type: profile
+source: local
+name: restic
+fingerprints:
+  - type: path
+    operation: equals
+    value: C:\Program Files\restic\restic.exe
+config:
+  filter:
+    endpoints:
+      - "+ backup.example.lan TCP/8000"
+      - "- *"
