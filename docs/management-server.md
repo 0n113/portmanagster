@@ -3,9 +3,8 @@
 Status: phase A done: the server side of enrollment and policies (A1, see
 [Server commands](#server-commands)) and the client module in portmaster-core (A2, see
 [Client commands](#client-commands)), profiles per group and reports (A3), and the VM tests
-on Linux and Windows (A4, step "Management" of the smoke tests). Phase B in progress, see
-[Phase B plan](#phase-b-plan): B1 (policy layer in `base/config`) and B2 (app profiles
-respect it, policy rules) done.
+on Linux and Windows (A4, step "Management" of the smoke tests). Phase B done (policy layer,
+see [Phase B plan](#phase-b-plan)). Phase C planned, see [Phase C plan](#phase-c-plan).
 This document fixes the architecture and the order of work; details of each phase are settled
 in its PR.
 
@@ -63,7 +62,7 @@ Non-goals (for now):
   separate (internal CA or ACME/own PKI); clients pin it at enrollment.
 - Admin interface in phase A: a CLI on the server host that talks to the server over a Unix
   socket (root only). No admin port on the network until the web UI phase, which adds admin
-  accounts with passkeys/TOTP.
+  accounts with passkeys/TOTP (see [Phase C plan](#phase-c-plan)).
 
 ### Client: module `service/managed` in portmaster-core
 
@@ -305,6 +304,113 @@ layer stays empty), then B4 and B5. B4 can run in parallel with B3.
 - Upstream merges: `base/config` and `service/profile` are upstream code; the changes are kept
   small and in separate files where possible.
 
+## Phase C plan
+
+Phase C gives admins a web UI on the server: everything the CLI does, plus a view of what the
+clients block and alerts. The CLI stays; both work on the same database.
+
+### Decisions
+
+- **UI technology: server-rendered HTML in the server binary.** Go `html/template` pages with
+  a few lines of plain JavaScript (passkey ceremony, confirm dialogs), embedded with
+  `go:embed`. No Node build for the server, one static binary, a strict Content Security
+  Policy (`default-src 'self'`, no inline scripts), and the handlers are tested with
+  `httptest` like the client API. The Angular code of the Portmaster app is not reused: it is
+  built around the local portapi and its websocket database, and would put a large build and
+  dependency tree into the server. (This settles the open question below.)
+- **Separate admin listener.** `serve --admin-listen 127.0.0.1:8444` (default: localhost only).
+  The client API on `:8443` stays as it is (mutual TLS, no admin routes). Admins reach the UI
+  through an SSH tunnel, or bind it to the LAN with a certificate the browsers trust
+  (`--admin-cert/--admin-key`, e.g. from the company PKI or ACME). Reason: passkeys
+  (WebAuthn) need a secure context, which `http://localhost` is and a page with a certificate
+  warning is not; the internal CA of the client API is not trusted by browsers.
+- **Admin accounts with passkeys, TOTP as fallback.** No passwords. The first account is
+  created on the server host: `portmanagster-server admin add NAME` prints a one-time setup
+  link (15 min); opening it registers a passkey, or a TOTP secret if the browser has no
+  passkey support. Library for WebAuthn: `github.com/go-webauthn/webauthn` (new dependency,
+  needs approval to download); TOTP (RFC 6238) is small enough to implement with
+  `crypto/hmac`. `admin list|remove|reset NAME` on the CLI; a removed or reset admin loses all
+  sessions.
+- **Roles: `admin` and `viewer`.** Viewers see everything and change nothing. Finer roles
+  (per group) only if needed later.
+- **Sessions:** random 256-bit ID in a cookie (`Secure` unless on localhost, `HttpOnly`,
+  `SameSite=Strict`), stored hashed in SQLite, 12 h lifetime, 30 min idle timeout. Every
+  POST carries a CSRF token bound to the session; login is rate-limited per account and IP.
+- **Audit log:** every change (UI and CLI) is written to an `audit` table: time, actor
+  (`admin:NAME` or `cli`), action, object, and a summary of the change (e.g. the keys that
+  changed in a group policy, not the full values of large lists). Shown in the UI, readable
+  with `portmanagster-server audit [--since]`. Not editable through the UI.
+
+### Blocked-connection summaries (opt-in per group)
+
+- A group setting `blockSummary` (off by default). When it is on, the client adds a summary to
+  each report: per (app, verdict reason, filter list or rule, domain or IP) the number of
+  blocked connections since the last report, from netquery, capped at the 200 largest entries.
+  No allowed connections, no connection lines, no user names.
+- The server keeps the summaries for `--block-retention` (default 30 days) and aggregates them
+  per group and computer. The UI shows "recent blocks" per computer and per group, filterable by
+  app, list and domain.
+- The opt-in is shown on the group page and in the client's Managed panel ("Your organisation
+  receives a summary of blocked connections"), so users and works councils can see it.
+
+### Alerts
+
+Computed on the server from reports and summaries; shown on the dashboard and, if configured,
+sent as JSON to a webhook (`--alert-webhook URL`, e.g. for an RMM tool, Matrix or a mail
+gateway). Each alert has a state (new, acknowledged) and is audited when acknowledged.
+
+| Alert | Source |
+|---|---|
+| Computer silent for more than N hours (per group, default 24) | `last_seen` |
+| Interception off, core module errors | report status |
+| Policy refused or settings not applied | report `refused`, last error |
+| Policy default overridden locally | report `overridden` (info level) |
+| Hit on a malware filter list (`MAL` and the malware lists of the index) | block summary |
+| New app with network access on a computer | block summary and a new "apps" list in the report (app name and path hash, opt-in with the summary) |
+
+### UI pages
+
+- **Dashboard:** number of computers per state (ok, problems, silent, revoked), open alerts,
+  computers not on the current policy.
+- **Computers:** list with filters (group, state, OS, version); detail page with the last
+  report, health, applied version, overridden and refused settings, recent blocks; revoke,
+  move to another group.
+- **Groups:** create, delete (only if empty); settings editor (YAML/JSON as in the CLI, with a
+  lock checkbox per key; the clients validate the values and report invalid or unknown keys as
+  `refused`, which the group page lists per computer),
+  profiles (upload, list, remove), rules editor, block summary opt-in, silent threshold.
+- **Enrollment:** create a token for a group, show the enroll command with both fingerprints,
+  list and revoke unused tokens.
+- **Admins and audit log** (admin role only).
+
+### Steps
+
+| Step | Content | Done when |
+|---|---|---|
+| C1 | Admin listener, accounts (`admin add/list/remove/reset`), passkey and TOTP login, sessions, CSRF, rate limit, audit table (CLI changes audited too), empty dashboard. | Handler tests: login, logout, expiry, CSRF refused, viewer cannot POST; manual check with a passkey in the browser over an SSH tunnel |
+| C2 | Read-only pages: dashboard, computers (list, detail), groups, tokens, audit log. | Handler tests; browser check against a server with enrolled VMs |
+| C3 | Write actions: group create/delete/settings/profiles/rules, token create/revoke, computer revoke/move. Same validation as the CLI (shared functions moved from `cmds/portmanagster-server` into `mgmt/server`). | Everything the CLI does works in the UI (checked against the command list); every change is in the audit log |
+| C4 | Block summaries: client part in `service/managed` (netquery aggregate, opt-in from the policy, cap), report field, server storage with retention, "recent blocks" views, notice in the client's Managed panel. | Unit tests; VM test: a blocked domain shows up on the server with app and list |
+| C5 | Alerts and webhook. | Unit tests per rule; VM test: silent computer and a `MAL` hit raise alerts, the webhook receives them |
+
+Order: C1 → C2 → C3; C4 can start after C1 (client and report part are independent of the UI);
+C5 after C4.
+
+### Risks
+
+- **Attack surface:** the admin UI can change every firewall. Mitigations: localhost-only
+  default, no passwords, CSRF tokens, strict CSP, no inline scripts, `html/template` escaping,
+  audit log; policy signing stays as it is, so a UI bug cannot bypass the clients' signature
+  check, but can produce a signed bad policy (phase D adds offline signing for that case).
+- **Passkeys and TLS:** passkeys fail on a page with a certificate warning. The docs must make
+  the SSH tunnel the default path and explain `--admin-cert`. TOTP works in any case.
+- **Privacy:** block summaries are personal data in many jurisdictions (which app a person
+  used, which domains were blocked). Off by default, per group, retention limited, visible to
+  the user.
+- **Report size:** summaries are capped per report; the server rejects reports above a limit.
+- **SQLite growth:** summaries are aggregated per hour and pruned by retention in the existing
+  database; no second database.
+
 ## Security considerations
 
 - **The server controls every firewall.** Mitigations: clients verify the policy signature
@@ -327,8 +433,6 @@ collected. No data leaves the self-hosted server.
 
 ## Open questions
 
-- Web UI technology for phase C: reuse the Angular code of the Portmaster UI, or a small
-  separate UI.
 - Whether clients should also accept a policy from a file (air-gapped networks), signed the
   same way.
 - Name and default port of the server (`portmanagster-server`, 8443 assumed here).
