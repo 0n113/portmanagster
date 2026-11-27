@@ -244,3 +244,34 @@ func fetchPolicy(ctx context.Context, dir stateDir, s *State) ([]byte, error) {
 	}
 	return data, nil
 }
+
+// sendReport sends the report to the server.
+func sendReport(ctx context.Context, dir stateDir, s *State, r *policy.Report) error {
+	endpoint, err := serverURL(s.Server, "/v1/report")
+	if err != nil {
+		return err
+	}
+	client, err := mtlsClient(dir, s)
+	if err != nil {
+		return err
+	}
+	body, err := json.Marshal(r)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		data, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return fmt.Errorf("%w: %s: %s", errServerRefused, resp.Status, strings.TrimSpace(string(data)))
+	}
+	return nil
+}

@@ -179,3 +179,22 @@ type EnrollResponse struct {
 	// PolicyKey is the public policy key in jess text format.
 	PolicyKey string `json:"policyKey"`
 }
+
+// TypeReport is the value of Report.Type.
+const TypeReport = "report"
+
+// Report is sent by a client to POST /v1/report after each policy pull.
+type Report struct {
+	Type string    `json:"type"`
+	Time time.Time `json:"time"`
+	// AppliedVersion is the version of the policy in force on the client.
+	AppliedVersion uint64 `json:"appliedVersion"`
+	CoreVersion    string `json:"coreVersion"`
+	// Drift lists the settings that differed from the policy at the last
+	// apply and were set again.
+	Drift []string `json:"drift,omitempty"`
+	// Error is the error of the last pull or apply, empty if it succeeded.
+	Error string `json:"error,omitempty"`
+	// Status is the health of the Portmaster, as returned by core/status.
+	Status json.RawMessage `json:"status,omitempty"`
+}

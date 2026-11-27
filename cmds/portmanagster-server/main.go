@@ -35,8 +35,11 @@ var (
 	lockKeys   []string
 	lockAll    bool
 	serverURL  string
+	clearProfs bool
 
-	errNoConfig = errors.New("the file has no config section")
+	errNoConfig     = errors.New("the file has no config section")
+	errNoProfile    = errors.New("the file is not a profile export (type: profile, name)")
+	errProfileFiles = errors.New("give profile files or --clear")
 )
 
 var rootCmd = &cobra.Command{
@@ -123,6 +126,28 @@ var groupSetCmd = &cobra.Command{
 	},
 }
 
+var groupProfilesCmd = &cobra.Command{
+	Use:   "profiles NAME [PROFILE-FILE...]",
+	Short: "Set the app profiles of a group from profile exports (YAML or JSON); replaces the previous ones",
+	Args:  cobra.MinimumNArgs(1),
+	RunE: func(_ *cobra.Command, args []string) error {
+		if len(args) == 1 && !clearProfs {
+			return errProfileFiles
+		}
+		profiles := make([]json.RawMessage, 0, len(args)-1)
+		for _, path := range args[1:] {
+			p, err := readProfileFile(path)
+			if err != nil {
+				return err
+			}
+			profiles = append(profiles, p)
+		}
+		return withStore(func(s *server.Store) error {
+			return s.SetGroupProfiles(args[0], profiles, time.Now())
+		})
+	},
+}
+
 var groupListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List the groups with their settings as JSON",
@@ -170,7 +195,7 @@ var tokenCreateCmd = &cobra.Command{
 	},
 }
 
-var computerCmd = &cobra.Command{Use: "computer", Short: "List and revoke computers"}
+var computerCmd = &cobra.Command{Use: "computer", Short: "List, show and revoke computers"}
 
 var computerListCmd = &cobra.Command{
 	Use:   "list",
@@ -182,8 +207,12 @@ var computerListCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
+			seq, err := s.PolicySeq()
+			if err != nil {
+				return err
+			}
 			w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-			_, _ = fmt.Fprintln(w, "ID\tHOSTNAME\tGROUP\tOS\tVERSION\tLAST SEEN\tSTATE")
+			_, _ = fmt.Fprintln(w, "ID\tHOSTNAME\tGROUP\tOS\tVERSION\tLAST SEEN\tPOLICY\tHEALTH\tSTATE")
 			for _, c := range list {
 				seen := "never"
 				if !c.LastSeen.IsZero() {
@@ -193,9 +222,25 @@ var computerListCmd = &cobra.Command{
 				if c.Revoked {
 					state = "revoked"
 				}
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", c.ID, c.Hostname, c.Group, c.OS, c.CoreVersion, seen, state)
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+					c.ID, c.Hostname, c.Group, c.OS, c.CoreVersion, seen, policyState(c, seq), health(c), state)
 			}
 			return w.Flush()
+		})
+	},
+}
+
+var computerShowCmd = &cobra.Command{
+	Use:   "show ID",
+	Short: "Show a computer with its last report as JSON",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(_ *cobra.Command, args []string) error {
+		return withStore(func(s *server.Store) error {
+			c, err := s.Computer(args[0])
+			if err != nil {
+				return err
+			}
+			return printJSON(c)
 		})
 	},
 }
@@ -219,14 +264,15 @@ func init() {
 	serveCmd.Flags().StringVar(&listenAddr, "listen", ":8443", "listen address")
 	groupSetCmd.Flags().StringSliceVar(&lockKeys, "lock", nil, "settings key a local admin must not change (repeatable)")
 	groupSetCmd.Flags().BoolVar(&lockAll, "lock-all", false, "lock all settings of the file")
+	groupProfilesCmd.Flags().BoolVar(&clearProfs, "clear", false, "remove all profiles of the group")
 	tokenCreateCmd.Flags().StringVar(&tokenGroup, "group", "", "group of the computer (required)")
 	_ = tokenCreateCmd.MarkFlagRequired("group")
 	tokenCreateCmd.Flags().DurationVar(&tokenValid, "valid", 24*time.Hour, "validity of the token")
 	tokenCreateCmd.Flags().StringVar(&serverURL, "url", "https://<server>:8443", "server URL for the printed enroll command")
 
-	groupCmd.AddCommand(groupCreateCmd, groupSetCmd, groupListCmd)
+	groupCmd.AddCommand(groupCreateCmd, groupSetCmd, groupProfilesCmd, groupListCmd)
 	tokenCmd.AddCommand(tokenCreateCmd)
-	computerCmd.AddCommand(computerListCmd, computerRevokeCmd)
+	computerCmd.AddCommand(computerListCmd, computerShowCmd, computerRevokeCmd)
 	rootCmd.AddCommand(initCmd, serveCmd, fingerprintsCmd, groupCmd, tokenCmd, computerCmd)
 }
 
@@ -303,4 +349,79 @@ func flatten(m map[string]any, prefix string) map[string]any {
 		out[key] = v
 	}
 	return out
+}
+
+// readProfileFile reads a profile export (YAML or JSON) and returns it as
+// JSON, the form the client imports.
+func readProfileFile(path string) (json.RawMessage, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var export map[string]any
+	// YAML is a superset of JSON.
+	err = yaml.Unmarshal(data, &export)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	if export["type"] != "profile" || export["name"] == nil || export["name"] == "" {
+		return nil, fmt.Errorf("%s: %w", path, errNoProfile)
+	}
+	// The checksum of a JSON export does not match the re-encoded JSON.
+	delete(export, "_jess-checksum")
+	out, err := json.Marshal(export)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	return out, nil
+}
+
+// policyState tells whether the computer runs the current policy.
+func policyState(c *server.Computer, seq uint64) string {
+	switch {
+	case c.Report == nil:
+		return "no report"
+	case c.Report.Error != "":
+		return fmt.Sprintf("v%d error", c.AppliedVersion)
+	case c.AppliedVersion < seq:
+		// The sequence counts all changes; an older version may still be
+		// the current one for this computer's group.
+		return fmt.Sprintf("v%d", c.AppliedVersion)
+	default:
+		return fmt.Sprintf("v%d current", c.AppliedVersion)
+	}
+}
+
+// health summarizes the core status of the last report.
+func health(c *server.Computer) string {
+	if c.Report == nil || len(c.Report.Status) == 0 {
+		return "-"
+	}
+	var st struct {
+		Ready        bool `json:"ready"`
+		Interception bool `json:"interception"`
+		Problems     []struct {
+			Type string `json:"type"`
+		} `json:"problems"`
+	}
+	if json.Unmarshal(c.Report.Status, &st) != nil {
+		return "unknown"
+	}
+	var parts []string
+	if !st.Ready {
+		parts = append(parts, "not ready")
+	}
+	if !st.Interception {
+		parts = append(parts, "no interception")
+	}
+	if len(st.Problems) > 0 {
+		parts = append(parts, fmt.Sprintf("%d problems", len(st.Problems)))
+	}
+	if len(c.Report.Drift) > 0 {
+		parts = append(parts, fmt.Sprintf("drift %d", len(c.Report.Drift)))
+	}
+	if len(parts) == 0 {
+		return "ok"
+	}
+	return strings.Join(parts, ", ")
 }

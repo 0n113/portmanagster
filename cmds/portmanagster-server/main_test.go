@@ -52,3 +52,42 @@ func TestReadSettingsFile(t *testing.T) {
 		t.Fatal("want an error for a file without config")
 	}
 }
+
+func TestReadProfileFile(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	yamlFile := filepath.Join(dir, "p.yaml")
+	err := os.WriteFile(yamlFile, []byte("type: profile\nname: restic\nsource: local\nconfig:\n  filter:\n    endpoints: [\"+ example.com\"]\n# jess-checksum: x\n"), 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := readProfileFile(yamlFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"config":{"filter":{"endpoints":["+ example.com"]}},"name":"restic","source":"local","type":"profile"}`
+	if string(got) != want {
+		t.Fatalf("got %s", got)
+	}
+
+	jsonFile := filepath.Join(dir, "p.json")
+	err = os.WriteFile(jsonFile, []byte(`{"type":"profile","name":"a","_jess-checksum":"x"}`), 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err = readProfileFile(jsonFile)
+	if err != nil || string(got) != `{"name":"a","type":"profile"}` {
+		t.Fatalf("json: got %s, %v", got, err)
+	}
+
+	settings := filepath.Join(dir, "s.yaml")
+	err = os.WriteFile(settings, []byte("type: settings\nconfig: {}\n"), 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = readProfileFile(settings)
+	if err == nil {
+		t.Fatal("want an error for a settings export")
+	}
+}
