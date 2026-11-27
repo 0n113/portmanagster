@@ -73,3 +73,6 @@ Enable remote commands for the agent (`wazuh_command.remote_commands=1` in
 `local_internal_options.conf`) if required. A custom rule on the manager can alert when the
 output starts with `CRITICAL`, e.g. a rule matching `<match>^CRITICAL</match>` on the
 `ossec` command decoder output with a suitable level.
+
+The Windows scripts are run by the Windows VM smoke test (`tools/vmtest/test-windows.sh smoke`):
+import, rejection of an invalid file, backup rotation and re-import of a backup.
