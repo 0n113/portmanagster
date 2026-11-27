@@ -237,16 +237,20 @@ fi
 "$CORE" settings import --reset "$WORK/settings.json" >/dev/null
 
 step "Management"
-# Enrollment at a portmanagster server on this machine, signed policy with a
-# locked setting and a group profile, drift correction, offline start with the
-# stored policy, refused old and tampered policies, revocation and leave.
+# Enrollment at a portmanagster server on this machine. The signed policy sets
+# a locked setting, a policy default, an endpoint rule and a group profile.
+# Checks the policy layer over the user values, the report of overridden
+# defaults, the offline start with the stored policy, refused old and tampered
+# policies, revocation, and leave keeping the policy values.
 SERVER="$(dirname "$CORE")/portmanagster-server"
 MPROFILE="$(dirname "$CORE")/restic-linux.yaml"
 if [[ -x "$SERVER" && -f "$MPROFILE" ]]; then
 	SD="$WORK/mgmt-server"
 	MURL=https://127.0.0.1:8443
 	MSTATE="$DATA/managed"
-	ask_timeout() { "$CORE" settings export --format json --key filter/askTimeout | jq -r '.config.filter.askTimeout // "default"'; }
+	# user_value KEY: the value the user set; effective KEY: the value in force.
+	user_value() { "$CORE" settings export --format json --key "$1" | jq -c ".config.${1/\//.} // \"unset\""; }
+	effective() { "$CORE" settings export --effective --format json --key "$1" | jq -c ".config.${1/\//.}"; }
 	set_ask_timeout() { printf 'type: settings\nconfig:\n  filter:\n    askTimeout: %s\n' "$1" | "$CORE" settings import - >/dev/null; }
 	new_token() { "$SERVER" --dir "$SD" token create --group office --url "$MURL" | sed -n 's/^token.*: //p'; }
 	start_server() {
@@ -260,55 +264,62 @@ if [[ -x "$SERVER" && -f "$MPROFILE" ]]; then
 		wait "$core_pid" 2>/dev/null
 		start_core
 	}
+	export -f user_value effective
+	export CORE
 	"$SERVER" --dir "$SD" init --host 127.0.0.1 >/dev/null
 	"$SERVER" --dir "$SD" group create office
-	printf 'type: settings\nconfig:\n  filter:\n    askTimeout: 77\n' >"$WORK/mgmt-group.yaml"
+	printf 'type: settings\nconfig:\n  filter:\n    askTimeout: 77\n    askWithSystemNotifications: false\n' >"$WORK/mgmt-group.yaml"
 	"$SERVER" --dir "$SD" group set office "$WORK/mgmt-group.yaml" --lock filter/askTimeout
 	"$SERVER" --dir "$SD" group profiles office "$MPROFILE"
+	printf 'endpoints:\n  - "- %s"\n' "$ALLOWED" >"$WORK/mgmt-rules.yaml"
+	"$SERVER" --dir "$SD" group rules office "$WORK/mgmt-rules.yaml"
 	start_server
 	sfp=$("$SERVER" --dir "$SD" fingerprints | sed -n 's/^server certificate: //p')
 	kfp=$("$SERVER" --dir "$SD" fingerprints | sed -n 's/^policy key: *//p')
+	set_ask_timeout 33
 
 	check "enroll with a wrong policy key pin is refused" bash -c "! '$CORE' manage enroll --server $MURL --token '$(new_token)' --server-fp '$sfp' --policy-key-fp sha256:00 && [[ ! -e '$MSTATE/state.json' ]]"
 	check "enroll succeeds" "$CORE" manage enroll --server "$MURL" --token "$(new_token)" --server-fp "$sfp" --policy-key-fp "$kfp"
 	cid=$("$CORE" manage status | jq -r '.computerId // empty')
 	check "status shows the group" bash -c "'$CORE' manage status | jq -e '.enrolled and .group == \"office\" and .appliedVersion > 0'"
-	check "policy setting applied (askTimeout 77)" bash -c "[[ \$('$CORE' settings export --format json --key filter/askTimeout | jq .config.filter.askTimeout) == 77 ]]"
+	check "the locked setting is in force over the user value (77, user 33)" bash -c '[[ $(effective filter/askTimeout) == 77 && $(user_value filter/askTimeout) == 33 ]]'
+	check "the policy default is in force without a user value" bash -c '[[ $(effective filter/askWithSystemNotifications) == false && $(user_value filter/askWithSystemNotifications) == \"unset\" ]]'
+	check "the locked setting cannot be changed" bash -c "! printf 'type: settings\nconfig:\n  filter:\n    askTimeout: 15\n' | '$CORE' settings import - && [[ \$(effective filter/askTimeout) == 77 ]]"
+	check "the policy rule blocks https://$ALLOWED" bash -c "! curl -sS -o /dev/null --max-time 10 https://$ALLOWED/"
 	check "group profile imported" bash -c "'$CORE' profile list | jq -e 'any(.name == \"restic\")'"
 	check "state files are root-only" bash -c "[[ \$(stat -c %a '$MSTATE') == 700 && \$(stat -c %a '$MSTATE/client.key') == 600 ]]"
-	check "report arrived on the server, without drift after the first apply" bash -c "'$SERVER' --dir '$SD' computer show '$cid' | jq -e '.report.status.ready and .report.status.interception and .appliedVersion > 0 and .report.drift == null'"
+	check "report arrived on the server, nothing overridden" bash -c "'$SERVER' --dir '$SD' computer show '$cid' | jq -e '.report.status.ready and .report.status.interception and .appliedVersion > 0 and .report.overridden == null and .report.refused == null'"
 	check "the refused enrollment used no token and created no computer" bash -c "[[ \$('$SERVER' --dir '$SD' computer list | tail -n +2 | wc -l) == 1 ]]"
 	"$SERVER" --dir "$SD" computer list | sed 's/^/    /'
 
-	set_ask_timeout 12
-	check "manage pull corrects a local change" bash -c "'$CORE' manage pull | jq -e '.lastCorrected == [\"filter/askTimeout\"]' && [[ \$('$CORE' settings export --format json --key filter/askTimeout | jq .config.filter.askTimeout) == 77 ]]"
-	check "the drift is reported" bash -c "'$SERVER' --dir '$SD' computer show '$cid' | jq -e '.report.drift == [\"filter/askTimeout\"]'"
+	printf 'type: settings\nconfig:\n  filter:\n    askWithSystemNotifications: true\n' | "$CORE" settings import - >/dev/null
+	check "a local admin overrides the policy default, the pull reports it" bash -c "'$CORE' manage pull | jq -e '.overridden == [\"filter/askWithSystemNotifications\"]' && [[ \$(effective filter/askWithSystemNotifications) == true ]]"
+	check "the override is reported to the server" bash -c "'$SERVER' --dir '$SD' computer show '$cid' | jq -e '.report.overridden == [\"filter/askWithSystemNotifications\"]'"
 
 	cp "$MSTATE/policy.json" "$WORK/mgmt-old-policy.json"
 	v1=$("$CORE" manage status | jq .appliedVersion)
-	printf 'type: settings\nconfig:\n  filter:\n    askTimeout: 88\n' >"$WORK/mgmt-group.yaml"
+	sed -i 's/77/88/' "$WORK/mgmt-group.yaml"
 	"$SERVER" --dir "$SD" group set office "$WORK/mgmt-group.yaml" --lock filter/askTimeout
 	"$CORE" manage pull >/dev/null
-	check "a server change arrives with a higher version" bash -c "[[ \$('$CORE' manage status | jq .appliedVersion) -gt $v1 && \$('$CORE' settings export --format json --key filter/askTimeout | jq .config.filter.askTimeout) == 88 ]]"
+	check "a server change arrives with a higher version" bash -c "[[ \$('$CORE' manage status | jq .appliedVersion) -gt $v1 && \$(effective filter/askTimeout) == 88 ]]"
 	cp "$MSTATE/policy.json" "$WORK/mgmt-good-policy.json"
 
 	# Offline: the server is down, the stored policy applies at start.
 	stop_server
-	set_ask_timeout 12
 	if restart_core; then
-		check "offline start applies the stored policy" bash -c "[[ \$('$CORE' settings export --format json --key filter/askTimeout | jq .config.filter.askTimeout) == 88 ]]"
+		check "offline start applies the stored policy" bash -c '[[ $(effective filter/askTimeout) == 88 ]]'
+		check "the policy rule holds after the restart" bash -c "! curl -sS -o /dev/null --max-time 10 https://$ALLOWED/"
 		sleep 3
 		check "the failed pull shows in the status" bash -c "'$CORE' manage status | jq -e '.enrolled and (.lastError // \"\") != \"\"'"
 	else
 		fail "portmaster-core restarts enrolled"
 	fi
 
-	# An older signed policy is refused at start.
-	set_ask_timeout 13
+	# An older signed policy is refused at start: the user value applies.
 	cp "$WORK/mgmt-old-policy.json" "$MSTATE/policy.json"
 	refused_before=$(grep -c 'stored policy' "$LOG" || true)
 	if restart_core; then
-		check "an older stored policy is refused" bash -c "[[ \$('$CORE' settings export --format json --key filter/askTimeout | jq .config.filter.askTimeout) == 13 ]] && grep 'stored policy' '$LOG' | tail -1 | grep -q 'older'"
+		check "an older stored policy is refused" bash -c "[[ \$(effective filter/askTimeout) == 33 ]] && grep 'stored policy' '$LOG' | tail -1 | grep -q 'older'"
 	else
 		fail "portmaster-core restarts with an old policy"
 	fi
@@ -316,21 +327,26 @@ if [[ -x "$SERVER" && -f "$MPROFILE" ]]; then
 	# A changed policy fails the signature check at start.
 	sed 's/88/89/' "$WORK/mgmt-good-policy.json" >"$MSTATE/policy.json"
 	if restart_core; then
-		check "a tampered stored policy is refused" bash -c "[[ \$('$CORE' settings export --format json --key filter/askTimeout | jq .config.filter.askTimeout) == 13 ]] && [[ \$(grep -c 'stored policy' '$LOG') -ge $((refused_before + 2)) ]]"
+		check "a tampered stored policy is refused" bash -c "[[ \$(effective filter/askTimeout) == 33 ]] && [[ \$(grep -c 'stored policy' '$LOG') -ge $((refused_before + 2)) ]]"
 	else
 		fail "portmaster-core restarts with a tampered policy"
 	fi
 
 	# Back online: the pull applies the policy; then the computer is revoked.
 	start_server
-	check "online again, the pull applies the policy" bash -c "'$CORE' manage pull >/dev/null && [[ \$('$CORE' settings export --format json --key filter/askTimeout | jq .config.filter.askTimeout) == 88 ]]"
+	check "online again, the pull applies the policy" bash -c "'$CORE' manage pull >/dev/null && [[ \$(effective filter/askTimeout) == 88 ]]"
 	"$SERVER" --dir "$SD" computer revoke "$cid"
 	check "a revoked computer is rejected" bash -c "! '$CORE' manage pull && '$CORE' manage status | jq -e '(.lastError // \"\") != \"\"'"
-	check "the applied settings stay after the revocation" bash -c "[[ \$('$CORE' settings export --format json --key filter/askTimeout | jq .config.filter.askTimeout) == 88 ]]"
+	check "the policy stays in force after the revocation" bash -c '[[ $(effective filter/askTimeout) == 88 ]]'
 	check "manage leave removes the enrollment" bash -c "'$CORE' manage leave | jq -e '.enrolled == false' && [[ ! -e '$MSTATE' ]]"
+	check "leave keeps the locked value as a user value" bash -c '[[ $(user_value filter/askTimeout) == 88 && $(effective filter/askTimeout) == 88 ]]'
+	check "leave keeps the overridden default as set by the admin" bash -c '[[ $(user_value filter/askWithSystemNotifications) == true ]]'
+	check "leave keeps the policy rule in the global rules" bash -c "'$CORE' settings export --format json --key filter/endpoints | jq -e '.config.filter.endpoints[0] == \"- $ALLOWED\"' && ! curl -sS -o /dev/null --max-time 10 https://$ALLOWED/"
+	check "the settings can be changed after leave" bash -c "printf 'type: settings\nconfig:\n  filter:\n    askTimeout: 15\n' | '$CORE' settings import - && [[ \$(effective filter/askTimeout) == 15 ]]"
 	stop_server
 	check "no panics or errors in the server log" bash -c "! grep -qE '^panic:|level=ERROR' '$WORK/mgmt-server.log'"
 	"$CORE" settings import --reset "$WORK/settings.json" >/dev/null
+	check "https://$ALLOWED is reachable again after the reset" https_ok "$ALLOWED"
 else
 	echo "  info: $SERVER or $MPROFILE not found, skipped"
 fi

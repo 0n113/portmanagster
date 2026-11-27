@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS groups (
 	settings TEXT NOT NULL DEFAULT '{}',
 	locked   TEXT NOT NULL DEFAULT '[]',
 	profiles TEXT NOT NULL DEFAULT '[]',
+	rules    TEXT NOT NULL DEFAULT '{}',
 	updated  INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS tokens (
@@ -66,6 +67,7 @@ const tableComputers = "computers"
 
 var migrations = []struct{ table, column, def string }{
 	{"groups", "profiles", `TEXT NOT NULL DEFAULT '[]'`},
+	{"groups", "rules", `TEXT NOT NULL DEFAULT '{}'`},
 	{tableComputers, "applied_version", `INTEGER NOT NULL DEFAULT 0`},
 	{tableComputers, "last_report", `INTEGER NOT NULL DEFAULT 0`},
 	{tableComputers, "report", `TEXT NOT NULL DEFAULT ''`},
@@ -86,7 +88,9 @@ type Group struct {
 	// Profiles are profile exports (JSON) imported on every computer of
 	// the group.
 	Profiles []json.RawMessage `json:"profiles"`
-	Updated  time.Time         `json:"updated"`
+	// Rules are the endpoint rules of the group's policy.
+	Rules   *policy.Rules `json:"rules,omitempty"`
+	Updated time.Time     `json:"updated"`
 }
 
 // Computer is an enrolled computer.
@@ -227,7 +231,7 @@ func (s *Store) Groups() ([]*Group, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var groups []*Group
-	err := sqlitex.Execute(s.conn, `SELECT name, settings, locked, profiles, updated FROM groups ORDER BY name`, &sqlitex.ExecOptions{
+	err := sqlitex.Execute(s.conn, `SELECT name, settings, locked, profiles, updated, rules FROM groups ORDER BY name`, &sqlitex.ExecOptions{
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			g, err := scanGroup(stmt)
 			if err != nil {
@@ -248,6 +252,14 @@ func scanGroup(stmt *sqlite.Stmt) (*Group, error) {
 	err := json.Unmarshal([]byte(stmt.ColumnText(1)), &g.Settings)
 	if err != nil {
 		return nil, fmt.Errorf("group %s settings: %w", g.Name, err)
+	}
+	g.Rules = &policy.Rules{}
+	err = json.Unmarshal([]byte(stmt.ColumnText(5)), g.Rules)
+	if err != nil {
+		return nil, fmt.Errorf("group %s rules: %w", g.Name, err)
+	}
+	if g.Rules.Empty() {
+		g.Rules = nil
 	}
 	err = json.Unmarshal([]byte(stmt.ColumnText(3)), &g.Profiles)
 	if err != nil {
@@ -388,6 +400,28 @@ func (s *Store) SetGroupProfiles(name string, profiles []json.RawMessage, now ti
 	return s.bumpSeq()
 }
 
+// SetGroupRules replaces the endpoint rules of a group; nil removes them.
+func (s *Store) SetGroupRules(name string, rules *policy.Rules, now time.Time) (err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if rules == nil {
+		rules = &policy.Rules{}
+	}
+	data, err := json.Marshal(rules)
+	if err != nil {
+		return err
+	}
+	defer sqlitex.Save(s.conn)(&err)
+	err = s.exec(`UPDATE groups SET rules = ?, updated = ? WHERE name = ?`, string(data), now.Unix(), name)
+	if err != nil {
+		return err
+	}
+	if s.conn.Changes() == 0 {
+		return fmt.Errorf("group %s: %w", name, ErrNotFound)
+	}
+	return s.bumpSeq()
+}
+
 // SaveReport stores the last report of a computer.
 func (s *Store) SaveReport(id string, r *policy.Report, now time.Time) error {
 	data, err := json.Marshal(r)
@@ -478,7 +512,7 @@ func (s *Store) group(name string) (*Group, error) {
 		g     *Group
 		inner error
 	)
-	err := sqlitex.Execute(s.conn, `SELECT name, settings, locked, profiles, updated FROM groups WHERE name = ?`, &sqlitex.ExecOptions{
+	err := sqlitex.Execute(s.conn, `SELECT name, settings, locked, profiles, updated, rules FROM groups WHERE name = ?`, &sqlitex.ExecOptions{
 		Args: []any{name},
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			g, inner = scanGroup(stmt)

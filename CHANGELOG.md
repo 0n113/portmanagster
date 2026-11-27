@@ -15,6 +15,12 @@ pre-releases carry a `-rcN` suffix.
   locked setting (including outgoing and incoming rules and filter lists) and cannot set or
   change it; policy rules are evaluated before the rules of all app profiles and the global
   rules.
+- Management client and server use the policy layer (management phase B3): the client sets the
+  signed policy as policy layer instead of importing it as user settings, already when the core
+  is created, so there is no unmanaged window at boot. Groups get endpoint rules
+  (`portmanagster-server group rules`), evaluated before all other rules. The report lists
+  overridden policy defaults and refused settings instead of drift. `manage leave` keeps the
+  policy values and rules as user settings.
 - Management server (phase A, `docs/management-server.md`): `portmanagster-server` with
   enrollment, groups, signed policies with settings and app profiles, and client reports;
   `portmaster-core manage enroll|status|pull|leave` applies the policy, corrects local changes and

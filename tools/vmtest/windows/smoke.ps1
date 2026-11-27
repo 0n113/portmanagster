@@ -245,9 +245,11 @@ if ((Test-Path $ApplyScript) -and (Test-Path $BackupScript)) {
 }
 
 Step 'Management'
-# Enrollment at a portmanagster server on this machine, signed policy with a
-# locked setting and a group profile, drift correction, offline start with the
-# stored policy, refused old and tampered policies, revocation and leave.
+# Enrollment at a portmanagster server on this machine. The signed policy sets
+# a locked setting, a policy default, an endpoint rule and a group profile.
+# Checks the policy layer over the user values, the report of overridden
+# defaults, the offline start with the stored policy, refused old and tampered
+# policies, revocation, and leave keeping the policy values.
 $Server = Join-Path (Split-Path $Core) 'portmanagster-server.exe'
 $MProfile = Join-Path (Split-Path $Core) 'restic-windows.yaml'
 if ((Test-Path $Server) -and (Test-Path $MProfile)) {
@@ -256,15 +258,23 @@ if ((Test-Path $Server) -and (Test-Path $MProfile)) {
     $MState = Join-Path $Data 'managed'
     $script:serverProc = $null
     $script:coreRun = 0
-    function AskTimeout { (& $Core settings export --format json --key filter/askTimeout 2>$null | Out-String | ConvertFrom-Json).config.filter.askTimeout }
-    function SetAskTimeout($v) {
+    # AskTimeout: the value in force; UserAskTimeout: the value the user set.
+    function AskTimeout { (& $Core settings export --effective --format json --key filter/askTimeout 2>$null | Out-String | ConvertFrom-Json).config.filter.askTimeout }
+    function UserAskTimeout { (& $Core settings export --format json --key filter/askTimeout 2>$null | Out-String | ConvertFrom-Json).config.filter.askTimeout }
+    function Notify([switch]$User) {
+        $a = @('settings', 'export', '--format', 'json', '--key', 'filter/askWithSystemNotifications')
+        if (-not $User) { $a += '--effective' }
+        (& $Core @a 2>$null | Out-String | ConvertFrom-Json).config.filter.askWithSystemNotifications
+    }
+    function ImportSetting($name, $v) {
         $f = Join-Path $Work 'mgmt-set.yaml'
-        Set-Content -Path $f -Encoding ASCII -Value "type: settings`nconfig:`n  filter:`n    askTimeout: $v`n"
+        Set-Content -Path $f -Encoding ASCII -Value "type: settings`nconfig:`n  filter:`n    ${name}: $v`n"
         & $Core settings import $f 2>$null | Out-Null
+        return $LASTEXITCODE
     }
     function SetGroupAskTimeout($v) {
         $f = Join-Path $Work 'mgmt-group.yaml'
-        Set-Content -Path $f -Encoding ASCII -Value "type: settings`nconfig:`n  filter:`n    askTimeout: $v`n"
+        Set-Content -Path $f -Encoding ASCII -Value "type: settings`nconfig:`n  filter:`n    askTimeout: $v`n    askWithSystemNotifications: false`n"
         & $Server --dir $SD group set office $f --lock filter/askTimeout 2>&1 | Out-Null
     }
     function NewToken { ((& $Server --dir $SD token create --group office --url $MUrl 2>$null) | Select-String '^token.*: (.+)$').Matches[0].Groups[1].Value }
@@ -300,6 +310,12 @@ if ((Test-Path $Server) -and (Test-Path $MProfile)) {
     & $Server --dir $SD group create office 2>&1 | Out-Null
     SetGroupAskTimeout 77
     & $Server --dir $SD group profiles office $MProfile 2>&1 | Out-Null
+    $rulesFile = Join-Path $Work 'mgmt-rules.yaml'
+    Set-Content -Path $rulesFile -Encoding ASCII -Value "endpoints:`n  - `"- $Allowed`"`n"
+    & $Server --dir $SD group rules office $rulesFile 2>&1 | Out-Null
+    $settingsBefore = Join-Path $Work 'mgmt-settings-before.json'
+    & $Core settings export --format json 2>$null | Set-Content -Path $settingsBefore -Encoding ASCII
+    $null = ImportSetting askTimeout 33
     StartServer
     $fps = & $Server --dir $SD fingerprints 2>$null
     $sfp = ($fps | Select-String '^server certificate: (.+)$').Matches[0].Groups[1].Value
@@ -315,19 +331,23 @@ if ((Test-Path $Server) -and (Test-Path $MProfile)) {
     $st = ManageStatus
     $cid = $st.computerId
     Check 'status shows the group' { $st.enrolled -and $st.group -eq 'office' -and $st.appliedVersion -gt 0 }
-    Check 'policy setting applied (askTimeout 77)' { (AskTimeout) -eq 77 }
+    Check 'the locked setting is in force over the user value (77, user 33)' { (AskTimeout) -eq 77 -and (UserAskTimeout) -eq 33 }
+    Check 'the policy default is in force without a user value' { (Notify) -eq $false -and $null -eq (Notify -User) }
+    $rc = ImportSetting askTimeout 15
+    Check "the locked setting cannot be changed (rc $rc)" { $rc -ne 0 -and (AskTimeout) -eq 77 }
+    Check "the policy rule blocks https://$Allowed" { -not (HttpsOk $Allowed) }
     Check 'group profile imported' { @(& $Core profile list 2>$null | Out-String | ConvertFrom-Json | Where-Object { $_.name -eq 'restic' }).Count -gt 0 }
     $c = & $Server --dir $SD computer show $cid 2>$null | Out-String | ConvertFrom-Json
-    Check 'report arrived on the server, without drift after the first apply' { $c.report.status.ready -and $c.report.status.interception -and $c.appliedVersion -gt 0 -and -not $c.report.drift }
+    Check 'report arrived on the server, nothing overridden' { $c.report.status.ready -and $c.report.status.interception -and $c.appliedVersion -gt 0 -and -not $c.report.overridden -and -not $c.report.refused }
     Check 'the refused enrollment created no computer' { @(& $Server --dir $SD computer list 2>$null).Count -eq 2 }
     & $Server --dir $SD computer list 2>$null | ForEach-Object { "    $_" }
     Write-Output "  info: hostname reported '$($c.hostname)', COMPUTERNAME '$env:COMPUTERNAME', DNS host name '$([Net.Dns]::GetHostName())'"
 
-    SetAskTimeout 12
+    $null = ImportSetting askWithSystemNotifications true
     $p = & $Core manage pull 2>$null | Out-String | ConvertFrom-Json
-    Check 'manage pull corrects a local change' { @($p.lastCorrected) -contains 'filter/askTimeout' -and (AskTimeout) -eq 77 }
+    Check 'a local admin overrides the policy default, the pull reports it' { @($p.overridden) -contains 'filter/askWithSystemNotifications' -and (Notify) -eq $true }
     $c = & $Server --dir $SD computer show $cid 2>$null | Out-String | ConvertFrom-Json
-    Check 'the drift is reported' { @($c.report.drift) -contains 'filter/askTimeout' }
+    Check 'the override is reported to the server' { @($c.report.overridden) -contains 'filter/askWithSystemNotifications' }
 
     $policyFile = Join-Path $MState 'policy.json'
     Copy-Item -Force $policyFile (Join-Path $Work 'mgmt-old-policy.json')
@@ -339,18 +359,17 @@ if ((Test-Path $Server) -and (Test-Path $MProfile)) {
 
     # Offline: the server is down, the stored policy applies at start.
     StopServer
-    SetAskTimeout 12
     if (RestartCore) {
         Check 'offline start applies the stored policy' { (AskTimeout) -eq 88 }
+        Check 'the policy rule holds after the restart' { -not (HttpsOk $Allowed) }
         Start-Sleep -Seconds 3
         Check 'the failed pull shows in the status' { $s = ManageStatus; $s.enrolled -and $s.lastError }
     } else { Fail 'portmaster-core restarts enrolled' }
 
-    # An older signed policy is refused at start.
-    SetAskTimeout 13
+    # An older signed policy is refused at start: the user value applies.
     Copy-Item -Force (Join-Path $Work 'mgmt-old-policy.json') $policyFile
     if (RestartCore) {
-        Check 'an older stored policy is refused' { (AskTimeout) -eq 13 -and ((StoredPolicyLines)[-1].Line -match 'older') }
+        Check 'an older stored policy is refused' { (AskTimeout) -eq 33 -and ((StoredPolicyLines)[-1].Line -match 'older') }
     } else { Fail 'portmaster-core restarts with an old policy' }
 
     # A changed policy fails the signature check at start.
@@ -358,7 +377,7 @@ if ((Test-Path $Server) -and (Test-Path $MProfile)) {
     $good = Get-Content -Raw (Join-Path $Work 'mgmt-good-policy.json')
     [IO.File]::WriteAllText($policyFile, ($good -replace '88', '89'))
     if (RestartCore) {
-        Check 'a tampered stored policy is refused' { (AskTimeout) -eq 13 -and (StoredPolicyLines).Count -gt $refusedBefore }
+        Check 'a tampered stored policy is refused' { (AskTimeout) -eq 33 -and (StoredPolicyLines).Count -gt $refusedBefore }
     } else { Fail 'portmaster-core restarts with a tampered policy' }
 
     # Back online: the pull applies the policy; then the computer is revoked.
@@ -369,11 +388,19 @@ if ((Test-Path $Server) -and (Test-Path $MProfile)) {
     & $Core manage pull 2>$null | Out-Null
     $rc = $LASTEXITCODE
     Check "a revoked computer is rejected (rc $rc)" { $rc -ne 0 -and (ManageStatus).lastError }
-    Check 'the applied settings stay after the revocation' { (AskTimeout) -eq 88 }
+    Check 'the policy stays in force after the revocation' { (AskTimeout) -eq 88 }
     $l = & $Core manage leave 2>$null | Out-String | ConvertFrom-Json
     Check 'manage leave removes the enrollment' { $l.enrolled -eq $false -and -not (Test-Path $MState) }
+    Check 'leave keeps the locked value as a user value' { (UserAskTimeout) -eq 88 -and (AskTimeout) -eq 88 }
+    Check 'leave keeps the overridden default as set by the admin' { (Notify -User) -eq $true }
+    $eps = (& $Core settings export --format json --key filter/endpoints 2>$null | Out-String | ConvertFrom-Json).config.filter.endpoints
+    Check 'leave keeps the policy rule in the global rules' { @($eps)[0] -eq "- $Allowed" -and -not (HttpsOk $Allowed) }
+    $rc = ImportSetting askTimeout 15
+    Check "the settings can be changed after leave (rc $rc)" { $rc -eq 0 -and (AskTimeout) -eq 15 }
     StopServer
     Check 'no panics or errors in the server log' { -not (Select-String -Path (Join-Path $Work 'mgmt-server-*.log') -Pattern '^panic:|level=ERROR' -ErrorAction SilentlyContinue) }
+    & $Core settings import --reset $settingsBefore 2>$null | Out-Null
+    Check "https://$Allowed is reachable again after the reset" { HttpsOk $Allowed }
 } else {
     Write-Output "  info: $Server or $MProfile not found, skipped"
 }

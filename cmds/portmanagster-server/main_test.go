@@ -91,3 +91,26 @@ func TestReadProfileFile(t *testing.T) {
 		t.Fatal("want an error for a settings export")
 	}
 }
+
+func TestReadRulesFile(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	f := filepath.Join(dir, "r.yaml")
+	err := os.WriteFile(f, []byte("endpoints:\n  - \"- example.org\"\nserviceEndpoints:\n  - \"+ 10.0.0.0/8 TCP/22\"\n"), 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := readRulesFile(f)
+	if err != nil || len(r.Endpoints) != 1 || len(r.ServiceEndpoints) != 1 {
+		t.Fatalf("got %+v, %v", r, err)
+	}
+	err = os.WriteFile(f, []byte("endpoints: [\"example.org\"]\n"), 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = readRulesFile(f)
+	if err == nil {
+		t.Fatal("want an error for a rule without + or -")
+	}
+}

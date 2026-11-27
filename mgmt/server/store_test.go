@@ -64,7 +64,7 @@ func TestStoreMigratesV1(t *testing.T) {
 		t.Fatal("want an error for an unknown group")
 	}
 
-	err = s.SaveReport("c1", &policy.Report{Type: policy.TypeReport, AppliedVersion: 6, CoreVersion: "2.1", Drift: []string{"filter/lists"}}, now)
+	err = s.SaveReport("c1", &policy.Report{Type: policy.TypeReport, AppliedVersion: 6, CoreVersion: "2.1", Overridden: []string{"filter/lists"}}, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,12 +72,29 @@ func TestStoreMigratesV1(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.AppliedVersion != 6 || c.CoreVersion != "2.1" || c.LastReport.IsZero() || c.Report == nil || len(c.Report.Drift) != 1 {
+	if c.AppliedVersion != 6 || c.CoreVersion != "2.1" || c.LastReport.IsZero() || c.Report == nil || len(c.Report.Overridden) != 1 {
 		t.Fatalf("report not stored: %+v", c)
 	}
 	err = s.SaveReport("unknown", &policy.Report{Type: policy.TypeReport}, now)
 	if err == nil {
 		t.Fatal("want an error for an unknown computer")
+	}
+
+	// Rules of a group.
+	err = s.SetGroupRules("office", &policy.Rules{Endpoints: []string{"- example.org"}}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g, err = s.Group("office")
+	if err != nil || g.Rules == nil || g.Rules.Endpoints[0] != "- example.org" {
+		t.Fatalf("rules not stored: %+v %v", g, err)
+	}
+	err = s.SetGroupRules("office", nil, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g, _ = s.Group("office"); g.Rules != nil {
+		t.Fatalf("rules not removed: %+v", g.Rules)
 	}
 
 	// Opening again does not migrate twice.
