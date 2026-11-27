@@ -21,10 +21,11 @@
     <description>Portmaster: connection blocked ($(app) -> $(domain) $(remoteIP))</description>
   </rule>
 
-  <!-- Blocked by a filter list. -->
+  <!-- Blocked by a filter list. The reason reads "<domain or IP> in activated lists TRAC,..."
+       for the filter lists and "... in custom filter list" for the custom list. -->
   <rule id="100802" level="7">
     <if_sid>100801</if_sid>
-    <field name="reason" type="pcre2">(?i)filter list</field>
+    <field name="reason" type="pcre2">(?i)in activated lists|filter list</field>
     <description>Portmaster: connection blocked by filter list ($(app) -> $(domain))</description>
   </rule>
 

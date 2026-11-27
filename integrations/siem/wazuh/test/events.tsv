@@ -1,0 +1,11 @@
+100800	{"time":"2026-11-27T13:00:00Z","host":"fed1","id":"a1","verdict":"accepted","direction":"outbound","type":"ip","profile":"local/x","app":"Firefox","path":"/usr/lib64/firefox/firefox","pid":100,"domain":"example.com.","protocol":6,"localIP":"10.0.2.15","localPort":40000,"remoteIP":"93.184.216.34","remotePort":443}
+100802	{"time":"2026-11-27T13:00:01Z","host":"fed1","id":"a2","verdict":"blocked","reason":"doubleclick.net. in activated lists TRAC","filterLists":["TRAC"],"direction":"outbound","type":"dns","app":"Firefox","domain":"doubleclick.net.","protocol":17}
+100803	{"time":"2026-11-27T13:00:02Z","host":"fed1","id":"a3","verdict":"blocked","reason":"evil.example. in activated lists MAL","filterLists":["TRAC","MAL"],"direction":"outbound","type":"dns","app":"curl","domain":"evil.example.","protocol":17}
+100802	{"time":"2026-11-27T13:00:03Z","host":"fed1","id":"a4","verdict":"blocked","reason":"domain ads.example matches ads.example in custom filter list","direction":"outbound","type":"ip","app":"curl","domain":"ads.example.","protocol":6,"remoteIP":"1.2.3.4","remotePort":443}
+100805	{"time":"2026-11-27T13:00:04Z","host":"fed1","id":"a5","verdict":"dropped","reason":"inbound connections blocked","direction":"inbound","type":"ip","app":"Sshd","protocol":6,"remoteIP":"8.8.4.4","remotePort":51000,"localPort":22}
+100801	{"time":"2026-11-27T13:00:05Z","host":"fed1","id":"a6","verdict":"dropped","reason":"inbound connections blocked","direction":"inbound","type":"ip","app":"Sshd","protocol":6,"remoteIP":"192.168.1.5","remotePort":51000,"localPort":22}
+100810	ossec: output: 'portmaster-status': OK: Portmaster 0.3.4, filtering active
+100813	ossec: output: 'portmaster-status': WARNING: filter lists are 400h old
+100811	ossec: output: 'portmaster-status': CRITICAL: interception is not active
+100812	ossec: output: 'portmaster-status': UNKNOWN: Portmaster API not reachable
+530	ossec: output: 'other-cmd': CRITICAL: something else

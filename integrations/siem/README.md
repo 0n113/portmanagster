@@ -39,6 +39,10 @@ Rules (IDs 100800-100899): blocked connection (5), blocked by filter list (7), m
 20 blocked from one app in 120 s (10), blocked inbound from a public address (6),
 status check CRITICAL (12) / UNKNOWN (10) / WARNING (5).
 
+`wazuh/test/test-rules.sh` checks every rule with `wazuh-logtest` in a Wazuh manager container
+(podman or docker, default image `wazuh/wazuh-manager:4.14.1`) against the sample events in
+`wazuh/test/events.tsv`. Run it after changing the rules.
+
 ## Other shippers
 
 All tail `/var/log/portmaster/connections.json` (readable by root only; run the shipper with suitable rights).
