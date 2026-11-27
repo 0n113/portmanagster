@@ -224,6 +224,16 @@ check "backup create refuses a non-empty directory" bash -c "! '$CORE' backup cr
 printf 'type: settings\nconfig:\n  filter:\n    askTimeout: 66\n' | "$CORE" settings import - >/dev/null
 check "backup restore --validate imports nothing" bash -c "'$CORE' backup restore --validate '$WORK/backup' >/dev/null && '$CORE' settings export --key filter/askTimeout | grep -q 'askTimeout: 66'"
 check "backup restore imports settings and all profiles" bash -c "'$CORE' backup restore '$WORK/backup' >'$WORK/restore.json' && jq -e 'all(.profiles[]; .error == null)' '$WORK/restore.json' && [[ \$(jq '.profiles | length' '$WORK/restore.json') == \$(jq '.profiles | length' '$WORK/backup/manifest.json') ]] && '$CORE' settings export --key filter/askTimeout | grep -q 'askTimeout: 55'"
+RMM_BACKUP="$(dirname "$CORE")/portmaster-backup.sh"
+if [[ -f "$RMM_BACKUP" ]]; then
+	for i in 1 2 3; do
+		CORE="$CORE" KEEP=2 sh "$RMM_BACKUP" "$WORK/rmm-backups" >/dev/null || break
+		sleep 1
+	done
+	check "portmaster-backup.sh writes full backups and keeps 2" bash -c "[[ \$(ls -1d '$WORK'/rmm-backups/portmaster-backup-* | wc -l) == 2 ]] && for d in '$WORK'/rmm-backups/portmaster-backup-*; do jq -e '(.profiles | length) > 0' \"\$d/manifest.json\" >/dev/null || exit 1; done"
+else
+	echo "  info: $RMM_BACKUP not found, skipped"
+fi
 "$CORE" settings import --reset "$WORK/settings.json" >/dev/null
 
 step "Rule order"

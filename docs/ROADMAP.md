@@ -43,7 +43,7 @@ portmanagster will support them where the firewall is involved:
 
 - Done: `portmaster-core backup create|restore`: the global settings and all local app
   profiles in one directory; restore validates everything first.
-- Open: use it in the Ansible role and the RMM backup scripts (they back up the settings only).
+- Done: the Ansible role and the RMM backup scripts use it.
 - Examples for allowing exactly the backup agent to reach the backup server, per computer.
 - Optionally, the backup state of each computer in the central view (step 4).
 
