@@ -32,7 +32,7 @@ fi
 if [[ "$what" == smoke || "$what" == all ]]; then
 	log "building portmaster-core"
 	(cd "$VMTEST_REPO" && GOOS=linux CGO_ENABLED=0 "$(go_bin)" build -o "$results/portmaster-core" ./cmds/portmaster-core)
-	vm_scp "$LINUX_SSH_PORT" "$LINUX_USER" "$results/portmaster-core" "$VMTEST_REPO/tools/vmtest/linux/smoke.sh" "/home/$LINUX_USER/"
+	vm_scp "$LINUX_SSH_PORT" "$LINUX_USER" "$results/portmaster-core" "$VMTEST_REPO/tools/vmtest/linux/smoke.sh" "$VMTEST_REPO/integrations/rmm/linux/portmaster-backup.sh" "/home/$LINUX_USER/"
 	# Run detached from the SSH session, as Portmaster may hold SSH while it
 	# intercepts. The test reports on the serial console, which QEMU writes
 	# to serial.log on the host, so the result arrives even without SSH.

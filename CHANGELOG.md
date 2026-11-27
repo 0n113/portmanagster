@@ -31,6 +31,8 @@ pre-releases carry a `-rcN` suffix.
   a directory (`settings.yaml`, `profiles/*.yaml`, `manifest.json`); `backup restore DIR`
   validates all of it first and imports nothing if a file is invalid. `profile list` lists the
   profiles with their scoped IDs (API endpoint `sync/profile/list`).
+  The Ansible role (`portmaster_backup`) and the RMM backup scripts now back up the app
+  profiles too.
 
 ### Fixed
 - Importing global settings without "reset" replaced all settings: settings missing from the

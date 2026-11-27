@@ -229,11 +229,17 @@ if ((Test-Path $ApplyScript) -and (Test-Path $BackupScript)) {
         if ($rc -ne 0) { break }
         Start-Sleep -Seconds 1
     }
-    $backups = @(Get-ChildItem -LiteralPath $backupDir -Filter 'portmaster-settings-*.yaml' -ErrorAction SilentlyContinue)
-    Check "portmaster-backup.ps1 writes backups and keeps 2 (rc $rc, $($backups.Count) files)" { $rc -eq 0 -and $backups.Count -eq 2 }
-    Check 'the backup contains the imported setting' { $backups.Count -gt 0 -and (Get-Content -Raw -LiteralPath $backups[-1].FullName) -match 'askTimeout:\s*34' }
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ApplyScript -File $backups[-1].FullName -CorePath $Core 2>$null | Out-Null
-    Check "a backup can be imported again (rc $LASTEXITCODE)" { $LASTEXITCODE -eq 0 }
+    $backups = @(Get-ChildItem -LiteralPath $backupDir -Directory -Filter 'portmaster-backup-*' -ErrorAction SilentlyContinue | Sort-Object Name)
+    Check "portmaster-backup.ps1 writes backups and keeps 2 (rc $rc, $($backups.Count) dirs)" { $rc -eq 0 -and $backups.Count -eq 2 }
+    $last = if ($backups.Count -gt 0) { $backups[-1].FullName } else { Join-Path $backupDir 'none' }
+    $manifest = $null
+    try { $manifest = Get-Content -Raw -LiteralPath (Join-Path $last 'manifest.json') | ConvertFrom-Json } catch {}
+    Check "the backup contains the setting and the app profiles ($(@($manifest.profiles).Count) profiles)" { $manifest -and @($manifest.profiles).Count -gt 0 -and (Get-Content -Raw -LiteralPath (Join-Path $last 'settings.yaml')) -match 'askTimeout:\s*34' }
+    $restore = & $Core backup restore $last 2>$null | Out-String
+    $rc = $LASTEXITCODE
+    $report = $null
+    try { $report = $restore | ConvertFrom-Json } catch {}
+    Check "backup restore imports the settings and all profiles (rc $rc)" { $rc -eq 0 -and $report -and @($report.profiles).Count -eq @($manifest.profiles).Count -and -not (@($report.profiles) | Where-Object { $_.error }) }
 } else {
     Write-Output "  info: apply or backup script not found, skipped"
 }

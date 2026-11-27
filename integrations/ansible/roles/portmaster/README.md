@@ -50,7 +50,7 @@ See [example-playbook.yml](../../example-playbook.yml).
 | `portmaster_managed_dir` | `/etc/portmaster/ansible` | Host directory for the profile files the role imports. |
 | `portmaster_fail_on_critical` | `true` | Fail the play on `status --check` exit 2 or 3. |
 | `portmaster_max_intel_age` | `336h` | Passed as `--max-intel-age`. |
-| `portmaster_backup` | `false` | Run `tasks/backup.yml` before applying changes. |
+| `portmaster_backup` | `false` | Back up settings and app profiles (`tasks/backup.yml`) before applying changes. |
 | `portmaster_backup_dir` | `{{ playbook_dir }}/portmaster-backups` | Controller directory for backups. |
 
 Result fact: `portmaster_status` is the parsed JSON of `portmaster-core status`
@@ -89,6 +89,8 @@ Result fact: `portmaster_status` is the parsed JSON of `portmaster-core status`
   ```
 - **Health**: `status --check` exit 1 (WARNING) only prints a debug message; 2 (CRITICAL) and
   3 (UNKNOWN) fail the play unless `portmaster_fail_on_critical: false`.
-- **Backup** writes `<backup_dir>/<inventory_hostname>-settings-<YYYY-MM-DD>.yaml` (mode 0600)
-  on the controller. It contains the settings export including its checksum line.
+- **Backup** runs `portmaster-core backup create` on the host and writes
+  `<backup_dir>/<inventory_hostname>-backup-<YYYY-MM-DD>.tar.gz` (mode 0600) on the controller:
+  the global settings, all local app profiles and a manifest. To restore, copy it to the host,
+  unpack it and run `portmaster-core backup restore <dir>/backup` (`--validate` checks only).
 - In check mode, read-only commands still run; imports and installs are skipped.

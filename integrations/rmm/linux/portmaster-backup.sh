@@ -1,5 +1,7 @@
 #!/bin/sh
-# Export Portmaster settings to DIR/portmaster-settings-<host>-<date>.yaml, keep the last KEEP (default 14).
+# Back up the Portmaster settings and all local app profiles to
+# DIR/portmaster-backup-<host>-<date>/ (portmaster-core backup create), keep the last KEEP (default 14).
+# Restore: portmaster-core backup restore DIR/portmaster-backup-<host>-<date>
 # Usage: portmaster-backup.sh DIR
 CORE="${CORE:-/usr/lib/portmaster/portmaster-core}"
 KEEP="${KEEP:-14}"
@@ -20,19 +22,21 @@ esac
 umask 077
 mkdir -p "$DIR" || exit 1
 host=$(hostname 2>/dev/null || echo unknown)
-out="$DIR/portmaster-settings-$host-$(date +%Y%m%d-%H%M%S).yaml"
+out="$DIR/portmaster-backup-$host-$(date +%Y%m%d-%H%M%S)"
 
-if ! "$CORE" settings export --format yaml -o "$out"; then
-    echo "export failed" >&2
-    rm -f "$out"
+# A failed profile export still writes the backup (exit 1 names the profile);
+# a backup without manifest was not written at all.
+"$CORE" backup create "$out"
+rc=$?
+if [ ! -f "$out/manifest.json" ]; then
+    echo "backup failed" >&2
     exit 1
 fi
-echo "wrote $out"
 
 # prune: names sort chronologically
 n=0
-for f in $(ls -1 "$DIR"/portmaster-settings-"$host"-*.yaml 2>/dev/null | sort -r); do
+for d in $(ls -1d "$DIR"/portmaster-backup-"$host"-* 2>/dev/null | sort -r); do
     n=$((n + 1))
-    [ "$n" -gt "$KEEP" ] && rm -f "$f"
+    [ "$n" -gt "$KEEP" ] && rm -rf "$d"
 done
-exit 0
+exit $rc

@@ -1,4 +1,6 @@
-# Export Portmaster settings to Dir\portmaster-settings-<host>-<date>.yaml, keep the last -Keep files.
+# Back up the Portmaster settings and all local app profiles to Dir\portmaster-backup-<host>-<date>\
+# (portmaster-core backup create), keep the last -Keep backups.
+# Restore: portmaster-core.exe backup restore <Dir>\portmaster-backup-<host>-<date>
 param(
     [Parameter(Mandatory = $true)][string]$Dir,
     [string]$CorePath = "$env:ProgramFiles\Portmaster\portmaster-core.exe",
@@ -12,18 +14,19 @@ if (-not (Test-Path -LiteralPath $CorePath)) {
 
 New-Item -ItemType Directory -Force -Path $Dir | Out-Null
 $hostName = $env:COMPUTERNAME
-$out = Join-Path $Dir ("portmaster-settings-{0}-{1}.yaml" -f $hostName, (Get-Date -Format "yyyyMMdd-HHmmss"))
+$out = Join-Path $Dir ("portmaster-backup-{0}-{1}" -f $hostName, (Get-Date -Format "yyyyMMdd-HHmmss"))
 
-& "$CorePath" settings export --format yaml -o "$out"
-if ($LASTEXITCODE -ne 0) {
-    Remove-Item -LiteralPath $out -ErrorAction SilentlyContinue
-    Write-Error "export failed"
-    exit $LASTEXITCODE
+# A failed profile export still writes the backup (exit 1 names the profile);
+# a backup without manifest was not written at all.
+& "$CorePath" backup create "$out"
+$rc = $LASTEXITCODE
+if (-not (Test-Path -LiteralPath (Join-Path $out 'manifest.json'))) {
+    Write-Error "backup failed"
+    exit 1
 }
-Write-Output "wrote $out"
 
-Get-ChildItem -LiteralPath $Dir -Filter "portmaster-settings-$hostName-*.yaml" |
+Get-ChildItem -LiteralPath $Dir -Directory -Filter "portmaster-backup-$hostName-*" |
     Sort-Object Name -Descending |
     Select-Object -Skip $Keep |
-    Remove-Item -Force
-exit 0
+    Remove-Item -Recurse -Force
+exit $rc

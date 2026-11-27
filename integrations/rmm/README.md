@@ -6,7 +6,7 @@ Scripts wrap `portmaster-core` (must run as root/SYSTEM):
 |---|---|
 | `portmaster-check` | `status --check`; exit 0 OK, 1 WARNING, 2 CRITICAL, 3 UNKNOWN (also when the binary is missing) |
 | `portmaster-apply-settings FILE` | `settings import --validate`, then import (merge; `RESET=1` / `-Reset` to replace); non-zero on failure |
-| `portmaster-backup DIR` | `settings export` to `DIR/portmaster-settings-<host>-<date>.yaml`; keeps the last `KEEP` (default 14) / `-Keep` |
+| `portmaster-backup DIR` | `backup create`: settings and all local app profiles to `DIR/portmaster-backup-<host>-<date>/`; keeps the last `KEEP` (default 14) / `-Keep`. Restore with `portmaster-core backup restore <that dir>` |
 
 Linux binary: `/usr/lib/portmaster/portmaster-core` (override with `CORE=`).
 Windows: parameter `-CorePath`, default `$env:ProgramFiles\Portmaster\portmaster-core.exe`.
@@ -75,4 +75,4 @@ output starts with `CRITICAL`, e.g. a rule matching `<match>^CRITICAL</match>` o
 `ossec` command decoder output with a suitable level.
 
 The Windows scripts are run by the Windows VM smoke test (`tools/vmtest/test-windows.sh smoke`):
-import, rejection of an invalid file, backup rotation and re-import of a backup.
+import, rejection of an invalid file, backup rotation and restore of a backup.

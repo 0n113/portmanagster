@@ -1,41 +1,46 @@
 ---
-- name: Back up the settings to the controller
+- name: Back up the settings and all app profiles to the controller
+  vars:
+    _portmaster_backup_file: >-
+      {{ portmaster_backup_dir }}/{{ inventory_hostname }}-backup-{{ now(utc=true).strftime('%Y-%m-%d') }}.tar.gz
   block:
-    - name: Create a temp file for the export
+    - name: Create a temp directory for the backup
       ansible.builtin.tempfile:
-        state: file
+        state: directory
         prefix: portmaster-backup.
-        suffix: .yaml
       register: _portmaster_backup_tmp
       check_mode: false
       changed_when: false
 
-    - name: Export all settings
+    - name: Write the backup (settings, all local app profiles, manifest)
       ansible.builtin.command:
-        argv: ["{{ portmaster_core_path }}", settings, export, -o, "{{ _portmaster_backup_tmp.path }}"]
+        argv: ["{{ portmaster_core_path }}", backup, create, "{{ _portmaster_backup_tmp.path }}/backup"]
       changed_when: false
       check_mode: false
 
-    - name: Fetch the export
+    - name: Pack the backup
+      ansible.builtin.command:
+        argv: [tar, -C, "{{ _portmaster_backup_tmp.path }}", -czf, "{{ _portmaster_backup_tmp.path }}/backup.tar.gz", backup]
+      changed_when: false
+      check_mode: false
+
+    - name: Fetch the backup
       ansible.builtin.fetch:
-        src: "{{ _portmaster_backup_tmp.path }}"
+        src: "{{ _portmaster_backup_tmp.path }}/backup.tar.gz"
         dest: "{{ _portmaster_backup_file }}"
         flat: true
-      vars:
-        _portmaster_backup_file: >-
-          {{ portmaster_backup_dir }}/{{ inventory_hostname }}-settings-{{ now(utc=true).strftime('%Y-%m-%d') }}.yaml
       check_mode: false
 
     - name: Restrict the backup file on the controller
       ansible.builtin.file:
-        path: "{{ portmaster_backup_dir }}/{{ inventory_hostname }}-settings-{{ now(utc=true).strftime('%Y-%m-%d') }}.yaml"
+        path: "{{ _portmaster_backup_file }}"
         mode: "0600"
       delegate_to: localhost
       become: false
       check_mode: false
 
   always:
-    - name: Remove the export temp file
+    - name: Remove the backup temp directory
       ansible.builtin.file:
         path: "{{ _portmaster_backup_tmp.path }}"
         state: absent
