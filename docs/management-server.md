@@ -3,8 +3,8 @@
 Status: phase A done: the server side of enrollment and policies (A1, see
 [Server commands](#server-commands)) and the client module in portmaster-core (A2, see
 [Client commands](#client-commands)), profiles per group and reports (A3), and the VM tests
-on Linux and Windows (A4, step "Management" of the smoke tests). Next: phase B, see
-[Phase B plan](#phase-b-plan).
+on Linux and Windows (A4, step "Management" of the smoke tests). Phase B in progress, see
+[Phase B plan](#phase-b-plan): B1 (policy layer in `base/config`) done.
 This document fixes the architecture and the order of work; details of each phase are settled
 in its PR.
 

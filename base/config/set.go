@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/tevino/abool"
@@ -34,7 +35,10 @@ func signalChanges() {
 	validityFlag = abool.NewBool(true)
 	validityFlagLock.Unlock()
 
-	module.EventConfigChange.Submit(struct{}{})
+	// The policy may be set before the module exists (early at boot).
+	if module != nil {
+		module.EventConfigChange.Submit(struct{}{})
+	}
 }
 
 // ValidateConfig validates the given configuration and returns all validation
@@ -160,6 +164,10 @@ func setConfigOption(key string, value any, push bool) (err error) {
 	}
 
 	option.Lock()
+	if option.policyLocked {
+		option.Unlock()
+		return fmt.Errorf("%s: %w", key, ErrLockedByPolicy)
+	}
 	if value == nil {
 		option.activeValue = nil
 	} else {

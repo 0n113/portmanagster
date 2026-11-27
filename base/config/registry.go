@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/safing/portmaster/base/log"
 )
 
 var (
@@ -102,9 +104,25 @@ func Register(option *Option) error {
 		return fmt.Errorf("config: invalid default value: %w", vErr)
 	}
 
+	// Apply the policy and add the option under the policy lock, so that a
+	// concurrent SetPolicy either sees the option or has set the values
+	// applied here.
+	policyLock.Lock()
+	defer policyLock.Unlock()
+	var policyErr error
+	if len(policyValues) > 0 {
+		vErr := applyPolicyLocked(option)
+		if vErr != nil {
+			policyErr = fmt.Errorf("config: policy value of %s ignored: %w", option.Key, vErr)
+		}
+	}
+
 	optionsLock.Lock()
 	defer optionsLock.Unlock()
 	options[option.Key] = option
 
+	if policyErr != nil {
+		log.Warning(policyErr.Error())
+	}
 	return nil
 }

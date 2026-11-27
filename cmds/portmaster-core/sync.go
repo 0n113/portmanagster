@@ -34,6 +34,7 @@ var (
 	syncFormat     string
 	syncOutput     string
 	syncKeys       []string
+	syncEffective  bool
 	syncValidate   bool
 	syncReset      bool
 	syncAllowUnkn  bool
@@ -61,6 +62,9 @@ var settingsExportCmd = &cobra.Command{
 		q.Set("from", "global")
 		for _, key := range syncKeys {
 			q.Add("key", key)
+		}
+		if syncEffective {
+			q.Set("effective", "true")
 		}
 		err := syncExport(cmd.Context(), "sync/settings/export", q)
 		if err != nil && strings.Contains(err.Error(), errMsgUnchanged) {
@@ -129,6 +133,7 @@ func init() {
 		c.Flags().StringVarP(&syncOutput, "output", "o", "", "write the export to this file instead of stdout")
 	}
 	settingsExportCmd.Flags().StringArrayVar(&syncKeys, "key", nil, "only export this setting key (repeatable)")
+	settingsExportCmd.Flags().BoolVar(&syncEffective, "effective", false, "export the values in force, including defaults and the management policy, instead of the changed settings")
 
 	for _, c := range []*cobra.Command{settingsImportCmd, profileImportCmd} {
 		c.Flags().BoolVar(&syncValidate, "validate", false, "only check the import and report what it would change")

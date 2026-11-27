@@ -270,6 +270,12 @@ type Option struct {
 	activeDefaultValue  *valueCache // runtime default value (may be set internally)
 	activeFallbackValue *valueCache // default value from option registration
 	compiledRegex       *regexp.Regexp
+
+	// policyValue is the value of the management policy (see SetPolicy).
+	// If policyLocked is set, it wins over all other values; otherwise it
+	// replaces the default and a user value wins over it.
+	policyValue  *valueCache
+	policyLocked bool
 }
 
 // AddAnnotation adds the annotation key to option if it's not already set.
@@ -397,6 +403,17 @@ func (option *Option) export() (record.Record, error) {
 
 	if option.activeDefaultValue != nil {
 		data, err = sjson.SetBytes(data, "DefaultValue", option.activeDefaultValue.getData(option))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if option.policyValue != nil {
+		data, err = sjson.SetBytes(data, "PolicyValue", option.policyValue.getData(option))
+		if err != nil {
+			return nil, err
+		}
+		data, err = sjson.SetBytes(data, "Locked", option.policyLocked)
 		if err != nil {
 			return nil, err
 		}

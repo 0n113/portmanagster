@@ -41,6 +41,9 @@ var (
 type ExportRequest struct {
 	From string   `json:"from"`
 	Keys []string `json:"keys"`
+	// Effective exports the values in force (including defaults and the
+	// management policy) instead of the changed settings. Global only.
+	Effective bool `json:"effective"`
 }
 
 // ImportRequest is a request to import an export.

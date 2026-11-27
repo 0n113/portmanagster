@@ -8,6 +8,9 @@ pre-releases carry a `-rcN` suffix.
 ## [Unreleased]
 
 ### Added
+- Policy layer in the settings (management phase B1): values of a management policy are
+  either locked (highest precedence, changes refused with "managed by policy") or a default a
+  local admin may override. `settings export --effective` exports the values in force.
 - Management server (phase A, `docs/management-server.md`): `portmanagster-server` with
   enrollment, groups, signed policies with settings and app profiles, and client reports;
   `portmaster-core manage enroll|status|pull|leave` applies the policy, corrects local changes and

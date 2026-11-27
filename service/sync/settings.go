@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -96,8 +97,9 @@ func handleExportSettings(ar *api.Request) (data []byte, err error) {
 	q := ar.URL.Query()
 	if len(q) > 0 {
 		request = &ExportRequest{
-			From: q.Get("from"),
-			Keys: q["key"], // Get []string by direct map access.
+			From:      q.Get("from"),
+			Keys:      q["key"], // Get []string by direct map access.
+			Effective: q.Has("effective"),
 		}
 	} else {
 		request = &ExportRequest{}
@@ -112,7 +114,12 @@ func handleExportSettings(ar *api.Request) (data []byte, err error) {
 	}
 
 	// Export.
-	export, err := ExportSettings(request.From, request.Keys)
+	var export *SettingsExport
+	if request.Effective {
+		export, err = ExportEffectiveSettings(request.From, request.Keys)
+	} else {
+		export, err = ExportSettings(request.From, request.Keys)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -164,6 +171,21 @@ func handleImportSettings(ar *api.Request) (any, error) {
 	return ImportSettings(request)
 }
 
+// ExportEffectiveSettings exports the values in force of the global
+// settings: the locked policy value, the user value, the policy default or
+// the default.
+func ExportEffectiveSettings(from string, keys []string) (*SettingsExport, error) {
+	if from != ExportTargetGlobal {
+		return nil, fmt.Errorf("%w: effective values exist only for the global settings", ErrInvalidImportRequest)
+	}
+	settings := make(map[string]any)
+	_ = config.ForEachOption(func(option *config.Option) error {
+		settings[option.Key] = option.EffectiveValue()
+		return nil
+	})
+	return buildSettingsExport(settings, keys)
+}
+
 // ExportSettings exports the global settings.
 func ExportSettings(from string, keys []string) (*SettingsExport, error) {
 	var settings map[string]any
@@ -189,6 +211,11 @@ func ExportSettings(from string, keys []string) (*SettingsExport, error) {
 		settings = config.Flatten(p.Config)
 	}
 
+	return buildSettingsExport(settings, keys)
+}
+
+// buildSettingsExport selects the keys, if given, and builds the export.
+func buildSettingsExport(settings map[string]any, keys []string) (*SettingsExport, error) {
 	// Only extract some setting keys, if wanted.
 	if len(keys) > 0 {
 		selection := make(map[string]any, len(keys))
@@ -222,6 +249,13 @@ func ImportSettings(r *SettingsImportRequest) (*ImportResult, error) {
 	}
 	// Flatten config.
 	settings := config.Flatten(r.Export.Config)
+
+	// Settings locked by the management policy cannot be changed, neither
+	// globally nor per app.
+	err := config.CheckNotLocked(slices.Collect(maps.Keys(settings))...)
+	if err != nil {
+		return nil, err
+	}
 
 	// Check settings.
 	result, globalOnlySettingFound, err := checkSettings(settings)
