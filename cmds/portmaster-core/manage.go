@@ -59,6 +59,17 @@ var manageStatusCmd = &cobra.Command{
 	},
 }
 
+var managePullCmd = &cobra.Command{
+	Use:           "pull",
+	Short:         "Pull and apply the policy now and send a report",
+	Args:          cobra.NoArgs,
+	SilenceUsage:  true,
+	SilenceErrors: true, // main prints the error.
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		return printAPIResult(syncRequest(cmd.Context(), http.MethodPost, "managed/pull", url.Values{}, mimeJSON, []byte("{}")))
+	},
+}
+
 var manageLeaveCmd = &cobra.Command{
 	Use:           "leave",
 	Short:         "Remove the enrollment; the applied settings stay",
@@ -79,7 +90,7 @@ func init() {
 	for _, f := range []string{"server", "token", "server-fp", "policy-key-fp"} {
 		_ = manageEnrollCmd.MarkFlagRequired(f)
 	}
-	manageCmd.AddCommand(manageEnrollCmd, manageStatusCmd, manageLeaveCmd)
+	manageCmd.AddCommand(manageEnrollCmd, manageStatusCmd, managePullCmd, manageLeaveCmd)
 	rootCmd.AddCommand(manageCmd)
 }
 

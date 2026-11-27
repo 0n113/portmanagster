@@ -236,6 +236,105 @@ else
 fi
 "$CORE" settings import --reset "$WORK/settings.json" >/dev/null
 
+step "Management"
+# Enrollment at a portmanagster server on this machine, signed policy with a
+# locked setting and a group profile, drift correction, offline start with the
+# stored policy, refused old and tampered policies, revocation and leave.
+SERVER="$(dirname "$CORE")/portmanagster-server"
+MPROFILE="$(dirname "$CORE")/restic-linux.yaml"
+if [[ -x "$SERVER" && -f "$MPROFILE" ]]; then
+	SD="$WORK/mgmt-server"
+	MURL=https://127.0.0.1:8443
+	MSTATE="$DATA/managed"
+	ask_timeout() { "$CORE" settings export --format json --key filter/askTimeout | jq -r '.config.filter.askTimeout // "default"'; }
+	set_ask_timeout() { printf 'type: settings\nconfig:\n  filter:\n    askTimeout: %s\n' "$1" | "$CORE" settings import - >/dev/null; }
+	new_token() { "$SERVER" --dir "$SD" token create --group office --url "$MURL" | sed -n 's/^token.*: //p'; }
+	start_server() {
+		"$SERVER" --dir "$SD" serve --listen 127.0.0.1:8443 >>"$WORK/mgmt-server.log" 2>&1 &
+		server_pid=$!
+		sleep 2
+	}
+	stop_server() { kill "$server_pid" 2>/dev/null; wait "$server_pid" 2>/dev/null; }
+	restart_core() {
+		kill -TERM "$core_pid"
+		wait "$core_pid" 2>/dev/null
+		start_core
+	}
+	"$SERVER" --dir "$SD" init --host 127.0.0.1 >/dev/null
+	"$SERVER" --dir "$SD" group create office
+	printf 'type: settings\nconfig:\n  filter:\n    askTimeout: 77\n' >"$WORK/mgmt-group.yaml"
+	"$SERVER" --dir "$SD" group set office "$WORK/mgmt-group.yaml" --lock filter/askTimeout
+	"$SERVER" --dir "$SD" group profiles office "$MPROFILE"
+	start_server
+	sfp=$("$SERVER" --dir "$SD" fingerprints | sed -n 's/^server certificate: //p')
+	kfp=$("$SERVER" --dir "$SD" fingerprints | sed -n 's/^policy key: *//p')
+
+	check "enroll with a wrong policy key pin is refused" bash -c "! '$CORE' manage enroll --server $MURL --token '$(new_token)' --server-fp '$sfp' --policy-key-fp sha256:00 && [[ ! -e '$MSTATE/state.json' ]]"
+	check "enroll succeeds" "$CORE" manage enroll --server "$MURL" --token "$(new_token)" --server-fp "$sfp" --policy-key-fp "$kfp"
+	cid=$("$CORE" manage status | jq -r '.computerId // empty')
+	check "status shows the group" bash -c "'$CORE' manage status | jq -e '.enrolled and .group == \"office\" and .appliedVersion > 0'"
+	check "policy setting applied (askTimeout 77)" bash -c "[[ \$('$CORE' settings export --format json --key filter/askTimeout | jq .config.filter.askTimeout) == 77 ]]"
+	check "group profile imported" bash -c "'$CORE' profile list | jq -e 'any(.name == \"restic\")'"
+	check "state files are root-only" bash -c "[[ \$(stat -c %a '$MSTATE') == 700 && \$(stat -c %a '$MSTATE/client.key') == 600 ]]"
+	check "report arrived on the server, without drift after the first apply" bash -c "'$SERVER' --dir '$SD' computer show '$cid' | jq -e '.report.status.ready and .report.status.interception and .appliedVersion > 0 and .report.drift == null'"
+	check "the refused enrollment used no token and created no computer" bash -c "[[ \$('$SERVER' --dir '$SD' computer list | tail -n +2 | wc -l) == 1 ]]"
+	"$SERVER" --dir "$SD" computer list | sed 's/^/    /'
+
+	set_ask_timeout 12
+	check "manage pull corrects a local change" bash -c "'$CORE' manage pull | jq -e '.lastCorrected == [\"filter/askTimeout\"]' && [[ \$('$CORE' settings export --format json --key filter/askTimeout | jq .config.filter.askTimeout) == 77 ]]"
+	check "the drift is reported" bash -c "'$SERVER' --dir '$SD' computer show '$cid' | jq -e '.report.drift == [\"filter/askTimeout\"]'"
+
+	cp "$MSTATE/policy.json" "$WORK/mgmt-old-policy.json"
+	v1=$("$CORE" manage status | jq .appliedVersion)
+	printf 'type: settings\nconfig:\n  filter:\n    askTimeout: 88\n' >"$WORK/mgmt-group.yaml"
+	"$SERVER" --dir "$SD" group set office "$WORK/mgmt-group.yaml" --lock filter/askTimeout
+	"$CORE" manage pull >/dev/null
+	check "a server change arrives with a higher version" bash -c "[[ \$('$CORE' manage status | jq .appliedVersion) -gt $v1 && \$('$CORE' settings export --format json --key filter/askTimeout | jq .config.filter.askTimeout) == 88 ]]"
+	cp "$MSTATE/policy.json" "$WORK/mgmt-good-policy.json"
+
+	# Offline: the server is down, the stored policy applies at start.
+	stop_server
+	set_ask_timeout 12
+	if restart_core; then
+		check "offline start applies the stored policy" bash -c "[[ \$('$CORE' settings export --format json --key filter/askTimeout | jq .config.filter.askTimeout) == 88 ]]"
+		sleep 3
+		check "the failed pull shows in the status" bash -c "'$CORE' manage status | jq -e '.enrolled and (.lastError // \"\") != \"\"'"
+	else
+		fail "portmaster-core restarts enrolled"
+	fi
+
+	# An older signed policy is refused at start.
+	set_ask_timeout 13
+	cp "$WORK/mgmt-old-policy.json" "$MSTATE/policy.json"
+	refused_before=$(grep -c 'stored policy' "$LOG" || true)
+	if restart_core; then
+		check "an older stored policy is refused" bash -c "[[ \$('$CORE' settings export --format json --key filter/askTimeout | jq .config.filter.askTimeout) == 13 ]] && grep 'stored policy' '$LOG' | tail -1 | grep -q 'older'"
+	else
+		fail "portmaster-core restarts with an old policy"
+	fi
+
+	# A changed policy fails the signature check at start.
+	sed 's/88/89/' "$WORK/mgmt-good-policy.json" >"$MSTATE/policy.json"
+	if restart_core; then
+		check "a tampered stored policy is refused" bash -c "[[ \$('$CORE' settings export --format json --key filter/askTimeout | jq .config.filter.askTimeout) == 13 ]] && [[ \$(grep -c 'stored policy' '$LOG') -ge $((refused_before + 2)) ]]"
+	else
+		fail "portmaster-core restarts with a tampered policy"
+	fi
+
+	# Back online: the pull applies the policy; then the computer is revoked.
+	start_server
+	check "online again, the pull applies the policy" bash -c "'$CORE' manage pull >/dev/null && [[ \$('$CORE' settings export --format json --key filter/askTimeout | jq .config.filter.askTimeout) == 88 ]]"
+	"$SERVER" --dir "$SD" computer revoke "$cid"
+	check "a revoked computer is rejected" bash -c "! '$CORE' manage pull && '$CORE' manage status | jq -e '(.lastError // \"\") != \"\"'"
+	check "the applied settings stay after the revocation" bash -c "[[ \$('$CORE' settings export --format json --key filter/askTimeout | jq .config.filter.askTimeout) == 88 ]]"
+	check "manage leave removes the enrollment" bash -c "'$CORE' manage leave | jq -e '.enrolled == false' && [[ ! -e '$MSTATE' ]]"
+	stop_server
+	check "no panics or errors in the server log" bash -c "! grep -qE '^panic:|level=ERROR' '$WORK/mgmt-server.log'"
+	"$CORE" settings import --reset "$WORK/settings.json" >/dev/null
+else
+	echo "  info: $SERVER or $MPROFILE not found, skipped"
+fi
+
 step "Rule order"
 # Software like Docker or a VPN client inserts its rules at the top of the
 # chains later on; the core must move its jump rules back.

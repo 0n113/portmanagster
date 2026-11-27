@@ -61,7 +61,8 @@ type Status struct {
 	// LastReportError is the error of the last report, empty if it was sent.
 	LastReportError string `json:"lastReportError,omitempty"`
 	// LastCorrected lists the settings set again at the last apply because
-	// they differed from the policy.
+	// they were changed locally (drift); empty when a new policy version
+	// was applied.
 	LastCorrected []string `json:"lastCorrected,omitempty"`
 }
 
@@ -303,6 +304,7 @@ func (m *Managed) verifyAndApply(st *State, data []byte, store bool) error {
 			return err
 		}
 	}
+	previous := st.AppliedVersion
 	st.AppliedVersion = p.Version
 	st.AppliedProfilesHash = hash
 	err = m.dir.saveState(st)
@@ -312,7 +314,13 @@ func (m *Managed) verifyAndApply(st *State, data []byte, store bool) error {
 
 	m.statusLock.Lock()
 	m.status.Group = p.Group
-	m.status.LastCorrected = res.Corrected
+	// Drift is a local change of an applied policy. Settings set because
+	// a new policy version arrived are not drift.
+	if p.Version == previous {
+		m.status.LastCorrected = res.Corrected
+	} else {
+		m.status.LastCorrected = nil
+	}
 	m.statusLock.Unlock()
 	return nil
 }
@@ -342,6 +350,25 @@ func (m *Managed) registerAPI() error {
 				return nil, fmt.Errorf("invalid enroll request: %w", err)
 			}
 			return m.Enroll(ar.Context(), &r)
+		},
+	})
+	if err != nil {
+		return err
+	}
+	err = api.RegisterEndpoint(api.Endpoint{
+		Name:        "Pull Policy",
+		Description: "Pulls and applies the policy now and sends a report.",
+		Path:        "managed/pull",
+		Write:       api.PermitAdmin,
+		StructFunc: func(ar *api.Request) (any, error) {
+			if !m.dir.enrolled() {
+				return nil, errNotEnrolled
+			}
+			err := m.pull(ar.Context())
+			if err != nil {
+				return nil, err
+			}
+			return m.Status(), nil
 		},
 	})
 	if err != nil {

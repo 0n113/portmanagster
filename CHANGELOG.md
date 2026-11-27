@@ -10,7 +10,7 @@ pre-releases carry a `-rcN` suffix.
 ### Added
 - Management server (phase A, `docs/management-server.md`): `portmanagster-server` with
   enrollment, groups, signed policies with settings and app profiles, and client reports;
-  `portmaster-core manage enroll|status|leave` applies the policy, corrects local changes and
+  `portmaster-core manage enroll|status|pull|leave` applies the policy, corrects local changes and
   reports version, drift and health.
 - `portmaster-core settings export|import` and `portmaster-core profile export|import`: export
   and import the global settings and app profiles of the running Portmaster from the command
