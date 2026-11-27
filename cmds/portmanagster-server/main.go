@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"text/tabwriter"
 	"time"
+	"unicode"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -223,7 +224,8 @@ var computerListCmd = &cobra.Command{
 					state = "revoked"
 				}
 				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-					c.ID, c.Hostname, c.Group, c.OS, c.CoreVersion, seen, policyState(c, seq), health(c), state)
+					cell(c.ID), cell(c.Hostname), cell(c.Group), cell(c.OS), cell(c.CoreVersion),
+					seen, policyState(c, seq), health(c), state)
 			}
 			return w.Flush()
 		})
@@ -377,6 +379,24 @@ func readProfileFile(path string) (json.RawMessage, error) {
 }
 
 // policyState tells whether the computer runs the current policy.
+// cell makes a value safe for one column of the terminal table. Hostname,
+// OS and version come from the clients; a compromised client could otherwise
+// send tabs, newlines or escape sequences to forge rows of other computers or
+// control the terminal of the admin. Control and format characters (including
+// bidi overrides) are replaced with "?", an empty value with "-".
+func cell(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return strings.Map(func(r rune) rune {
+		if r == unicode.ReplacementChar || unicode.IsControl(r) || unicode.Is(unicode.Cf, r) ||
+			unicode.Is(unicode.Zl, r) || unicode.Is(unicode.Zp, r) {
+			return '?'
+		}
+		return r
+	}, s)
+}
+
 func policyState(c *server.Computer, seq uint64) string {
 	switch {
 	case c.Report == nil:
