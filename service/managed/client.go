@@ -1,0 +1,246 @@
+package managed
+
+import (
+	"bytes"
+	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"runtime"
+	"strings"
+	"time"
+
+	"github.com/safing/jess"
+
+	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/mgmt/policy"
+)
+
+const (
+	requestTimeout = 30 * time.Second
+	maxPolicySize  = 4 << 20
+)
+
+var (
+	errServerPin     = errors.New("server certificate does not match the pinned fingerprint")
+	errPolicyKeyPin  = errors.New("policy key does not match the pinned fingerprint")
+	errNotHTTPS      = errors.New("the server URL must start with https://")
+	errServerRefused = errors.New("server refused")
+	errAlreadyEnroll = errors.New("this computer is already enrolled, leave first")
+	errMissingArg    = errors.New("server, token, server fingerprint and policy key fingerprint are required")
+)
+
+// EnrollRequest holds the parameters of an enrollment.
+type EnrollRequest struct {
+	Server      string `json:"server"`
+	Token       string `json:"token"`
+	ServerFP    string `json:"serverFp"`
+	PolicyKeyFP string `json:"policyKeyFp"`
+}
+
+// pinnedTLS returns a TLS config that accepts only the server certificate
+// with the given fingerprint. It is used for the enrollment, before the
+// client has the CA.
+func pinnedTLS(fp string) *tls.Config {
+	return &tls.Config{
+		MinVersion: tls.VersionTLS13,
+		// The chain is not verified because the client does not have the CA
+		// yet; instead the server certificate must match the pinned
+		// fingerprint, which is stronger.
+		InsecureSkipVerify: true, //nolint:gosec // Verified by the pin in VerifyConnection.
+		VerifyConnection: func(cs tls.ConnectionState) error {
+			if len(cs.PeerCertificates) == 0 || policy.Fingerprint(cs.PeerCertificates[0].Raw) != fp {
+				return errServerPin
+			}
+			return nil
+		},
+	}
+}
+
+func httpClient(cfg *tls.Config) *http.Client {
+	return &http.Client{
+		Timeout: requestTimeout,
+		// The server is reached directly, never through a proxy from the environment.
+		Transport: &http.Transport{TLSClientConfig: cfg, Proxy: nil},
+	}
+}
+
+func serverURL(base, path string) (string, error) {
+	u, err := url.Parse(base)
+	if err != nil {
+		return "", err
+	}
+	if u.Scheme != "https" {
+		return "", errNotHTTPS
+	}
+	return strings.TrimSuffix(u.String(), "/") + path, nil
+}
+
+// enroll enrolls this computer at the server and writes the state to dir.
+func enroll(ctx context.Context, dir stateDir, r *EnrollRequest, now time.Time) error {
+	if r.Server == "" || r.Token == "" || r.ServerFP == "" || r.PolicyKeyFP == "" {
+		return errMissingArg
+	}
+	if dir.enrolled() {
+		return errAlreadyEnroll
+	}
+	endpoint, err := serverURL(r.Server, "/v1/enroll")
+	if err != nil {
+		return err
+	}
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return err
+	}
+	csrDER, err := x509.CreateCertificateRequest(rand.Reader, &x509.CertificateRequest{}, key)
+	if err != nil {
+		return err
+	}
+	hostname, _ := os.Hostname()
+	body, err := json.Marshal(&policy.EnrollRequest{
+		Token:       r.Token,
+		CSR:         string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrDER})),
+		Hostname:    hostname,
+		OS:          runtime.GOOS,
+		CoreVersion: info.Version(),
+	})
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := httpClient(pinnedTLS(r.ServerFP)).Do(req)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxPolicySize))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("%w: %s: %s", errServerRefused, resp.Status, strings.TrimSpace(string(data)))
+	}
+	var er policy.EnrollResponse
+	err = json.Unmarshal(data, &er)
+	if err != nil {
+		return fmt.Errorf("parse enrollment response: %w", err)
+	}
+
+	// Check the policy key against the pin before trusting anything else.
+	pk, err := jess.RecipientFromTextFormat(er.PolicyKey)
+	if err != nil {
+		return fmt.Errorf("policy key: %w", err)
+	}
+	fp, err := policy.KeyFingerprint(pk)
+	if err != nil {
+		return err
+	}
+	if fp != r.PolicyKeyFP {
+		return errPolicyKeyPin
+	}
+
+	keyDER, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		return err
+	}
+	state := &State{
+		Server:     strings.TrimSuffix(r.Server, "/"),
+		ComputerID: er.ComputerID,
+		Enrolled:   now.UTC().Truncate(time.Second),
+		PolicyKey:  er.PolicyKey,
+	}
+	files := []struct {
+		name string
+		data []byte
+	}{
+		{fileClientKey, pem.EncodeToMemory(&pem.Block{Type: pemTypeKey, Bytes: keyDER})},
+		{fileClientCert, []byte(er.Certificate)},
+		{fileCA, []byte(er.CA)},
+	}
+	for _, f := range files {
+		err = dir.writeFile(f.name, f.data)
+		if err != nil {
+			_ = dir.remove()
+			return err
+		}
+	}
+	// The state file is written last: it marks a complete enrollment.
+	err = dir.saveState(state)
+	if err != nil {
+		_ = dir.remove()
+		return err
+	}
+	return nil
+}
+
+// mtlsClient returns a client that authenticates with the client
+// certificate and trusts the server certificates of the server's CA.
+func mtlsClient(dir stateDir, s *State) (*http.Client, error) {
+	key, err := dir.clientKey()
+	if err != nil {
+		return nil, err
+	}
+	certDER, err := dir.clientCertDER()
+	if err != nil {
+		return nil, err
+	}
+	pool, err := dir.caPool()
+	if err != nil {
+		return nil, err
+	}
+	u, err := url.Parse(s.Server)
+	if err != nil {
+		return nil, err
+	}
+	return httpClient(&tls.Config{
+		MinVersion:   tls.VersionTLS13,
+		RootCAs:      pool,
+		ServerName:   u.Hostname(),
+		Certificates: []tls.Certificate{{Certificate: [][]byte{certDER}, PrivateKey: key}},
+	}), nil
+}
+
+// fetchPolicy gets the signed policy from the server.
+func fetchPolicy(ctx context.Context, dir stateDir, s *State) ([]byte, error) {
+	endpoint, err := serverURL(s.Server, "/v1/policy")
+	if err != nil {
+		return nil, err
+	}
+	client, err := mtlsClient(dir, s)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxPolicySize))
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%w: %s: %s", errServerRefused, resp.Status, strings.TrimSpace(string(data)))
+	}
+	return data, nil
+}

@@ -1,7 +1,8 @@
 # Design: management server and agent (roadmap step 4)
 
 Status: phase A in progress. Done: the server side of enrollment and policies (A1, see
-[Server commands](#server-commands)). Next: the client module in portmaster-core (A2).
+[Server commands](#server-commands)) and the client module in portmaster-core (A2, see
+[Client commands](#client-commands)). Next: profiles per group and reports (A3), VM tests (A4).
 This document fixes the architecture and the order of work; details of each phase are settled
 in its PR.
 
@@ -161,6 +162,23 @@ secrets; `portmanagster.db` holds groups, token hashes and computers. Back it up
 tools from step 3. The admin commands open the database directly, so they run on the server
 host only and the server has no admin port. Policy versions come from one sequence that
 increases with every change of a group or an enrollment.
+
+## Client commands
+
+```bash
+# Enroll with the command printed by `token create`; both fingerprints are pinned.
+portmaster-core manage enroll --server https://pm.example.lan:8443 --token <token> \
+  --server-fp sha256:... --policy-key-fp sha256:...
+portmaster-core manage status
+portmaster-core manage leave   # the applied settings stay
+```
+
+The client keeps its state in `<data dir>/managed/` (0700, files 0600): `state.json`,
+`client.key`, `client.crt`, `ca.crt` and the last verified `policy.json`. At start it applies
+the stored policy first, so an offline computer stays configured, then pulls every 5 minutes.
+A policy is applied only if its signature matches the pinned policy key, it names this
+computer and its version is not lower than the applied one. Settings that differ from the
+policy are set again and listed as `lastCorrected` in the status.
 
 ## Phases
 

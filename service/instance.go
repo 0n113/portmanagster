@@ -27,6 +27,7 @@ import (
 	"github.com/safing/portmaster/service/intel/filterlists"
 	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/service/interop"
+	"github.com/safing/portmaster/service/managed"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/nameserver"
 	"github.com/safing/portmaster/service/netenv"
@@ -91,6 +92,7 @@ type Instance struct {
 	process       *process.ProcessModule
 	resolver      *resolver.ResolverModule
 	sync          *sync.Sync
+	managed       *managed.Managed
 	control       *control.Control
 	interop       *interop.Interoperability
 
@@ -250,6 +252,10 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	if err != nil {
 		return instance, fmt.Errorf("create sync module: %w", err)
 	}
+	instance.managed, err = managed.New(instance)
+	if err != nil {
+		return instance, fmt.Errorf("create managed module: %w", err)
+	}
 	instance.control, err = control.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create control module: %w", err)
@@ -310,6 +316,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.status,
 		instance.broadcasts,
 		instance.sync,
+		instance.managed,
 		instance.ui,
 		instance.control,
 	)
@@ -503,6 +510,11 @@ func (i *Instance) Resolver() *resolver.ResolverModule {
 // Sync returns the sync module.
 func (i *Instance) Sync() *sync.Sync {
 	return i.sync
+}
+
+// Managed returns the management client module.
+func (i *Instance) Managed() *managed.Managed {
+	return i.managed
 }
 
 // Core returns the core module.
