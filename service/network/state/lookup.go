@@ -110,6 +110,10 @@ func (table *tcpTable) lookup(pktInfo *packet.Info, fast bool) (
 
 		// Skip if dualStack is not enabled.
 		if table.dualStack == nil {
+			// Search less if we want to be fast.
+			if fast && i >= fastLookupTries {
+				break
+			}
 			continue
 		}
 
@@ -221,6 +225,10 @@ func (table *udpTable) lookup(pktInfo *packet.Info, fast bool) (
 
 		// Skip if dualStack is not enabled.
 		if table.dualStack == nil {
+			// Search less if we want to be fast.
+			if fast && i >= fastLookupTries {
+				break
+			}
 			continue
 		}
 

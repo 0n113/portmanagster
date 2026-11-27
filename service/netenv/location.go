@@ -90,9 +90,9 @@ func (dls *DeviceLocations) BestV6() *DeviceLocation {
 // Copy creates a copy of the locations, but not the individual entries.
 func (dls *DeviceLocations) Copy() *DeviceLocations {
 	cp := &DeviceLocations{
-		All: make([]*DeviceLocation, len(locations.All)),
+		All: make([]*DeviceLocation, len(dls.All)),
 	}
-	copy(cp.All, locations.All)
+	copy(cp.All, dls.All)
 
 	return cp
 }
@@ -106,6 +106,9 @@ func (dls *DeviceLocations) AddLocation(dl *DeviceLocation) {
 	// Add to locations, if better.
 	var exists bool
 	for i, existing := range dls.All {
+		if dl.IPVersion != existing.IPVersion {
+			continue
+		}
 		if (dl.IP == nil && existing.IP == nil) || dl.IP.Equal(existing.IP) {
 			exists = true
 			if dl.IsMoreAccurateThan(existing) {
@@ -138,33 +141,31 @@ type DeviceLocation struct {
 // IsMoreAccurateThan checks if the device location is more accurate than the
 // given one.
 func (dl *DeviceLocation) IsMoreAccurateThan(other *DeviceLocation) bool {
-	switch {
-	case dl.SourceAccuracy > other.SourceAccuracy:
-		// Higher source accuracy is better.
-		return true
-	case dl.IP != nil && other.IP == nil:
-		// Location based on IP is better than without.
-		return true
-	case dl.Location.AutonomousSystemNumber != 0 &&
-		other.Location.AutonomousSystemNumber == 0:
-		// Having an ASN is better than having none.
-		return true
-	case dl.Location.Country.Code != "" &&
-		other.Location.Country.Code == "":
-		// Having a Country is better than having none.
-		return true
-	case (dl.Location.Coordinates.Latitude != 0 ||
-		dl.Location.Coordinates.Longitude != 0) &&
-		other.Location.Coordinates.Latitude == 0 &&
-		other.Location.Coordinates.Longitude == 0:
-		// Having Coordinates is better than having none.
-		return true
-	case dl.Location.Coordinates.AccuracyRadius < other.Location.Coordinates.AccuracyRadius:
-		// Higher geo accuracy is better.
-		return true
+	// Each criterion decides only if the two locations differ in it, so that
+	// A > B and B > A are never both true.
+	hasCoords := func(l *DeviceLocation) bool {
+		return l.Location.Coordinates.Latitude != 0 || l.Location.Coordinates.Longitude != 0
 	}
-
-	return false
+	switch {
+	case dl.SourceAccuracy != other.SourceAccuracy:
+		// Higher source accuracy is better.
+		return dl.SourceAccuracy > other.SourceAccuracy
+	case (dl.IP != nil) != (other.IP != nil):
+		// Location based on IP is better than without.
+		return dl.IP != nil
+	case (dl.Location.AutonomousSystemNumber != 0) != (other.Location.AutonomousSystemNumber != 0):
+		// Having an ASN is better than having none.
+		return dl.Location.AutonomousSystemNumber != 0
+	case (dl.Location.Country.Code != "") != (other.Location.Country.Code != ""):
+		// Having a Country is better than having none.
+		return dl.Location.Country.Code != ""
+	case hasCoords(dl) != hasCoords(other):
+		// Having Coordinates is better than having none.
+		return hasCoords(dl)
+	default:
+		// Higher geo accuracy (smaller radius) is better.
+		return dl.Location.Coordinates.AccuracyRadius < other.Location.Coordinates.AccuracyRadius
+	}
 }
 
 // LocationOrNil or returns the geoip location, or nil if not present.

@@ -124,7 +124,11 @@ func filterDNSResponse(
 	var interveningOptionKey string
 
 	rrCache.Answer, filteredRecords, validIPs, interveningOptionKey = filterDNSSection(ctx, rrCache.Answer, p, rrCache.Resolver.IPScope, sysResolver)
-	if len(filteredRecords) > 0 {
+	// Block the request only if address records of the answer itself were
+	// removed and none are left; answers without address records (MX, TXT,
+	// CNAME only) and records filtered from the extra section do not count.
+	answerFiltered := len(filteredRecords) > 0
+	if answerFiltered {
 		rrCache.FilteredEntries = append(rrCache.FilteredEntries, filteredRecords...)
 	}
 
@@ -136,7 +140,7 @@ func filterDNSResponse(
 
 	if len(rrCache.FilteredEntries) > 0 {
 		rrCache.Filtered = true
-		if validIPs == 0 {
+		if answerFiltered && validIPs == 0 {
 			switch interveningOptionKey {
 			case profile.CfgOptionBlockScopeInternetKey:
 				conn.Block("Internet access blocked", interveningOptionKey)

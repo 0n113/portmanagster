@@ -3,6 +3,7 @@ package netenv
 import (
 	"bufio"
 	"encoding/hex"
+	"io"
 	"net"
 	"os"
 	"strconv"
@@ -197,9 +198,13 @@ func getNameserversFromResolvconf() ([]Nameserver, error) {
 	defer func() {
 		_ = resolvconf.Close()
 	}()
+	return parseResolvconf(resolvconf)
+}
 
+// parseResolvconf reads the nameservers and search domains of a resolv.conf.
+func parseResolvconf(r io.Reader) ([]Nameserver, error) {
 	// file scanner
-	scanner := bufio.NewScanner(resolvconf)
+	scanner := bufio.NewScanner(r)
 	scanner.Split(bufio.ScanLines)
 
 	var searchDomains []string
@@ -207,14 +212,16 @@ func getNameserversFromResolvconf() ([]Nameserver, error) {
 
 	// parse
 	for scanner.Scan() {
-		line := strings.SplitN(scanner.Text(), " ", 3)
+		line := strings.Fields(scanner.Text())
 		if len(line) < 2 {
 			continue
 		}
 		switch line[0] {
 		case "search":
-			if netutils.IsValidFqdn(dns.Fqdn(line[1])) {
-				searchDomains = append(searchDomains, line[1])
+			for _, domain := range line[1:] {
+				if netutils.IsValidFqdn(dns.Fqdn(domain)) {
+					searchDomains = append(searchDomains, domain)
+				}
 			}
 		case "nameserver":
 			ip := net.ParseIP(line[1])

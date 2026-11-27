@@ -38,6 +38,20 @@ pre-releases carry a `-rcN` suffix.
   `portmaster_app_rules` writes and imports such rule profiles per host.
 
 ### Fixed
+- Firewall: blocked ICMPv6 packets are dropped like ICMP; before, the iptables rules let them
+  pass. Inbound LAN and localhost connections blocked by scope are dropped silently instead of
+  rejected. The DNS tunnel heuristic scores the subdomain, not the start of the domain. DNS
+  responses without address records (MX, TXT, CNAME) are no longer blocked when an extra
+  record was filtered.
+- Windows: verdict updates of IPv6 connections reach the kernel extension (address encoding).
+- Linux: a failed nfqueue start is undone, so a later start tries again; conntrack entries of
+  IPv4 connections held in 16 byte form are deleted; the DNS monitor does not panic on answers
+  without a record.
+- Network environment: all search domains and tab-separated nameservers of resolv.conf are
+  read; Arch Linux's connectivity check domain is recognised; the IPv6 timezone location is
+  kept; the device location ranking is consistent.
+- Network: the active connection metric counts open connections; fast socket lookups stop
+  after the fast limit; the network debug info prints a header for every process and profile.
 - Importing global settings without "reset" replaced all settings: settings missing from the
   import were set back to their defaults. They now stay; "reset" replaces all settings.
 

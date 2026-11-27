@@ -368,12 +368,12 @@ func checkConnectionScope(_ context.Context, conn *network.Connection, p *profil
 		}
 	case netutils.SiteLocal, netutils.LinkLocal, netutils.LocalMulticast:
 		if p.BlockScopeLAN() {
-			conn.Block("LAN access blocked", profile.CfgOptionBlockScopeLANKey) // Block Outbound / Drop Inbound
+			conn.Deny("LAN access blocked", profile.CfgOptionBlockScopeLANKey) // Block Outbound / Drop Inbound
 			return true
 		}
 	case netutils.HostLocal:
 		if p.BlockScopeLocal() {
-			conn.Block("Localhost access blocked", profile.CfgOptionBlockScopeLocalKey) // Block Outbound / Drop Inbound
+			conn.Deny("Localhost access blocked", profile.CfgOptionBlockScopeLocalKey) // Block Outbound / Drop Inbound
 			return true
 		}
 	case netutils.Undefined, netutils.Invalid:
@@ -514,7 +514,7 @@ func checkDomainHeuristics(ctx context.Context, conn *network.Connection, p *pro
 	// domains that would trigger LMS checks but are to small to actually
 	// exfiltrate data.
 	if len(conn.Entity.Domain) > len(etld1)+100 {
-		domainToCheck = trimmedDomain[0:len(etld1)]
+		domainToCheck = trimmedDomain[:len(trimmedDomain)-len(etld1)]
 		score := dga.LmsScoreOfDomain(domainToCheck)
 		if score < 10 {
 			log.Tracer(ctx).Debugf(

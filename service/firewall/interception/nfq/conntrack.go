@@ -399,21 +399,26 @@ func DeleteMarkedConnection(conn *network.Connection) error {
 		return err
 	}
 
+	// Go often holds IPv4 addresses in 16 byte form, which conntrack would
+	// not match against an IPv4 entry.
+	localIP, remoteIP := conn.LocalIP, conn.Entity.IP
+	family := ct.IPv4
+	if conn.IPVersion == pmpacket.IPv6 {
+		family = ct.IPv6
+	} else if l4, r4 := localIP.To4(), remoteIP.To4(); l4 != nil && r4 != nil {
+		localIP, remoteIP = l4, r4
+	}
+
 	con := ct.Con{
 		Origin: &ct.IPTuple{
-			Src: &conn.LocalIP,
-			Dst: &conn.Entity.IP,
+			Src: &localIP,
+			Dst: &remoteIP,
 			Proto: &ct.ProtoTuple{
 				Number:  &conn.Entity.Protocol,
 				SrcPort: &conn.LocalPort,
 				DstPort: &conn.Entity.Port,
 			},
 		},
-	}
-
-	family := ct.IPv4
-	if conn.IPVersion == pmpacket.IPv6 {
-		family = ct.IPv6
 	}
 
 	// Delete by original tuple directly instead of Get followed by Delete:
