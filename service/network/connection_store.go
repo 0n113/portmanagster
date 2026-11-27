@@ -87,7 +87,7 @@ func (cs *connectionStore) active() int {
 	var cnt int
 	for _, conn := range cs.clone() {
 		conn.Lock()
-		if conn.Ended != 0 {
+		if conn.Ended == 0 {
 			cnt++
 		}
 		conn.Unlock()

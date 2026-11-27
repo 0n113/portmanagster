@@ -456,6 +456,20 @@ func StartNfqueueInterception(packets chan<- packet.Packet) (err error) {
 	// Reset shutdown signal
 	shutdownSignal = make(chan struct{})
 
+	// On failure, undo what was set up, so that a later start tries again.
+	defer func() {
+		if err == nil {
+			return
+		}
+		// The packet handler is started only after all queues are open.
+		destroyNfqueues(true)
+		deactivateErr := DeactivateNfqueueFirewall()
+		if deactivateErr != nil {
+			log.Warningf("interception: failed to clean up after failed start: %s", deactivateErr)
+		}
+		isRunning.Store(false)
+	}()
+
 	err = activateNfqueueFirewall()
 	if err != nil {
 		return fmt.Errorf("could not initialize nfqueue: %w", err)
@@ -567,24 +581,7 @@ func StopNfqueueInterception() error {
 	// Signal shutdown to packet handler
 	defer close(shutdownSignal)
 
-	if out4Queue != nil {
-		out4Queue.Destroy()
-	}
-	if in4Queue != nil {
-		in4Queue.Destroy()
-	}
-	if out6Queue != nil {
-		out6Queue.Destroy()
-	}
-	if in6Queue != nil {
-		in6Queue.Destroy()
-	}
-	if fwd4Queue != nil {
-		fwd4Queue.Destroy()
-	}
-	if fwd6Queue != nil {
-		fwd6Queue.Destroy()
-	}
+	destroyNfqueues(false)
 
 	err := DeactivateNfqueueFirewall()
 	if err != nil {
@@ -592,6 +589,20 @@ func StopNfqueueInterception() error {
 	}
 
 	return nil
+}
+
+// destroyNfqueues destroys all opened queues. If forget is set, the queue
+// variables are reset; this must only be done when the packet handler is not
+// running, as it reads the variables.
+func destroyNfqueues(forget bool) {
+	for _, q := range []*nfQueue{&out4Queue, &in4Queue, &fwd4Queue, &out6Queue, &in6Queue, &fwd6Queue} {
+		if *q != nil {
+			(*q).Destroy()
+			if forget {
+				*q = nil
+			}
+		}
+	}
 }
 
 func handleInterception(packets chan<- packet.Packet) error {

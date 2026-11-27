@@ -187,7 +187,7 @@ func ipAddressToArray(ip net.IP, isIPv6 bool) [4]uint32 {
 	array := [4]uint32{0}
 	if isIPv6 {
 		for i := 0; i < 4; i++ {
-			binary.BigEndian.PutUint32(asByteArrayWithLength(&array[i], 4), getUInt32Value(&ip[i]))
+			binary.BigEndian.PutUint32(asByteArrayWithLength(&array[i], 4), getUInt32Value(&ip[i*4]))
 		}
 	} else {
 		binary.BigEndian.PutUint32(asByteArrayWithLength(&array[0], 4), getUInt32Value(&ip[0]))

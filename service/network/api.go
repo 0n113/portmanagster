@@ -13,7 +13,6 @@ import (
 	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/utils/debug"
 	"github.com/safing/portmaster/service/network/state"
-	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/resolver"
 	"github.com/safing/portmaster/service/status"
 )
@@ -217,14 +216,18 @@ func buildNetworkDebugInfoData(debugConns []*Connection) string {
 
 	// Format lines
 	var buf strings.Builder
-	currentPID := process.UndefinedProcessID
+	var (
+		currentPID     int
+		currentProfile string
+		first          = true
+	)
 	for _, entry := range sorted {
 		conn := entry.conn
 		conn.Lock()
 
-		// Add process infomration if it differs from previous connection.
-		if currentPID != conn.ProcessContext.PID {
-			if currentPID != process.UndefinedProcessID {
+		// Add process information if it differs from previous connection.
+		if first || currentPID != conn.ProcessContext.PID || currentProfile != conn.ProcessContext.Profile {
+			if !first {
 				buf.WriteString("\n\n\n")
 			}
 			buf.WriteString("ProfileName: " + conn.ProcessContext.ProfileName)
@@ -236,8 +239,8 @@ func buildNetworkDebugInfoData(debugConns []*Connection) string {
 			buf.WriteString("\nPID:         " + strconv.Itoa(conn.ProcessContext.PID))
 			buf.WriteString("\n")
 
-			// Set current PID in order to not print the process information again.
-			currentPID = conn.ProcessContext.PID
+			// Remember the process in order to not print its information again.
+			currentPID, currentProfile, first = conn.ProcessContext.PID, conn.ProcessContext.Profile, false
 		}
 
 		// Add connection.

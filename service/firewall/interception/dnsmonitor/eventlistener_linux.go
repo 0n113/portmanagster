@@ -130,6 +130,9 @@ func (l *Listener) processAnswer(domain string, queryResult *QueryResult) {
 
 	// Go trough each answer entry.
 	for _, a := range *queryResult.Answer {
+		if a.RR == nil {
+			continue
+		}
 		if a.RR.Address != nil {
 			ip := net.IP(*a.RR.Address)
 			// Answer contains ip address.
