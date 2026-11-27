@@ -128,8 +128,9 @@ func handleExportSettings(ar *api.Request) (data []byte, err error) {
 }
 
 func handleImportSettings(ar *api.Request) (any, error) {
-	if err := checkImportAllowed(ar); err != nil {
-		return nil, err
+	rootErr := checkImportAllowed(ar)
+	if rootErr != nil {
+		return nil, rootErr
 	}
 
 	var request *SettingsImportRequest

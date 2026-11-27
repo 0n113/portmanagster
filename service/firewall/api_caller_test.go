@@ -8,6 +8,12 @@ import (
 	"github.com/safing/portmaster/service/process"
 )
 
+const (
+	testGOOSLinux   = "linux"
+	testGOOSWindows = "windows"
+	testGOOSDarwin  = "darwin"
+)
+
 // TestAPICallerUID checks that the user of an API request is only known if
 // all processes holding its socket run as the same user.
 func TestAPICallerUID(t *testing.T) { //nolint:paralleltest // Replaces the package-level process getter.
@@ -41,16 +47,16 @@ func TestAPICallerUID(t *testing.T) { //nolint:paralleltest // Replaces the pack
 		wantUID   int
 		wantKnown bool
 	}{
-		{name: "root", goos: "linux", pid: rootPid, holders: []int{rootPid}, wantUID: 0, wantKnown: true},
-		{name: "root, holders unsupported", goos: "linux", pid: rootPid, wantUID: 0, wantKnown: true},
-		{name: "two root processes", goos: "linux", pid: rootPid, holders: []int{rootPid, rootPid2}, wantUID: 0, wantKnown: true},
-		{name: "user", goos: "linux", pid: userPid, holders: []int{userPid}, wantUID: 1000, wantKnown: true},
-		{name: "root socket shared with a user process", goos: "linux", pid: rootPid, holders: []int{rootPid, userPid}},
-		{name: "user socket shared with a root process", goos: "linux", pid: userPid, holders: []int{rootPid, userPid}},
-		{name: "holder exited", goos: "linux", pid: rootPid, holders: []int{rootPid, missingPid}},
-		{name: "special process", goos: "linux", pid: specialPid},
-		{name: "not recorded on windows", goos: "windows", pid: rootPid, holders: []int{rootPid}},
-		{name: "not recorded on macOS", goos: "darwin", pid: rootPid},
+		{name: "root", goos: testGOOSLinux, pid: rootPid, holders: []int{rootPid}, wantUID: 0, wantKnown: true},
+		{name: "root, holders unsupported", goos: testGOOSLinux, pid: rootPid, wantUID: 0, wantKnown: true},
+		{name: "two root processes", goos: testGOOSLinux, pid: rootPid, holders: []int{rootPid, rootPid2}, wantUID: 0, wantKnown: true},
+		{name: "user", goos: testGOOSLinux, pid: userPid, holders: []int{userPid}, wantUID: 1000, wantKnown: true},
+		{name: "root socket shared with a user process", goos: testGOOSLinux, pid: rootPid, holders: []int{rootPid, userPid}},
+		{name: "user socket shared with a root process", goos: testGOOSLinux, pid: userPid, holders: []int{rootPid, userPid}},
+		{name: "holder exited", goos: testGOOSLinux, pid: rootPid, holders: []int{rootPid, missingPid}},
+		{name: "special process", goos: testGOOSLinux, pid: specialPid},
+		{name: "not recorded on windows", goos: testGOOSWindows, pid: rootPid, holders: []int{rootPid}},
+		{name: "not recorded on macOS", goos: testGOOSDarwin, pid: rootPid},
 	}
 
 	for _, tc := range tests { //nolint:paralleltest // See above.

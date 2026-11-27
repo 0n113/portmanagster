@@ -39,7 +39,11 @@ func checkRunAsRootIfManaged(ctx context.Context, action string) error {
 	var status struct {
 		Enrolled bool `json:"enrolled"`
 	}
-	if json.Unmarshal(data, &status) != nil || !status.Enrolled {
+	err = json.Unmarshal(data, &status)
+	if err != nil {
+		return nil //nolint:nilerr // The API decides.
+	}
+	if !status.Enrolled {
 		return nil
 	}
 	return checkRunAsRoot(action + " on a managed computer")

@@ -83,8 +83,9 @@ var settingsImportCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true, // main prints the error.
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := checkRunAsRootIfManaged(cmd.Context(), "import settings"); err != nil {
-			return err
+		rootErr := checkRunAsRootIfManaged(cmd.Context(), "import settings")
+		if rootErr != nil {
+			return rootErr
 		}
 		q := url.Values{}
 		q.Set("to", "global")
@@ -118,8 +119,9 @@ var profileImportCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true, // main prints the error.
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := checkRunAsRootIfManaged(cmd.Context(), "import profiles"); err != nil {
-			return err
+		rootErr := checkRunAsRootIfManaged(cmd.Context(), "import profiles")
+		if rootErr != nil {
+			return rootErr
 		}
 		q := url.Values{}
 		addImportFlags(q)

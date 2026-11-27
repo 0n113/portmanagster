@@ -7,6 +7,12 @@ import (
 	"testing"
 )
 
+const (
+	testGOOSLinux   = "linux"
+	testGOOSWindows = "windows"
+	testGOOSDarwin  = "darwin"
+)
+
 func TestMayPerformRootAction(t *testing.T) {
 	t.Parallel()
 
@@ -24,26 +30,26 @@ func TestMayPerformRootAction(t *testing.T) {
 		managed bool
 		want    bool
 	}{
-		{"linux: root may manage", "linux", root, RootActionManage, false, true},
-		{"linux: root may manage a managed computer", "linux", root, RootActionManage, true, true},
-		{"linux: user may not manage", "linux", user, RootActionManage, false, false},
-		{"linux: user may not manage a managed computer", "linux", user, RootActionManage, true, false},
-		{"linux: unknown caller may not manage", "linux", unknown, RootActionManage, true, false},
-		{"linux: no token may not manage", "linux", nil, RootActionManage, true, false},
+		{"linux: root may manage", testGOOSLinux, root, RootActionManage, false, true},
+		{"linux: root may manage a managed computer", testGOOSLinux, root, RootActionManage, true, true},
+		{"linux: user may not manage", testGOOSLinux, user, RootActionManage, false, false},
+		{"linux: user may not manage a managed computer", testGOOSLinux, user, RootActionManage, true, false},
+		{"linux: unknown caller may not manage", testGOOSLinux, unknown, RootActionManage, true, false},
+		{"linux: no token may not manage", testGOOSLinux, nil, RootActionManage, true, false},
 
-		{"linux: user may import on an unmanaged computer", "linux", user, RootActionImport, false, true},
-		{"linux: unknown caller may import on an unmanaged computer", "linux", unknown, RootActionImport, false, true},
-		{"linux: user may not import on a managed computer", "linux", user, RootActionImport, true, false},
-		{"linux: unknown caller may not import on a managed computer", "linux", unknown, RootActionImport, true, false},
-		{"linux: root may import on a managed computer", "linux", root, RootActionImport, true, true},
+		{"linux: user may import on an unmanaged computer", testGOOSLinux, user, RootActionImport, false, true},
+		{"linux: unknown caller may import on an unmanaged computer", testGOOSLinux, unknown, RootActionImport, false, true},
+		{"linux: user may not import on a managed computer", testGOOSLinux, user, RootActionImport, true, false},
+		{"linux: unknown caller may not import on a managed computer", testGOOSLinux, unknown, RootActionImport, true, false},
+		{"linux: root may import on a managed computer", testGOOSLinux, root, RootActionImport, true, true},
 
-		{"linux: unknown action is denied", "linux", root, RootAction("other"), true, false},
+		{"linux: unknown action is denied", testGOOSLinux, root, RootAction("other"), true, false},
 
 		// Not enforced on other systems yet, see MayPerformRootAction.
-		{"windows: unchanged for manage", "windows", unknown, RootActionManage, true, true},
-		{"windows: unchanged for import", "windows", unknown, RootActionImport, true, true},
-		{"darwin: unchanged for manage", "darwin", unknown, RootActionManage, true, true},
-		{"windows: unknown action is denied", "windows", root, RootAction("other"), true, false},
+		{"windows: unchanged for manage", testGOOSWindows, unknown, RootActionManage, true, true},
+		{"windows: unchanged for import", testGOOSWindows, unknown, RootActionImport, true, true},
+		{"darwin: unchanged for manage", testGOOSDarwin, unknown, RootActionManage, true, true},
+		{"windows: unknown action is denied", testGOOSWindows, root, RootAction("other"), true, false},
 	}
 
 	for _, tc := range tests {
@@ -64,15 +70,17 @@ func TestRequireRoot(t *testing.T) {
 	user := &Request{AuthToken: &AuthToken{Read: PermitSelf, Write: PermitSelf, CallerUID: 1000, CallerUIDKnown: true}}
 	root := &Request{AuthToken: &AuthToken{Read: PermitSelf, Write: PermitSelf, CallerUID: 0, CallerUIDKnown: true}}
 
-	if err := RequireRoot(root, RootActionManage, true); err != nil {
+	err := RequireRoot(root, RootActionManage, true)
+	if err != nil {
 		t.Errorf("root denied: %s", err)
 	}
-	if err := RequireRoot(user, RootActionImport, false); err != nil {
+	err = RequireRoot(user, RootActionImport, false)
+	if err != nil {
 		t.Errorf("import on an unmanaged computer denied: %s", err)
 	}
 
-	err := RequireRoot(user, RootActionManage, false)
-	if runtime.GOOS != "linux" {
+	err = RequireRoot(user, RootActionManage, false)
+	if runtime.GOOS != testGOOSLinux {
 		// Not enforced on other systems yet.
 		if err != nil {
 			t.Errorf("denied on %s: %s", runtime.GOOS, err)

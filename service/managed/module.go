@@ -344,8 +344,9 @@ func (m *Managed) registerAPI() error {
 		Path:        "managed/enroll",
 		Write:       api.PermitAdmin,
 		StructFunc: func(ar *api.Request) (any, error) {
-			if err := api.RequireRoot(ar, api.RootActionManage, true); err != nil {
-				return nil, err
+			rootErr := api.RequireRoot(ar, api.RootActionManage, true)
+			if rootErr != nil {
+				return nil, rootErr
 			}
 			var r EnrollRequest
 			err := json.Unmarshal(ar.InputData, &r)
@@ -364,8 +365,9 @@ func (m *Managed) registerAPI() error {
 		Path:        "managed/pull",
 		Write:       api.PermitAdmin,
 		StructFunc: func(ar *api.Request) (any, error) {
-			if err := api.RequireRoot(ar, api.RootActionManage, true); err != nil {
-				return nil, err
+			rootErr := api.RequireRoot(ar, api.RootActionManage, true)
+			if rootErr != nil {
+				return nil, rootErr
 			}
 			if !m.dir.enrolled() {
 				return nil, errNotEnrolled
@@ -386,8 +388,9 @@ func (m *Managed) registerAPI() error {
 		Path:        "managed/leave",
 		Write:       api.PermitAdmin,
 		StructFunc: func(ar *api.Request) (any, error) {
-			if err := api.RequireRoot(ar, api.RootActionManage, true); err != nil {
-				return nil, err
+			rootErr := api.RequireRoot(ar, api.RootActionManage, true)
+			if rootErr != nil {
+				return nil, rootErr
 			}
 			err := m.Leave()
 			if err != nil {
