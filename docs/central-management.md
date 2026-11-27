@@ -56,6 +56,29 @@ config:
       - dot://dns.quad9.net?ip=9.9.9.9&name=Quad9
 ```
 
+## Backup and restore
+
+```bash
+# List all app profiles (scoped ID, name; special profiles are marked).
+sudo /usr/lib/portmaster/portmaster-core profile list
+# Save the global settings and all local app profiles to a new or empty directory.
+sudo /usr/lib/portmaster/portmaster-core backup create /var/backups/portmaster/$(date +%F)
+# Check a backup without importing anything, then restore it.
+sudo /usr/lib/portmaster/portmaster-core backup restore --validate /var/backups/portmaster/2026-11-27
+sudo /usr/lib/portmaster/portmaster-core backup restore /var/backups/portmaster/2026-11-27
+```
+
+The directory holds `settings.yaml`, one file per profile in `profiles/` and `manifest.json`.
+It is written to a temporary directory first and renamed when complete, so it never holds a
+partial backup; files are root-only (0600). `restore` validates the settings and every profile
+first and imports nothing if one is invalid; then it merges the settings (`--reset` replaces
+all) and imports the profiles, replacing existing ones with the same ID.
+
+Special profiles (`local/_system`, `local/_unidentified` and the other built-in ones) have fixed
+IDs that the profile import cannot restore; `backup create` lists them under `skipped` in the
+manifest. Settings changed in them are not part of the backup. If a single profile cannot be
+exported, the backup is still written and the command exits non-zero, naming the profile.
+
 ## Health check
 
 ```bash

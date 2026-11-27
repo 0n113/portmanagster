@@ -215,6 +215,17 @@ sleep 3
 dup=$(cat "$WORK/conn1.jsonl" "$WORK/conn2.jsonl" | jq -r .id | sort | uniq -d | wc -l)
 if [[ -s "$WORK/conn1.jsonl" && "$dup" == 0 ]]; then pass "connections --cursor exports each connection once ($(wc -l <"$WORK/conn1.jsonl") + $(wc -l <"$WORK/conn2.jsonl") lines)"; else fail "connections --cursor exports each connection once (duplicates: $dup)"; fi
 
+step "Backup"
+# Settings and all local app profiles to one directory, and back.
+check "profile list has app profiles and marks special ones" bash -c "'$CORE' profile list | jq -e 'any(.special != true and .source == \"local\") and any(.id == \"local/_system\" and .special == true)'"
+printf 'type: settings\nconfig:\n  filter:\n    askTimeout: 55\n' | "$CORE" settings import - >/dev/null
+check "backup create writes settings and profiles" bash -c "'$CORE' backup create '$WORK/backup' && jq -e '(.profiles | length) > 0 and all(.profiles[]; .id | startswith(\"local/\"))' '$WORK/backup/manifest.json' && grep -q 'askTimeout: 55' '$WORK/backup/settings.yaml'"
+check "backup create refuses a non-empty directory" bash -c "! '$CORE' backup create '$WORK/backup'"
+printf 'type: settings\nconfig:\n  filter:\n    askTimeout: 66\n' | "$CORE" settings import - >/dev/null
+check "backup restore --validate imports nothing" bash -c "'$CORE' backup restore --validate '$WORK/backup' >/dev/null && '$CORE' settings export --key filter/askTimeout | grep -q 'askTimeout: 66'"
+check "backup restore imports settings and all profiles" bash -c "'$CORE' backup restore '$WORK/backup' >'$WORK/restore.json' && jq -e 'all(.profiles[]; .error == null)' '$WORK/restore.json' && [[ \$(jq '.profiles | length' '$WORK/restore.json') == \$(jq '.profiles | length' '$WORK/backup/manifest.json') ]] && '$CORE' settings export --key filter/askTimeout | grep -q 'askTimeout: 55'"
+"$CORE" settings import --reset "$WORK/settings.json" >/dev/null
+
 step "Rule order"
 # Software like Docker or a VPN client inserts its rules at the top of the
 # chains later on; the core must move its jump rules back.

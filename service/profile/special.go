@@ -89,6 +89,13 @@ Additionally, the settings for the System DNS Client are specially pre-configure
 	PortmasterNotifierProfileDescription = `This is the Portmaster UI Tray Notifier.`
 )
 
+// IsSpecialProfileID reports whether id is the ID of a special profile, such
+// as the system or the Portmaster profile. Special profiles have fixed IDs that
+// are not derived from their fingerprints.
+func IsSpecialProfileID(id string) bool {
+	return isSpecialProfileID(id)
+}
+
 func isSpecialProfileID(id string) bool {
 	switch id {
 	case UnidentifiedProfileID,
