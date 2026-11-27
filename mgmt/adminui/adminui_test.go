@@ -15,11 +15,12 @@ import (
 )
 
 const (
-	fieldCode  = "code"
-	fieldName  = "name"
-	testOrigin = "http://localhost:8444"
-	testAdmin  = "alice"
-	testViewer = "victor"
+	fieldCode    = "code"
+	fieldName    = "name"
+	headerOrigin = "Origin"
+	testOrigin   = "http://localhost:8444"
+	testAdmin    = "alice"
+	testViewer   = "victor"
 )
 
 var csrfRe = regexp.MustCompile(`name="csrf" value="([0-9a-f]+)"`)
@@ -59,7 +60,7 @@ func (h *harness) request(method, path string, form url.Values, cookie string, h
 		r = httptest.NewRequest(method, path, nil)
 	}
 	if method == http.MethodPost {
-		r.Header.Set("Origin", testOrigin)
+		r.Header.Set(headerOrigin, testOrigin)
 	}
 	for k, v := range header {
 		r.Header.Set(k, v)
@@ -270,20 +271,20 @@ func TestCrossOriginRefused(t *testing.T) {
 	secret := h.addTOTPAdmin(testAdmin, server.RoleAdmin)
 	h.now = h.now.Add(totpPeriod * time.Second)
 	form := url.Values{fieldName: {testAdmin}, fieldCode: {h.code(secret)}}
-	w := h.request(http.MethodPost, "/login/totp", form, "", map[string]string{"Origin": "https://evil.example"})
+	w := h.request(http.MethodPost, "/login/totp", form, "", map[string]string{headerOrigin: "https://evil.example"})
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("cross-origin login: %d", w.Code)
 	}
-	w = h.request(http.MethodPost, "/login/totp", form, "", map[string]string{"Origin": "null", "Sec-Fetch-Site": "cross-site"})
+	w = h.request(http.MethodPost, "/login/totp", form, "", map[string]string{headerOrigin: "null", "Sec-Fetch-Site": "cross-site"})
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("login from an opaque origin: %d", w.Code)
 	}
-	w = h.request(http.MethodPost, "/login/totp", form, "", map[string]string{"Origin": ""})
+	w = h.request(http.MethodPost, "/login/totp", form, "", map[string]string{headerOrigin: ""})
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("login without origin: %d", w.Code)
 	}
 	// Some browsers send "Origin: null" on same-origin form posts.
-	w = h.request(http.MethodPost, "/login/totp", form, "", map[string]string{"Origin": "null", "Sec-Fetch-Site": "same-origin"})
+	w = h.request(http.MethodPost, "/login/totp", form, "", map[string]string{headerOrigin: "null", "Sec-Fetch-Site": "same-origin"})
 	if w.Code != http.StatusSeeOther {
 		t.Fatalf("same-origin login with Origin null: %d", w.Code)
 	}
@@ -358,7 +359,7 @@ func TestPasskeyBegin(t *testing.T) {
 	}
 	setup := func(token string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(http.MethodPost, "/api/setup/passkey/begin", strings.NewReader(`{"token":"`+token+`"}`))
-		r.Header.Set("Origin", testOrigin)
+		r.Header.Set(headerOrigin, testOrigin)
 		w := httptest.NewRecorder()
 		h.h.ServeHTTP(w, r)
 		return w
