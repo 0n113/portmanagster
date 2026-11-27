@@ -274,8 +274,23 @@ if ((Test-Path $Server) -and (Test-Path $MProfile)) {
     }
     function SetGroupAskTimeout($v) {
         $f = Join-Path $Work 'mgmt-group.yaml'
-        Set-Content -Path $f -Encoding ASCII -Value "type: settings`nconfig:`n  filter:`n    askTimeout: $v`n    askWithSystemNotifications: false`n"
-        & $Server --dir $SD group set office $f --lock filter/askTimeout 2>&1 | Out-Null
+        # The locked filter lists differ from the default, so the global
+        # config profile changes a locked setting when the policy arrives.
+        Set-Content -Path $f -Encoding ASCII -Value "type: settings`nconfig:`n  filter:`n    askTimeout: $v`n    askWithSystemNotifications: false`n    lists: [TRAC, MAL, UNBREAK]`n"
+        & $Server --dir $SD group set office $f --lock filter/askTimeout --lock filter/lists 2>&1 | Out-Null
+    }
+    # ImportProfile FILE-ID NAME PATH CONFIG: imports an app profile for the binary at PATH; returns the exit code.
+    function ImportProfile($id, $name, $path, $config) {
+        $f = Join-Path $Work "mgmt-profile-$id.json"
+        # The ID is derived from the fingerprints, so a later import replaces the profile.
+        $p = @{ type = 'profile'; source = 'local'; name = $name
+            fingerprints = @(@{ type = 'path'; operation = 'equals'; value = $path })
+            config = $config }
+        [IO.File]::WriteAllText($f, ($p | ConvertTo-Json -Depth 6))
+        $out = & $Core profile import --allow-replace $f 2>&1 | Out-String
+        $rc = $LASTEXITCODE
+        $script:importOut = if ($rc -ne 0) { ": " + ($out.Trim() -replace '\s+', ' ') } else { '' }
+        return $rc
     }
     function NewToken { ((& $Server --dir $SD token create --group office --url $MUrl 2>$null) | Select-String '^token.*: (.+)$').Matches[0].Groups[1].Value }
     function ManageStatus { & $Core manage status 2>$null | Out-String | ConvertFrom-Json }
@@ -316,6 +331,9 @@ if ((Test-Path $Server) -and (Test-Path $MProfile)) {
     $settingsBefore = Join-Path $Work 'mgmt-settings-before.json'
     & $Core settings export --format json 2>$null | Set-Content -Path $settingsBefore -Encoding ASCII
     $null = ImportSetting askTimeout 33
+    # An app profile for curl that allows $Allowed and blocks example.net.
+    $rc = ImportProfile 'smoke-curl' 'smoke curl' $Curl @{ filter = @{ endpoints = @("+ $Allowed", '- example.net') } }
+    Check "the curl app profile applies (example.net blocked, $Allowed allowed, rc $rc$script:importOut)" { $rc -eq 0 -and -not (HttpsOk 'example.net') -and (HttpsOk $Allowed) }
     StartServer
     $fps = & $Server --dir $SD fingerprints 2>$null
     $sfp = ($fps | Select-String '^server certificate: (.+)$').Matches[0].Groups[1].Value
@@ -335,7 +353,16 @@ if ((Test-Path $Server) -and (Test-Path $MProfile)) {
     Check 'the policy default is in force without a user value' { (Notify) -eq $false -and $null -eq (Notify -User) }
     $rc = ImportSetting askTimeout 15
     Check "the locked setting cannot be changed (rc $rc)" { $rc -ne 0 -and (AskTimeout) -eq 77 }
-    Check "the policy rule blocks https://$Allowed" { -not (HttpsOk $Allowed) }
+    Check "the policy rule blocks https://$Allowed although the app profile of curl allows it" { -not (HttpsOk $Allowed) }
+    $body = Join-Path $Work 'mgmt-single.json'
+    [IO.File]::WriteAllText($body, '{"type":"single-setting","id":"filter/askTimeout","value":15}')
+    & $Curl -sf --max-time 10 -X POST "$Api/sync/single-setting/import?to=global" -H 'Content-Type: application/json' --data-binary "@$body" 2>$null | Out-Null
+    $rc = $LASTEXITCODE
+    Check "the config API refuses a locked setting (curl rc $rc)" { $rc -ne 0 -and (AskTimeout) -eq 77 }
+    $rc = ImportProfile 'smoke-locked' 'smoke locked' 'C:\Windows\System32\whoami.exe' @{ filter = @{ lists = @('DECEP') } }
+    Check "an app profile cannot set a locked setting (rc $rc)" { $rc -ne 0 -and -not (@(& $Core profile list 2>$null | Out-String | ConvertFrom-Json) | Where-Object { $_.name -eq 'smoke locked' }) }
+    $gc = & $Core profile export special/global-config --format json 2>$null | Out-String | ConvertFrom-Json
+    Check 'the global config profile shows the locked filter lists' { (@($gc.config.filter.lists) -join ',') -eq 'TRAC,MAL,UNBREAK' -and -not (Select-String -Path $Log -Pattern 'global-config: managed by policy' -SimpleMatch -ErrorAction SilentlyContinue) }
     Check 'group profile imported' { @(& $Core profile list 2>$null | Out-String | ConvertFrom-Json | Where-Object { $_.name -eq 'restic' }).Count -gt 0 }
     $c = & $Server --dir $SD computer show $cid 2>$null | Out-String | ConvertFrom-Json
     Check 'report arrived on the server, nothing overridden' { $c.report.status.ready -and $c.report.status.interception -and $c.appliedVersion -gt 0 -and -not $c.report.overridden -and -not $c.report.refused }
@@ -394,12 +421,15 @@ if ((Test-Path $Server) -and (Test-Path $MProfile)) {
     Check 'leave keeps the locked value as a user value' { (UserAskTimeout) -eq 88 -and (AskTimeout) -eq 88 }
     Check 'leave keeps the overridden default as set by the admin' { (Notify -User) -eq $true }
     $eps = (& $Core settings export --format json --key filter/endpoints 2>$null | Out-String | ConvertFrom-Json).config.filter.endpoints
-    Check 'leave keeps the policy rule in the global rules' { @($eps)[0] -eq "- $Allowed" -and -not (HttpsOk $Allowed) }
+    # After leave the rule is a global rule; the allow rule of the curl app
+    # profile wins over it, as for any global rule.
+    Check 'leave keeps the policy rule in the global rules' { @($eps)[0] -eq "- $Allowed" }
     $rc = ImportSetting askTimeout 15
     Check "the settings can be changed after leave (rc $rc)" { $rc -eq 0 -and (AskTimeout) -eq 15 }
     StopServer
     Check 'no panics or errors in the server log' { -not (Select-String -Path (Join-Path $Work 'mgmt-server-*.log') -Pattern '^panic:|level=ERROR' -ErrorAction SilentlyContinue) }
     & $Core settings import --reset $settingsBefore 2>$null | Out-Null
+    $null = ImportProfile 'smoke-curl' 'smoke curl' $Curl @{ filter = @{ endpoints = @() } }
     Check "https://$Allowed is reachable again after the reset" { HttpsOk $Allowed }
 } else {
     Write-Output "  info: $Server or $MProfile not found, skipped"

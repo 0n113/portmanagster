@@ -279,6 +279,17 @@ Endpoint rules: policy rules, then app profile rules, then global rules.
 | B4 | UI (Angular): locked settings are read-only with "Managed by your organisation" in the global and the app settings; policy defaults show their origin; a small "Managed" panel (server, group, policy version, last pull). | UI build; manual check in the browser against a managed core |
 | B5 | VM tests Linux and Windows, step "Management" extended: a locked setting cannot be changed through the config API, `settings import` or an app profile; a policy rule blocks a domain that an app profile allows (curl from a profiled binary); an overridden unlocked setting is reported; the full smoke test without enrollment is unchanged. | Both VMs pass |
 
+Status: B1–B5 are done. The VM smoke tests (step "Management") check on Linux and Windows:
+- a locked setting is in force over the user value and cannot be changed through `settings
+  import`, the config API (`sync/single-setting/import`) or an app profile;
+- a policy rule blocks a domain that the app profile of curl allows;
+- with locked filter lists the global config profile is updated without errors;
+- an overridden default is reported;
+- offline start, refused old and tampered policies, revocation, and leave keeping the values.
+
+The own connections of the Portmaster (updates, DNS, the management pull) are allowed before
+any profile or policy check, so a locked setting such as the default action cannot block them.
+
 Order: B1 → B2 → B3 (each a PR, usable on its own: B1/B2 without B3 change nothing, as the
 layer stays empty), then B4 and B5. B4 can run in parallel with B3.
 
