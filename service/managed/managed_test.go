@@ -178,8 +178,8 @@ func TestEnrollPins(t *testing.T) {
 	if err == nil {
 		t.Fatal("want an error for a wrong server fingerprint")
 	}
-	// A wrong policy key fingerprint fails and stores nothing. The token
-	// was used by the server, so a new one is needed afterwards.
+	// A wrong policy key fingerprint fails before the token is used and
+	// stores nothing.
 	r = e.enrollReq()
 	r.PolicyKeyFP = "sha256:00"
 	_, err = e.m.Enroll(ctx, r)
@@ -188,6 +188,18 @@ func TestEnrollPins(t *testing.T) {
 	}
 	if e.m.dir.enrolled() {
 		t.Fatal("a failed enrollment must not leave a state")
+	}
+	if list, _ := e.srv.Store.Computers(); len(list) != 0 {
+		t.Fatalf("a failed pin check must not create a computer: %d", len(list))
+	}
+	// The token is still valid.
+	_, err = e.m.Enroll(ctx, e.enrollReq())
+	if err != nil {
+		t.Fatalf("enroll with the unused token: %v", err)
+	}
+	err = e.m.Leave()
+	if err != nil {
+		t.Fatal(err)
 	}
 	// http URLs are refused.
 	r = e.enrollReq()
@@ -213,6 +225,9 @@ func TestEnrollPullApply(t *testing.T) {
 	}
 	if v := e.a.userValue(keyAskTimeout); !sameValue(v, 33) {
 		t.Fatalf("policy setting not applied: %v", v)
+	}
+	if len(st.LastCorrected) != 0 {
+		t.Fatalf("the first apply is not drift: %v", st.LastCorrected)
 	}
 	_, err = e.m.Enroll(ctx, e.enrollReq())
 	if err == nil {

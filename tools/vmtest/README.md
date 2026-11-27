@@ -53,6 +53,10 @@ What the smoke tests check:
 - DNS and HTTPS work, a domain blocked in `config.json` is blocked;
 - the API answers, lists connections in netquery and denies unknown clients;
 - 40 parallel connections do not break it;
+- management (step "Management"): a local `portmanagster-server` enrolls the core, the signed
+  policy and a group profile are applied, a local change is corrected and reported, the stored
+  policy applies at an offline start, an old or tampered stored policy is refused, a revoked
+  computer is rejected and `manage leave` removes the enrollment;
 - it shuts down cleanly and leaves a working network;
 - Linux only: after `kill -9`, `recover-iptables` restores the network.
 

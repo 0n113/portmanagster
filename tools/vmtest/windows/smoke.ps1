@@ -244,6 +244,140 @@ if ((Test-Path $ApplyScript) -and (Test-Path $BackupScript)) {
     Write-Output "  info: apply or backup script not found, skipped"
 }
 
+Step 'Management'
+# Enrollment at a portmanagster server on this machine, signed policy with a
+# locked setting and a group profile, drift correction, offline start with the
+# stored policy, refused old and tampered policies, revocation and leave.
+$Server = Join-Path (Split-Path $Core) 'portmanagster-server.exe'
+$MProfile = Join-Path (Split-Path $Core) 'restic-windows.yaml'
+if ((Test-Path $Server) -and (Test-Path $MProfile)) {
+    $SD = Join-Path $Work 'mgmt-server'
+    $MUrl = 'https://127.0.0.1:8443'
+    $MState = Join-Path $Data 'managed'
+    $script:serverProc = $null
+    $script:coreRun = 0
+    function AskTimeout { (& $Core settings export --format json --key filter/askTimeout 2>$null | Out-String | ConvertFrom-Json).config.filter.askTimeout }
+    function SetAskTimeout($v) {
+        $f = Join-Path $Work 'mgmt-set.yaml'
+        Set-Content -Path $f -Encoding ASCII -Value "type: settings`nconfig:`n  filter:`n    askTimeout: $v`n"
+        & $Core settings import $f 2>$null | Out-Null
+    }
+    function SetGroupAskTimeout($v) {
+        $f = Join-Path $Work 'mgmt-group.yaml'
+        Set-Content -Path $f -Encoding ASCII -Value "type: settings`nconfig:`n  filter:`n    askTimeout: $v`n"
+        & $Server --dir $SD group set office $f --lock filter/askTimeout 2>&1 | Out-Null
+    }
+    function NewToken { ((& $Server --dir $SD token create --group office --url $MUrl 2>$null) | Select-String '^token.*: (.+)$').Matches[0].Groups[1].Value }
+    function ManageStatus { & $Core manage status 2>$null | Out-String | ConvertFrom-Json }
+    function StartServer {
+        $script:serverProc = Start-Process -FilePath $Server -PassThru -WindowStyle Hidden `
+            -RedirectStandardOutput (Join-Path $Work 'mgmt-server.out') -RedirectStandardError (Join-Path $Work "mgmt-server-$(Get-Random).log") `
+            -ArgumentList @('--dir', $SD, 'serve', '--listen', '127.0.0.1:8443')
+        Start-Sleep -Seconds 3
+    }
+    function StopServer { if ($script:serverProc) { Stop-Process -Id $script:serverProc.Id -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1 } }
+    function RestartCore {
+        & $Curl -sf --max-time 10 -X POST "$Api/core/shutdown" 2>$null | Out-Null
+        if (-not $script:proc.WaitForExit(60000)) { Stop-Process -Id $script:proc.Id -Force }
+        $script:coreRun++
+        $runLog = Join-Path $Work "core-mgmt-$($script:coreRun).log"
+        $script:proc = Start-Process -FilePath $Core -PassThru -WindowStyle Hidden `
+            -RedirectStandardOutput $runLog -RedirectStandardError "$runLog.err" `
+            -ArgumentList @('--bin-dir', $Bin, '--data-dir', $Data, '--log-stdout', '--log', 'info', '--allowed-clients', $Curl, '--allowed-clients', $Core)
+        $null = $script:proc.Handle
+        $w = 0
+        while (-not (ApiReady)) {
+            Start-Sleep -Seconds 2
+            $w += 2
+            if ($script:proc.HasExited -or $w -ge 300) { return $false }
+        }
+        Write-Output "  portmaster-core restarted (${w}s)"
+        return $true
+    }
+    function StoredPolicyLines { @(Select-String -Path (Join-Path $Work 'core-mgmt-*.log') -Pattern 'stored policy' -SimpleMatch -ErrorAction SilentlyContinue) }
+
+    & $Server --dir $SD init --host 127.0.0.1 2>&1 | Out-Null
+    & $Server --dir $SD group create office 2>&1 | Out-Null
+    SetGroupAskTimeout 77
+    & $Server --dir $SD group profiles office $MProfile 2>&1 | Out-Null
+    StartServer
+    $fps = & $Server --dir $SD fingerprints 2>$null
+    $sfp = ($fps | Select-String '^server certificate: (.+)$').Matches[0].Groups[1].Value
+    $kfp = ($fps | Select-String '^policy key: +(.+)$').Matches[0].Groups[1].Value
+
+    & $Core manage enroll --server $MUrl --token (NewToken) --server-fp $sfp --policy-key-fp 'sha256:00' 2>$null | Out-Null
+    $rc = $LASTEXITCODE
+    Check "enroll with a wrong policy key pin is refused (rc $rc)" { $rc -ne 0 -and -not (Test-Path (Join-Path $MState 'state.json')) }
+    $out = & $Core manage enroll --server $MUrl --token (NewToken) --server-fp $sfp --policy-key-fp $kfp 2>&1 | Out-String
+    $rc = $LASTEXITCODE
+    Check "enroll succeeds (rc $rc)" { $rc -eq 0 }
+    if ($rc -ne 0) { Write-Output "    $($out.Trim())" }
+    $st = ManageStatus
+    $cid = $st.computerId
+    Check 'status shows the group' { $st.enrolled -and $st.group -eq 'office' -and $st.appliedVersion -gt 0 }
+    Check 'policy setting applied (askTimeout 77)' { (AskTimeout) -eq 77 }
+    Check 'group profile imported' { @(& $Core profile list 2>$null | Out-String | ConvertFrom-Json | Where-Object { $_.name -eq 'restic' }).Count -gt 0 }
+    $c = & $Server --dir $SD computer show $cid 2>$null | Out-String | ConvertFrom-Json
+    Check 'report arrived on the server, without drift after the first apply' { $c.report.status.ready -and $c.report.status.interception -and $c.appliedVersion -gt 0 -and -not $c.report.drift }
+    Check 'the refused enrollment created no computer' { @(& $Server --dir $SD computer list 2>$null).Count -eq 2 }
+    & $Server --dir $SD computer list 2>$null | ForEach-Object { "    $_" }
+    Write-Output "  info: hostname reported '$($c.hostname)', COMPUTERNAME '$env:COMPUTERNAME', DNS host name '$([Net.Dns]::GetHostName())'"
+
+    SetAskTimeout 12
+    $p = & $Core manage pull 2>$null | Out-String | ConvertFrom-Json
+    Check 'manage pull corrects a local change' { @($p.lastCorrected) -contains 'filter/askTimeout' -and (AskTimeout) -eq 77 }
+    $c = & $Server --dir $SD computer show $cid 2>$null | Out-String | ConvertFrom-Json
+    Check 'the drift is reported' { @($c.report.drift) -contains 'filter/askTimeout' }
+
+    $policyFile = Join-Path $MState 'policy.json'
+    Copy-Item -Force $policyFile (Join-Path $Work 'mgmt-old-policy.json')
+    $v1 = (ManageStatus).appliedVersion
+    SetGroupAskTimeout 88
+    & $Core manage pull 2>$null | Out-Null
+    Check 'a server change arrives with a higher version' { (ManageStatus).appliedVersion -gt $v1 -and (AskTimeout) -eq 88 }
+    Copy-Item -Force $policyFile (Join-Path $Work 'mgmt-good-policy.json')
+
+    # Offline: the server is down, the stored policy applies at start.
+    StopServer
+    SetAskTimeout 12
+    if (RestartCore) {
+        Check 'offline start applies the stored policy' { (AskTimeout) -eq 88 }
+        Start-Sleep -Seconds 3
+        Check 'the failed pull shows in the status' { $s = ManageStatus; $s.enrolled -and $s.lastError }
+    } else { Fail 'portmaster-core restarts enrolled' }
+
+    # An older signed policy is refused at start.
+    SetAskTimeout 13
+    Copy-Item -Force (Join-Path $Work 'mgmt-old-policy.json') $policyFile
+    if (RestartCore) {
+        Check 'an older stored policy is refused' { (AskTimeout) -eq 13 -and ((StoredPolicyLines)[-1].Line -match 'older') }
+    } else { Fail 'portmaster-core restarts with an old policy' }
+
+    # A changed policy fails the signature check at start.
+    $refusedBefore = (StoredPolicyLines).Count
+    $good = Get-Content -Raw (Join-Path $Work 'mgmt-good-policy.json')
+    [IO.File]::WriteAllText($policyFile, ($good -replace '88', '89'))
+    if (RestartCore) {
+        Check 'a tampered stored policy is refused' { (AskTimeout) -eq 13 -and (StoredPolicyLines).Count -gt $refusedBefore }
+    } else { Fail 'portmaster-core restarts with a tampered policy' }
+
+    # Back online: the pull applies the policy; then the computer is revoked.
+    StartServer
+    & $Core manage pull 2>$null | Out-Null
+    Check 'online again, the pull applies the policy' { $LASTEXITCODE -eq 0 -and (AskTimeout) -eq 88 }
+    & $Server --dir $SD computer revoke $cid 2>&1 | Out-Null
+    & $Core manage pull 2>$null | Out-Null
+    $rc = $LASTEXITCODE
+    Check "a revoked computer is rejected (rc $rc)" { $rc -ne 0 -and (ManageStatus).lastError }
+    Check 'the applied settings stay after the revocation' { (AskTimeout) -eq 88 }
+    $l = & $Core manage leave 2>$null | Out-String | ConvertFrom-Json
+    Check 'manage leave removes the enrollment' { $l.enrolled -eq $false -and -not (Test-Path $MState) }
+    StopServer
+    Check 'no panics or errors in the server log' { -not (Select-String -Path (Join-Path $Work 'mgmt-server-*.log') -Pattern '^panic:|level=ERROR' -ErrorAction SilentlyContinue) }
+} else {
+    Write-Output "  info: $Server or $MProfile not found, skipped"
+}
+
 Step 'Load'
 $jobs = 1..40 | ForEach-Object { Start-Process -FilePath $Curl -PassThru -WindowStyle Hidden -ArgumentList @('-s', '-o', 'NUL', '--max-time', '10', "https://$Allowed/?n=$_") }
 $jobs | ForEach-Object { $_.WaitForExit(20000) | Out-Null }
@@ -260,6 +394,8 @@ Check "$Blocked resolves again without Portmaster" { Resolves $Blocked }
 
 Step 'Log'
 Get-Content "$Log.err" -ErrorAction SilentlyContinue | Add-Content $Log
+# Runs of the core restarted by the management test.
+Get-ChildItem -Path $Work -Filter 'core-mgmt-*.log*' -ErrorAction SilentlyContinue | Sort-Object Name | Get-Content | Add-Content $Log
 $panics = @(Select-String -Path $Log -Pattern '^panic:|fatal error:' -ErrorAction SilentlyContinue).Count
 if ($panics -eq 0) { Pass 'no panics in the log' } else { Fail "$panics panics in the log" }
 # The core DLL provides the ETW DNS integration. It fails to load when it

@@ -99,6 +99,15 @@ func enroll(ctx context.Context, dir stateDir, r *EnrollRequest, now time.Time) 
 		return err
 	}
 
+	// Check the policy key before the token is used, so that a wrong pin
+	// does not use up the token. The key in the enrollment response is
+	// checked again below.
+	client := httpClient(pinnedTLS(r.ServerFP))
+	err = checkPolicyKey(ctx, client, r)
+	if err != nil {
+		return err
+	}
+
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return err
@@ -124,7 +133,7 @@ func enroll(ctx context.Context, dir stateDir, r *EnrollRequest, now time.Time) 
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := httpClient(pinnedTLS(r.ServerFP)).Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -143,16 +152,9 @@ func enroll(ctx context.Context, dir stateDir, r *EnrollRequest, now time.Time) 
 	}
 
 	// Check the policy key against the pin before trusting anything else.
-	pk, err := jess.RecipientFromTextFormat(er.PolicyKey)
-	if err != nil {
-		return fmt.Errorf("policy key: %w", err)
-	}
-	fp, err := policy.KeyFingerprint(pk)
+	err = matchPolicyKey(er.PolicyKey, r.PolicyKeyFP)
 	if err != nil {
 		return err
-	}
-	if fp != r.PolicyKeyFP {
-		return errPolicyKeyPin
 	}
 
 	keyDER, err := x509.MarshalPKCS8PrivateKey(key)
@@ -187,6 +189,55 @@ func enroll(ctx context.Context, dir stateDir, r *EnrollRequest, now time.Time) 
 		return err
 	}
 	return nil
+}
+
+// matchPolicyKey checks a policy key in jess text format against the pin.
+func matchPolicyKey(textKey, pin string) error {
+	pk, err := jess.RecipientFromTextFormat(textKey)
+	if err != nil {
+		return fmt.Errorf("policy key: %w", err)
+	}
+	fp, err := policy.KeyFingerprint(pk)
+	if err != nil {
+		return err
+	}
+	if fp != pin {
+		return errPolicyKeyPin
+	}
+	return nil
+}
+
+// checkPolicyKey fetches the policy key from the server and checks it
+// against the pin.
+func checkPolicyKey(ctx context.Context, client *http.Client, r *EnrollRequest) error {
+	endpoint, err := serverURL(r.Server, "/v1/policy-key")
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxPolicySize))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("%w: %s: %s", errServerRefused, resp.Status, strings.TrimSpace(string(data)))
+	}
+	var pk struct {
+		PolicyKey string `json:"policyKey"`
+	}
+	err = json.Unmarshal(data, &pk)
+	if err != nil {
+		return fmt.Errorf("parse policy key: %w", err)
+	}
+	return matchPolicyKey(pk.PolicyKey, r.PolicyKeyFP)
 }
 
 // mtlsClient returns a client that authenticates with the client

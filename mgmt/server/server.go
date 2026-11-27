@@ -202,6 +202,7 @@ func (s *Server) TLSConfig() *tls.Config {
 // Handler returns the HTTP handler of the client API.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /v1/policy-key", s.handlePolicyKey)
 	mux.HandleFunc("POST /v1/enroll", s.handleEnroll)
 	mux.HandleFunc("GET /v1/policy", s.handlePolicy)
 	mux.HandleFunc("POST /v1/report", s.handleReport)
@@ -386,4 +387,10 @@ func (s *Server) handleReport(w http.ResponseWriter, r *http.Request) {
 		s.Log.Warn("client reports an error", "id", c.ID, "hostname", c.Hostname, "err", report.Error)
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handlePolicyKey returns the public policy key, so that a client can check
+// it against its pin before it uses the enrollment token.
+func (s *Server) handlePolicyKey(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"policyKey": s.PolicyPub})
 }
