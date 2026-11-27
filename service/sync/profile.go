@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/portmaster/service/profile/binmeta"
@@ -78,6 +80,19 @@ type ProfileImportRequest struct {
 	Export *ProfileExport `json:"export"`
 }
 
+// ProfileListEntry describes a profile in the profile list.
+type ProfileListEntry struct {
+	// ID is the scoped profile ID, as used by the profile export.
+	ID      string                `json:"id"                yaml:"id"`
+	Source  profile.ProfileSource `json:"source"            yaml:"source"`
+	Name    string                `json:"name"              yaml:"name"`
+	Special bool                  `json:"special,omitempty" yaml:"special,omitempty"`
+	// Internal is set for profiles of Portmaster internal processes.
+	Internal bool `json:"internal,omitempty" yaml:"internal,omitempty"`
+	// LastEdited is the time of the last change by the user (unix seconds), 0 if never.
+	LastEdited int64 `json:"lastEdited,omitempty" yaml:"lastEdited,omitempty"`
+}
+
 // ProfileImportResult is returned by successful import operations.
 type ProfileImportResult struct {
 	ImportResult `json:",inline"`
@@ -99,6 +114,22 @@ func registerProfileAPI() error {
 		}},
 		DataFunc: handleExportProfile,
 	}); err != nil {
+		return err
+	}
+
+	err := api.RegisterEndpoint(api.Endpoint{
+		Name:        "List App Profiles",
+		Description: "Lists all app profiles with their scoped ID, e.g. for a backup of all profiles.",
+		Path:        "sync/profile/list",
+		Read:        api.PermitAdmin,
+		Parameters: []api.Parameter{{
+			Method:      http.MethodGet,
+			Field:       "source",
+			Description: "Only list profiles of this source (local or special).",
+		}},
+		StructFunc: handleListProfiles,
+	})
+	if err != nil {
 		return err
 	}
 
@@ -163,6 +194,49 @@ func handleExportProfile(ar *api.Request) (data []byte, err error) {
 	}
 
 	return serializeProfileExport(export, ar)
+}
+
+func handleListProfiles(ar *api.Request) (any, error) {
+	return ListProfiles(profile.ProfileSource(ar.URL.Query().Get("source")))
+}
+
+// ListProfiles returns all profiles of the given source, or of all sources if
+// source is empty, sorted by scoped ID.
+func ListProfiles(source profile.ProfileSource) ([]ProfileListEntry, error) {
+	prefix := profile.ProfilesDBPath
+	if source != "" {
+		prefix += string(source) + "/"
+	}
+	it, err := db.Query(query.New(prefix))
+	if err != nil {
+		return nil, fmt.Errorf("failed to query profiles: %w", err)
+	}
+
+	list := make([]ProfileListEntry, 0)
+	for r := range it.Next {
+		p, err := profile.EnsureProfile(r)
+		if err != nil {
+			log.Debugf("sync: failed to parse profile %s for list: %s", r.Key(), err)
+			continue
+		}
+		list = append(list, ProfileListEntry{
+			ID:         p.ScopedID(),
+			Source:     p.Source,
+			Name:       p.Name,
+			Special:    p.Source == profile.SourceLocal && profile.IsSpecialProfileID(p.ID),
+			Internal:   p.Internal,
+			LastEdited: p.LastEdited,
+		})
+	}
+	err = it.Err()
+	if err != nil {
+		return nil, fmt.Errorf("failed to iterate over profiles: %w", err)
+	}
+
+	slices.SortFunc(list, func(a, b ProfileListEntry) int {
+		return strings.Compare(a.ID, b.ID)
+	})
+	return list, nil
 }
 
 func handleImportProfile(ar *api.Request) (any, error) {

@@ -27,6 +27,10 @@ pre-releases carry a `-rcN` suffix.
 - `integrations/siem/`: systemd timer and logrotate config for the export, Wazuh agent config
   and rules (blocks by malware lists, many blocks from one app, status check), and snippets for
   Fluent Bit, Loki, Filebeat and Graylog.
+- `portmaster-core backup create DIR` saves the global settings and all local app profiles to
+  a directory (`settings.yaml`, `profiles/*.yaml`, `manifest.json`); `backup restore DIR`
+  validates all of it first and imports nothing if a file is invalid. `profile list` lists the
+  profiles with their scoped IDs (API endpoint `sync/profile/list`).
 
 ### Fixed
 - Importing global settings without "reset" replaced all settings: settings missing from the
