@@ -60,6 +60,40 @@ CREATE TABLE IF NOT EXISTS computers (
 	last_report  INTEGER NOT NULL DEFAULT 0,
 	report       TEXT NOT NULL DEFAULT ''
 );
+CREATE TABLE IF NOT EXISTS admins (
+	name      TEXT PRIMARY KEY,
+	role      TEXT NOT NULL,
+	handle    TEXT NOT NULL,
+	totp      TEXT NOT NULL DEFAULT '',
+	totp_step INTEGER NOT NULL DEFAULT 0,
+	created   INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS admin_credentials (
+	id      TEXT PRIMARY KEY,
+	admin   TEXT NOT NULL REFERENCES admins(name) ON DELETE CASCADE,
+	data    TEXT NOT NULL,
+	created INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS admin_setup (
+	hash    TEXT PRIMARY KEY,
+	admin   TEXT NOT NULL REFERENCES admins(name) ON DELETE CASCADE,
+	expires INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sessions (
+	hash      TEXT PRIMARY KEY,
+	admin     TEXT NOT NULL REFERENCES admins(name) ON DELETE CASCADE,
+	csrf      TEXT NOT NULL,
+	created   INTEGER NOT NULL,
+	last_seen INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS audit (
+	id     INTEGER PRIMARY KEY AUTOINCREMENT,
+	time   INTEGER NOT NULL,
+	actor  TEXT NOT NULL,
+	action TEXT NOT NULL,
+	object TEXT NOT NULL,
+	detail TEXT NOT NULL DEFAULT ''
+);
 `
 
 // migrations add the columns of later versions to an existing database.
@@ -118,7 +152,13 @@ func OpenStore(path string) (*Store, error) {
 		return nil, err
 	}
 	conn.SetBusyTimeout(10 * time.Second)
-	err = sqlitex.ExecuteScript(conn, "PRAGMA foreign_keys = ON;"+schema, nil)
+	// The pragma has no effect inside the transaction of ExecuteScript.
+	err = sqlitex.ExecuteTransient(conn, "PRAGMA foreign_keys = ON", nil)
+	if err != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("enable foreign keys: %w", err)
+	}
+	err = sqlitex.ExecuteScript(conn, schema, nil)
 	if err != nil {
 		_ = conn.Close()
 		return nil, fmt.Errorf("create schema: %w", err)

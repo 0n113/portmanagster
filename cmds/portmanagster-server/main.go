@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/safing/portmaster/mgmt/adminui"
 	"github.com/safing/portmaster/mgmt/policy"
 	"github.com/safing/portmaster/mgmt/server"
 )
@@ -82,7 +83,25 @@ var serveCmd = &cobra.Command{
 		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 		logger.Info("serving", "listen", listenAddr, "dir", dataDir)
-		return s.Serve(ctx, listenAddr)
+		if adminListen == "" {
+			return s.Serve(ctx, listenAddr)
+		}
+		ui, err := adminui.New(adminui.Config{Store: s.Store, URL: adminURL, Logger: logger.With("part", "admin-ui")})
+		if err != nil {
+			return err
+		}
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		errCh := make(chan error, 2)
+		go func() { errCh <- s.Serve(ctx, listenAddr) }()
+		go func() {
+			logger.Info("serving admin UI", "listen", adminListen, "url", adminURL)
+			errCh <- ui.Serve(ctx, adminListen, adminCert, adminKey)
+		}()
+		// The first listener that stops ends both.
+		err = <-errCh
+		cancel()
+		return errors.Join(err, <-errCh)
 	},
 }
 
@@ -102,7 +121,7 @@ var groupCreateCmd = &cobra.Command{
 	Short: "Create an empty group",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(_ *cobra.Command, args []string) error {
-		return withStore(func(s *server.Store) error {
+		return audited("group.create", args[0], "", func(s *server.Store) error {
 			return s.CreateGroup(args[0], time.Now())
 		})
 	},
@@ -125,7 +144,8 @@ var groupSetCmd = &cobra.Command{
 			}
 			sort.Strings(locked)
 		}
-		return withStore(func(s *server.Store) error {
+		detail := fmt.Sprintf("%d settings, %d locked", len(settings), len(locked))
+		return audited("group.set", args[0], detail, func(s *server.Store) error {
 			return s.SetGroupPolicy(args[0], settings, locked, time.Now())
 		})
 	},
@@ -147,7 +167,8 @@ var groupProfilesCmd = &cobra.Command{
 			}
 			profiles = append(profiles, p)
 		}
-		return withStore(func(s *server.Store) error {
+		detail := fmt.Sprintf("%d profiles", len(profiles))
+		return audited("group.profiles", args[0], detail, func(s *server.Store) error {
 			return s.SetGroupProfiles(args[0], profiles, time.Now())
 		})
 	},
@@ -169,14 +190,18 @@ var groupRulesCmd = &cobra.Command{
 		case !clearRules:
 			return errRulesFile
 		}
-		return withStore(func(s *server.Store) error {
+		detail := "cleared"
+		if rules != nil {
+			detail = fmt.Sprintf("%d endpoint rules, %d service rules", len(rules.Endpoints), len(rules.ServiceEndpoints))
+		}
+		return audited("group.rules", args[0], detail, func(s *server.Store) error {
 			return s.SetGroupRules(args[0], rules, time.Now())
 		})
 	},
 }
 
 var groupListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   useList,
 	Short: "List the groups with their settings as JSON",
 	Args:  cobra.NoArgs,
 	RunE: func(_ *cobra.Command, _ []string) error {
@@ -198,7 +223,7 @@ var tokenCreateCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		var token string
-		err := withStore(func(s *server.Store) error {
+		err := audited("token.create", tokenGroup, "valid "+tokenValid.String(), func(s *server.Store) error {
 			var err error
 			token, err = s.CreateToken(tokenGroup, tokenValid, time.Now())
 			return err
@@ -225,7 +250,7 @@ var tokenCreateCmd = &cobra.Command{
 var computerCmd = &cobra.Command{Use: "computer", Short: "List, show and revoke computers"}
 
 var computerListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   useList,
 	Short: "List the enrolled computers",
 	Args:  cobra.NoArgs,
 	RunE: func(_ *cobra.Command, _ []string) error {
@@ -277,7 +302,7 @@ var computerRevokeCmd = &cobra.Command{
 	Short: "Revoke a computer: the server rejects its certificate from now on",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(_ *cobra.Command, args []string) error {
-		return withStore(func(s *server.Store) error {
+		return audited("computer.revoke", args[0], "", func(s *server.Store) error {
 			return s.Revoke(args[0])
 		})
 	},
