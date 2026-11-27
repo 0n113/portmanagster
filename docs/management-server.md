@@ -3,7 +3,8 @@
 Status: phase A done: the server side of enrollment and policies (A1, see
 [Server commands](#server-commands)) and the client module in portmaster-core (A2, see
 [Client commands](#client-commands)), profiles per group and reports (A3), and the VM tests
-on Linux and Windows (A4, step "Management" of the smoke tests). Next: phase B.
+on Linux and Windows (A4, step "Management" of the smoke tests). Next: phase B, see
+[Phase B plan](#phase-b-plan).
 This document fixes the architecture and the order of work; details of each phase are settled
 in its PR.
 
@@ -122,20 +123,11 @@ A policy is a JSON document per computer, built by the server from the computer'
 
 ### Enforcement: the policy layer (phase B)
 
-Today a setting has a user value and defaults; app profiles override global settings. For
-enforcement, the core gets a **policy layer** on top of both:
-
-- `base/config`: a policy value per option, highest precedence, set only by the managed module.
-  Setting a locked key through the API (UI, `settings import`) fails with "managed by policy";
-  the option carries an annotation so the UI shows it as locked.
-- `service/profile`: the LayeredProfile checks the policy layer first for locked keys, so an app
-  profile cannot override a locked global setting, and evaluates the policy `rules` before the
-  profile and global rules.
-- Without enrollment the layer is empty and nothing changes for unmanaged installs.
-
-Until phase B, enforcement is by **drift correction**: the client re-applies the policy
-settings and profiles when they differ (on every pull and on config change), and reports the
-drift.
+Phase A enforces by **drift correction**: the client sets the policy settings again when they
+differ and reports the drift. A local admin can still change a setting until the next pull,
+and an app profile can override a global setting, because app profile values win over
+global ones. Phase B adds a **policy layer** that the config system and the profiles respect.
+See [Phase B plan](#phase-b-plan) for the details and the order of work.
 
 ## Server commands
 
@@ -208,6 +200,75 @@ policy are set again; when the policy version did not change, they are drift and
 | D | Hardening: offline policy signing (sign on an admin machine, server only distributes), key rotation, certificate renewal edge cases, server backup/restore docs, packaging | Server compromise alone cannot push a policy when offline signing is used |
 
 Phase A is the first PR series; each phase ships on its own and is usable.
+
+## Phase B plan
+
+### How settings work today
+
+- `base/config`: each option has `activeValue` (user, from `config.json`), `activeDefaultValue`
+  (set at runtime, e.g. `core/enableProcessDetection` on some systems) and
+  `activeFallbackValue` (registration default); `getValueCache` returns the first that is set.
+  Writes go through `setConfigOption` (UI via the `config:` database, `settings import` of a
+  single key, API keys) and `ReplaceConfig` (loading `config.json`, `settings import`).
+- `service/profile`: a LayeredProfile is the app profile layers plus the global settings. The
+  `wrap*Option` functions return the first layer that sets the key, else the global value; the
+  `Match*` functions check the endpoint lists of the layers first, then the global list;
+  `MatchFilterLists` uses the first layer that sets `filter/lists`. So **an app profile wins
+  over every global setting**, including endpoint rules and filter lists.
+- Profile writes (UI, `profile import`, the managed module) pass the database hook `PrePut` in
+  `service/profile/database.go`, which validates the profile config.
+
+### Semantics
+
+- **Locked settings** (`locked` in the policy) are enforced: their policy value has the highest
+  precedence, in the global settings and in every app profile. Writes that change them are
+  refused with "managed by policy". User values stay stored but have no effect while locked.
+- **Unlocked policy settings** become a **policy default**: they replace the default, a local
+  admin may override them, and the override is reported (not reverted). This replaces the drift
+  correction of phase A for unlocked keys; an admin who wants a value kept locks it.
+- **Policy rules** (`rules.endpoints`, `rules.serviceEndpoints`) are evaluated before all app
+  profile and global rules. They cannot be overridden; an app can only decide what the policy
+  rules leave open. Typical use: organisation-wide blocks and the allowed management/backup
+  servers.
+- **Leave** (`manage leave`) copies the policy values into the user values before clearing the
+  layer, so a computer keeps its configuration when it leaves management (as in phase A).
+- Unmanaged installs: the layer is empty; behaviour and performance are unchanged.
+
+Precedence after phase B (first that is set wins):
+
+| Global setting | In an app profile |
+|---|---|
+| policy locked value | policy locked value |
+| user value | app profile layers |
+| policy default | global setting (left column) |
+| runtime default, registration default | |
+
+Endpoint rules: policy rules, then app profile rules, then global rules.
+
+### Steps
+
+| Step | Content | Done when |
+|---|---|---|
+| B1 | `base/config`: per option `policyValue` and `locked`; `config.SetPolicy(values, locked)` replaces the layer atomically, keeps values of keys not yet registered and applies them at registration; `getValueCache` order as above. `setConfigOption` and `sync.ImportSettings` refuse locked keys (`config.ErrLockedByPolicy`); `ReplaceConfig` keeps them stored but inert. The option record gets `PolicyValue`, `Locked` and an annotation for the UI. `settings export` exports user values only, with `--effective` for the values in force. | Unit tests: precedence, refused writes, pending keys, release level, concurrent reads (race test) |
+| B2 | `service/profile`: `wrap*Option` and `MatchFilterLists` skip the app layers for locked keys; `MatchEndpoint` / `MatchServiceEndpoint` check the policy rules first. `PrePut` refuses a save that sets or changes a locked key (existing values stay, inert), so the UI and `profile import` get a clear error. A change of the policy bumps the revision of all active layered profiles. | Unit tests with a layered profile: locked key ignores the app value, unlocked key does not; policy rule wins over an app allow rule |
+| B3 | Managed module and server: apply through `SetPolicy` instead of the settings import; apply the stored policy in `managed.New`, i.e. before interception starts, so there is no unmanaged window at boot; `policy.Policy.Rules` and `portmanagster-server group rules NAME FILE`; the report lists overridden unlocked keys instead of corrected ones; `leave` copies the values. | End to end test client/server: locked, unlocked and rules arrive; leave keeps the values |
+| B4 | UI (Angular): locked settings are read-only with "Managed by your organisation" in the global and the app settings; policy defaults show their origin; a small "Managed" panel (server, group, policy version, last pull). | UI build; manual check in the browser against a managed core |
+| B5 | VM tests Linux and Windows, step "Management" extended: a locked setting cannot be changed through the config API, `settings import` or an app profile; a policy rule blocks a domain that an app profile allows (curl from a profiled binary); an overridden unlocked setting is reported; the full smoke test without enrollment is unchanged. | Both VMs pass |
+
+Order: B1 → B2 → B3 (each a PR, usable on its own: B1/B2 without B3 change nothing, as the
+layer stays empty), then B4 and B5. B4 can run in parallel with B3.
+
+### Risks
+
+- Hot path: the `wrap*Option` functions run per connection. The locked check must be a lookup
+  in an immutable snapshot taken at refresh time, not a config call per read.
+- Boot order: options are registered in the modules' constructors; the pending values of
+  `SetPolicy` cover keys that are not registered yet when `managed.New` runs.
+- `core/enableProcessDetection` and other runtime defaults: a policy default for the same key
+  sits above the runtime default; locking such a key overrides the system detection. The
+  server should warn when it is locked.
+- Upstream merges: `base/config` and `service/profile` are upstream code; the changes are kept
+  small and in separate files where possible.
 
 ## Security considerations
 
