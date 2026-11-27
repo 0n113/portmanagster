@@ -1,0 +1,12 @@
+{{define "content"}}
+<h1>Dashboard</h1>
+{{with .Data}}
+<div class="tiles">
+  <div class="tile"><span class="num">{{.Computers}}</span><span>computers</span></div>
+  <div class="tile"><span class="num">{{.Revoked}}</span><span>revoked</span></div>
+  <div class="tile"><span class="num">{{.Groups}}</span><span>groups</span></div>
+  <div class="tile"><span class="num">{{.Admins}}</span><span>accounts</span></div>
+</div>
+{{end}}
+<p class="hint">Pages for computers, groups, tokens and the audit log follow. Until then use the command line on the server host.</p>
+{{end}}

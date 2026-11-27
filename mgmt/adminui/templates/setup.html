@@ -1,0 +1,25 @@
+{{define "content"}}
+{{with .Data}}
+<section class="card narrow">
+  <h1>Set up {{$.Admin.Name}}</h1>
+  <p>This one-time link sets up one way to log in. Use it for a passkey (recommended) or for an authenticator app.
+  {{if .Passkeys}}The account has {{.Passkeys}} passkey(s).{{end}}
+  {{if .HasTOTP}}The account has an authenticator app; setting up a new one replaces it.{{end}}</p>
+
+  <h2>Passkey</h2>
+  <button type="button" id="passkey-setup" class="primary" data-token="{{.Token}}">Create a passkey</button>
+  <p class="msg error" id="passkey-error" role="alert" hidden></p>
+
+  <h2>Authenticator app (TOTP)</h2>
+  <p>Add this key to your authenticator app, then enter the current code.</p>
+  <p class="secret"><code>{{.TOTPSecret}}</code></p>
+  <details><summary>otpauth link</summary><p class="secret"><code>{{.TOTPURI}}</code></p></details>
+  <form method="post" action="/setup/totp">
+    <input type="hidden" name="token" value="{{.Token}}">
+    <input type="hidden" name="secret" value="{{.TOTPSecret}}">
+    <label>Code <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" required></label>
+    <button type="submit">Confirm code</button>
+  </form>
+</section>
+{{end}}
+{{end}}

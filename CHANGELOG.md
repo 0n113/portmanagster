@@ -8,6 +8,13 @@ pre-releases carry a `-rcN` suffix.
 ## [Unreleased]
 
 ### Added
+- Admin web UI of the management server (management phase C1): `serve` runs it on
+  `127.0.0.1:8444` (`--admin-listen`, `--admin-url`, `--admin-cert/--admin-key`). Accounts
+  (`portmanagster-server admin add/list/reset/remove`, roles admin and viewer) log in with a
+  passkey or TOTP after a one-time setup link, no passwords. Sessions with idle and maximum
+  age, CSRF tokens, same-origin check, login rate limit, strict content security policy. An
+  audit log records the changes through the UI and the command line
+  (`portmanagster-server audit`). The UI has a dashboard; more pages follow.
 - Policy layer in the settings (management phase B1): values of a management policy are
   either locked (highest precedence, changes refused with "managed by policy") or a default a
   local admin may override. `settings export --effective` exports the values in force.

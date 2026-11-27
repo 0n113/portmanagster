@@ -4,7 +4,8 @@ Status: phase A done: the server side of enrollment and policies (A1, see
 [Server commands](#server-commands)) and the client module in portmaster-core (A2, see
 [Client commands](#client-commands)), profiles per group and reports (A3), and the VM tests
 on Linux and Windows (A4, step "Management" of the smoke tests). Phase B done (policy layer,
-see [Phase B plan](#phase-b-plan)). Phase C planned, see [Phase C plan](#phase-c-plan).
+see [Phase B plan](#phase-b-plan)). Phase C in progress (see [Phase C plan](#phase-c-plan)): C1
+done, the admin web UI with accounts, login and audit log (see [Admin web UI](#admin-web-ui)).
 This document fixes the architecture and the order of work; details of each phase are settled
 in its PR.
 
@@ -161,12 +162,19 @@ portmanagster-server serve --listen :8443
 portmanagster-server computer list          # with policy version and health of the last report
 portmanagster-server computer show <id>     # last report as JSON
 portmanagster-server computer revoke <id>
+
+# Accounts of the admin web UI and the audit log (see "Admin web UI").
+portmanagster-server admin add alice [--role admin|viewer] [--url https://pm.example.lan:8444]
+portmanagster-server admin list
+portmanagster-server admin reset alice      # removes passkeys, TOTP and sessions, prints a new setup link
+portmanagster-server admin remove alice
+portmanagster-server audit [--since 24h] [--limit 100]
 ```
 
 The data directory is root-only (0700): `ca.key`, `server.key` and `policy.key` are the
 secrets; `portmanagster.db` holds groups, token hashes and computers. Back it up with the
 tools from step 3. The admin commands open the database directly, so they run on the server
-host only and the server has no admin port. Policy versions come from one sequence that
+host only. Every change through them is recorded in the audit log with the actor `cli`. Policy versions come from one sequence that
 increases with every change of a group or an enrollment.
 
 After every pull the client sends a report (`POST /v1/report`): the applied policy version,
@@ -176,6 +184,32 @@ invalid rules), the last error and the `core/status` data. The server keeps the 
 per computer. `computer list` shows the applied version (`current` when it is the newest) and a
 health summary (`ok`, or e.g. `no interception, 2 problems, 1 overridden`); overrides, refused
 settings and client errors are also logged by `serve`.
+
+### Admin web UI
+
+`serve` also runs the admin web UI (phase C), by default on `127.0.0.1:8444`, so it is reached
+through an SSH tunnel (`ssh -L 8444:localhost:8444 pm.example.lan`, then open
+http://localhost:8444). Flags:
+
+- `--admin-listen ADDR`: listen address; empty turns the UI off.
+- `--admin-url URL`: the address admins open (default `http://localhost:8444`). Passkeys are
+  bound to its host name, so changing the host later needs new passkeys (`admin reset`).
+- `--admin-cert FILE --admin-key FILE`: TLS for the UI when it listens on the network; the
+  session cookie is then `Secure`. Plain HTTP is meant for localhost only.
+
+Accounts are created on the server host: `admin add NAME` prints a one-time setup link (15
+minutes). Opening it sets up a passkey (recommended) or an authenticator app (TOTP, RFC 6238,
+the key is shown as text and as `otpauth://` link). There are no passwords. A lost passkey or
+phone: `admin reset NAME` prints a new link. Roles: `admin` may change everything, `viewer`
+only looks; the server refuses every POST of a viewer except the logout.
+
+Security: sessions are random tokens of which only the hash is stored, valid 12 hours after the
+login and ended after 30 minutes without use; cookie `HttpOnly`, `SameSite=Strict`. Every POST
+needs the same origin (`Origin`, or `Sec-Fetch-Site: same-origin`) and, with a session, its CSRF
+token. 5 failed logins within 15 minutes block the account name and the IP address for the
+rest of the window. A TOTP code works once. Pages are rendered on the server without inline
+scripts or styles under a strict content security policy. Logins, logouts and account changes
+are in the audit log (`admin:NAME`). Phase C1 has only the dashboard; the pages follow in C2.
 
 ## Client commands
 
