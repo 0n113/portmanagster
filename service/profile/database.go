@@ -149,6 +149,13 @@ func (h *databaseHook) PrePut(r record.Record) (record.Record, error) {
 	// clean config
 	config.CleanHierarchicalConfig(profile.Config)
 
+	// Settings locked by the management policy cannot be set or changed in
+	// an app profile.
+	err = checkLockedProfileChanges(profile)
+	if err != nil {
+		return nil, err
+	}
+
 	// prepare profile
 	profile.prepProfile()
 

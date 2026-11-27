@@ -63,6 +63,9 @@ type LayeredProfile struct {
 type layeredOptionState struct {
 	revisionCounter uint64
 	layers          []*Profile
+	// locked are the settings locked by the management policy; the app
+	// layers are skipped for them.
+	locked lockedKeys
 }
 
 // NewLayeredProfile returns a new layered profile based on the given local profile.
@@ -323,7 +326,7 @@ func (lp *LayeredProfile) SecurityLevel() uint8 {
 
 // DefaultAction returns the active default action ID. This functions requires the layered profile to be read locked.
 func (lp *LayeredProfile) DefaultAction() uint8 {
-	for _, layer := range lp.layers {
+	for _, layer := range lp.layersFor(CfgOptionDefaultActionKey) {
 		if layer.defaultAction > 0 {
 			return layer.defaultAction
 		}
@@ -336,7 +339,12 @@ func (lp *LayeredProfile) DefaultAction() uint8 {
 
 // MatchEndpoint checks if the given endpoint matches an entry in any of the profiles. This functions requires the layered profile to be read locked.
 func (lp *LayeredProfile) MatchEndpoint(ctx context.Context, entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
-	for _, layer := range lp.layers {
+	// The rules of the management policy come first.
+	if result, reason := matchPolicyRules(ctx, entity, false); endpoints.IsDecision(result) {
+		return result, reason
+	}
+
+	for _, layer := range lp.layersFor(CfgOptionEndpointsKey) {
 		if layer.endpoints.IsSet() {
 			result, reason := layer.endpoints.Match(ctx, entity)
 			if endpoints.IsDecision(result) {
@@ -354,7 +362,12 @@ func (lp *LayeredProfile) MatchEndpoint(ctx context.Context, entity *intel.Entit
 func (lp *LayeredProfile) MatchServiceEndpoint(ctx context.Context, entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
 	entity.EnableReverseResolving()
 
-	for _, layer := range lp.layers {
+	// The rules of the management policy come first.
+	if result, reason := matchPolicyRules(ctx, entity, true); endpoints.IsDecision(result) {
+		return result, reason
+	}
+
+	for _, layer := range lp.layersFor(CfgOptionServiceEndpointsKey) {
 		if layer.serviceEndpoints.IsSet() {
 			result, reason := layer.serviceEndpoints.Match(ctx, entity)
 			if endpoints.IsDecision(result) {
@@ -370,7 +383,7 @@ func (lp *LayeredProfile) MatchServiceEndpoint(ctx context.Context, entity *inte
 
 // MatchSplitTunUsagePolicy checks if the given endpoint matches an entry in any Split Tunnel usage policy in any of the profiles. This functions requires the layered profile to be read locked.
 func (lp *LayeredProfile) MatchSplitTunUsagePolicy(ctx context.Context, entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
-	for _, layer := range lp.layers {
+	for _, layer := range lp.layersFor(CfgOptionSplitTunUsagePolicyKey) {
 		if layer.splitTunUsagePolicy.IsSet() {
 			result, reason := layer.splitTunUsagePolicy.Match(ctx, entity)
 			if endpoints.IsDecision(result) {
@@ -390,7 +403,7 @@ func (lp *LayeredProfile) MatchFilterLists(ctx context.Context, entity *intel.En
 	entity.ResolveSubDomainLists(ctx, lp.FilterSubDomains())
 	entity.EnableCNAMECheck(ctx, lp.FilterCNAMEs())
 
-	for _, layer := range lp.layers {
+	for _, layer := range lp.layersFor(CfgOptionFilterListsKey) {
 		// Search for the first layer that has filter lists set.
 		if layer.filterListsSet {
 			if entity.MatchLists(layer.filterListIDs) {
@@ -431,6 +444,9 @@ func (lp *LayeredProfile) wrapBoolOption(configKey string, globalConfig config.B
 			// Go through all layers to find an active value.
 			found := false
 			for _, layer := range state.layers {
+				if state.locked.has(configKey) {
+					break
+				}
 				layerValue, ok := layer.configPerspective.GetAsBool(configKey)
 				if ok {
 					found = true
@@ -466,6 +482,9 @@ func (lp *LayeredProfile) wrapIntOption(configKey string, globalConfig config.In
 			// Go through all layers to find an active value.
 			found := false
 			for _, layer := range state.layers {
+				if state.locked.has(configKey) {
+					break
+				}
 				layerValue, ok := layer.configPerspective.GetAsInt(configKey)
 				if ok {
 					found = true
@@ -486,7 +505,7 @@ func (lp *LayeredProfile) wrapIntOption(configKey string, globalConfig config.In
 // layers that has the given configuration key set. If it returns an empty
 // string, the global profile can be assumed to have been effective.
 func (lp *LayeredProfile) GetProfileSource(configKey string) string {
-	for _, layer := range lp.layers {
+	for _, layer := range lp.layersFor(configKey) {
 		if layer.configPerspective.Has(configKey) {
 			return layer.Key()
 		}
@@ -515,6 +534,9 @@ func (lp *LayeredProfile) wrapStringOption(configKey string, globalConfig config
 			// Go through all layers to find an active value.
 			found := false
 			for _, layer := range state.layers {
+				if state.locked.has(configKey) {
+					break
+				}
 				layerValue, ok := layer.configPerspective.GetAsString(configKey)
 				if ok {
 					found = true
@@ -538,5 +560,15 @@ func (lp *LayeredProfile) publishOptionState() {
 	lp.optionState.Store(&layeredOptionState{
 		revisionCounter: lp.RevisionCounter,
 		layers:          slices.Clone(lp.layers),
+		locked:          currentLockedKeys(),
 	})
+}
+
+// layersFor returns the layers that may set the given key: none if the
+// management policy locks it. The layered profile must be read locked.
+func (lp *LayeredProfile) layersFor(key string) []*Profile {
+	if state := lp.optionState.Load(); state != nil && state.locked.has(key) {
+		return nil
+	}
+	return lp.layers
 }

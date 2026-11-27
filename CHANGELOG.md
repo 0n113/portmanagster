@@ -11,6 +11,10 @@ pre-releases carry a `-rcN` suffix.
 - Policy layer in the settings (management phase B1): values of a management policy are
   either locked (highest precedence, changes refused with "managed by policy") or a default a
   local admin may override. `settings export --effective` exports the values in force.
+- App profiles respect the policy layer (management phase B2): app profiles cannot override a
+  locked setting (including outgoing and incoming rules and filter lists) and cannot set or
+  change it; policy rules are evaluated before the rules of all app profiles and the global
+  rules.
 - Management server (phase A, `docs/management-server.md`): `portmanagster-server` with
   enrollment, groups, signed policies with settings and app profiles, and client reports;
   `portmaster-core manage enroll|status|pull|leave` applies the policy, corrects local changes and
