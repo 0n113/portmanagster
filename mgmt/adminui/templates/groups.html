@@ -1,0 +1,23 @@
+{{define "content"}}
+<h1>Groups</h1>
+{{if .Data}}
+<div class="table-wrap"><table>
+  <thead><tr><th>Name</th><th>Computers</th><th>Settings</th><th>Locked</th><th>Profiles</th><th>Rules</th><th>Changed</th></tr></thead>
+  <tbody>
+  {{range .Data}}
+  <tr>
+    <td><a href="/groups/{{.Name | pathEscape}}">{{.Name}}</a></td>
+    <td>{{.Computers}}</td>
+    <td>{{len .Settings}}</td>
+    <td>{{len .Locked}}</td>
+    <td>{{len .Profiles}}</td>
+    <td>{{with .Rules}}{{len .Endpoints}} + {{len .ServiceEndpoints}}{{else}}0{{end}}</td>
+    <td title="{{datetime .Updated}}">{{ago $.Now .Updated}}</td>
+  </tr>
+  {{end}}
+  </tbody>
+</table></div>
+{{else}}
+<p class="empty">No groups yet. Create one with <code>portmanagster-server group create NAME</code>.</p>
+{{end}}
+{{end}}

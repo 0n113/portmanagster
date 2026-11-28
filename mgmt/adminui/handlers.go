@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -18,7 +19,10 @@ const loginFailed = "Login failed."
 
 // page is the data of a rendered page.
 type page struct {
-	Title  string
+	Title string
+	// Nav is the title of the active navigation item.
+	Nav    string
+	Now    time.Time
 	Admin  *server.Admin
 	CSRF   string
 	Error  string
@@ -28,8 +32,8 @@ type page struct {
 
 func parsePages() (map[string]*template.Template, error) {
 	pages := make(map[string]*template.Template)
-	for _, name := range []string{"login", "setup", "dashboard"} {
-		t, err := template.ParseFS(templateFS, "templates/layout.html", "templates/"+name+".html")
+	for _, name := range []string{"login", "setup", "dashboard", "computers", "computer", "groups", "group", "tokens", "audit", "message"} {
+		t, err := template.New(name).Funcs(templateFuncs).ParseFS(templateFS, "templates/layout.html", "templates/"+name+".html")
 		if err != nil {
 			return nil, err
 		}
@@ -39,6 +43,9 @@ func parsePages() (map[string]*template.Template, error) {
 }
 
 func (ui *UI) render(w http.ResponseWriter, status int, name string, p *page) {
+	if p.Now.IsZero() {
+		p.Now = ui.now()
+	}
 	var buf bytes.Buffer
 	err := ui.pages[name].ExecuteTemplate(&buf, "layout", p)
 	if err != nil {
@@ -364,44 +371,6 @@ func (ui *UI) handleSetupFinish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ui.writeJSON(w, http.StatusOK, map[string]string{"next": "/login?setup=done"})
-}
-
-// --- Pages ---
-
-type dashboardData struct {
-	Groups    int
-	Computers int
-	Revoked   int
-	Admins    int
-}
-
-func (ui *UI) handleDashboard(w http.ResponseWriter, r *http.Request) {
-	sess := ui.currentSession(r)
-	data := &dashboardData{}
-	groups, err := ui.store.Groups()
-	if err == nil {
-		data.Groups = len(groups)
-		var computers []*server.Computer
-		computers, err = ui.store.Computers()
-		for _, c := range computers {
-			if c.Revoked {
-				data.Revoked++
-			} else {
-				data.Computers++
-			}
-		}
-	}
-	if err == nil {
-		var admins []*server.Admin
-		admins, err = ui.store.Admins()
-		data.Admins = len(admins)
-	}
-	if err != nil {
-		ui.log.Error("dashboard", "err", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-	ui.render(w, http.StatusOK, "dashboard", &page{Title: "Dashboard", Admin: sess.Admin, CSRF: sess.CSRF, Data: data})
 }
 
 // --- WebAuthn user ---

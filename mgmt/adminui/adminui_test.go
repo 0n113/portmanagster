@@ -245,16 +245,16 @@ func TestViewerCannotPost(t *testing.T) {
 	admin, adminCSRF := h.login(testAdmin, adminSecret)
 	// Every write route is behind the role check; an unknown one shows
 	// that the check comes before the routing.
-	w := h.request(http.MethodPost, "/groups/x", url.Values{csrfField: {viewerCSRF}}, viewer, nil)
+	w := h.request(http.MethodPost, "/no-such-action", url.Values{csrfField: {viewerCSRF}}, viewer, nil)
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("viewer POST: %d", w.Code)
 	}
-	w = h.request(http.MethodPost, "/groups/x", url.Values{csrfField: {adminCSRF}}, admin, nil)
+	w = h.request(http.MethodPost, "/no-such-action", url.Values{csrfField: {adminCSRF}}, admin, nil)
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("admin POST: %d", w.Code)
 	}
 	// A CSRF token belongs to its session.
-	w = h.request(http.MethodPost, "/groups/x", url.Values{csrfField: {viewerCSRF}}, admin, nil)
+	w = h.request(http.MethodPost, "/no-such-action", url.Values{csrfField: {viewerCSRF}}, admin, nil)
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("CSRF token of another session: %d", w.Code)
 	}

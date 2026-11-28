@@ -1,0 +1,61 @@
+{{define "content"}}
+{{with .Data}}
+<p class="crumbs"><a href="/groups">Groups</a> /</p>
+<h1>{{.Name}}</h1>
+<p class="hint">Changed {{datetime .Updated}} ({{ago $.Now .Updated}}).</p>
+
+<h2>Settings</h2>
+{{if .Settings}}
+<div class="table-wrap"><table>
+  <thead><tr><th>Key</th><th>Value</th><th>Kind</th></tr></thead>
+  <tbody>
+  {{range .Settings}}
+  <tr><td><code>{{.Key}}</code></td><td><code class="wrap">{{json .Value}}</code></td>
+  <td>{{if .Locked}}<span class="badge locked">locked</span>{{else}}<span class="badge default">default</span>{{end}}</td></tr>
+  {{end}}
+  </tbody>
+</table></div>
+<p class="hint">Locked settings cannot be changed on the computers; defaults can be overridden by a local admin, which the computer reports.</p>
+{{else}}
+<p class="empty">No settings.</p>
+{{end}}
+
+<h2>Endpoint rules</h2>
+{{with .Rules}}
+{{if .Endpoints}}<h3>Outgoing</h3><ol class="keys">{{range .Endpoints}}<li><code>{{.}}</code></li>{{end}}</ol>{{end}}
+{{if .ServiceEndpoints}}<h3>Incoming</h3><ol class="keys">{{range .ServiceEndpoints}}<li><code>{{.}}</code></li>{{end}}</ol>{{end}}
+<p class="hint">These rules come before all app profile and global rules.</p>
+{{else}}
+<p class="empty">No rules.</p>
+{{end}}
+
+<h2>App profiles</h2>
+{{if .Profiles}}
+{{range .Profiles}}
+<details><summary>{{or .Name "(no name)"}} · {{.Settings}} setting(s)</summary><pre>{{prettyJSON .JSON}}</pre></details>
+{{end}}
+{{else}}
+<p class="empty">No profiles.</p>
+{{end}}
+
+<h2>Computers</h2>
+{{if .Computers}}
+<div class="table-wrap"><table>
+  <thead><tr><th>Hostname</th><th>Last seen</th><th>Policy</th><th>Health</th><th>State</th></tr></thead>
+  <tbody>
+  {{range .Computers}}
+  <tr{{if not .OK}} class="attention"{{end}}>
+    <td><a href="/computers/{{.ID | pathEscape}}">{{or .Hostname .ID}}</a></td>
+    <td title="{{datetime .LastSeen}}">{{ago $.Now .LastSeen}}</td>
+    <td>{{if .AppliedVersion}}v{{.AppliedVersion}} {{end}}<span class="badge {{.Policy}}">{{.Policy}}</span></td>
+    <td>{{.Health}}</td>
+    <td><span class="badge {{.State}}">{{.State}}</span></td>
+  </tr>
+  {{end}}
+  </tbody>
+</table></div>
+{{else}}
+<p class="empty">No computer in this group.</p>
+{{end}}
+{{end}}
+{{end}}

@@ -11,6 +11,9 @@
 <header class="top">
   <a class="brand" href="/">Portmanagster</a>
   {{if .CSRF}}
+  <nav class="nav" aria-label="Main">
+    {{range navItems}}<a href="{{.Path}}"{{if eq .Title $.Nav}} aria-current="page"{{end}}>{{.Title}}</a>{{end}}
+  </nav>
   <div class="who">
     <span>{{.Admin.Name}} <span class="role">{{.Admin.Role}}</span></span>
     <form method="post" action="/logout">

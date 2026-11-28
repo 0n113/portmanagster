@@ -1,0 +1,27 @@
+{{define "content"}}
+<h1>Audit log</h1>
+{{with .Data}}
+<form class="filters" method="get" action="/audit">
+  <label>Search <input name="q" value="{{.Query}}" placeholder="actor, action, object"></label>
+  <label>Entries
+    <select name="limit">
+      {{range $n := slice100}}<option value="{{$n}}"{{if eq $n $.Data.Limit}} selected{{end}}>{{$n}}</option>{{end}}
+    </select>
+  </label>
+  <button type="submit">Show</button>
+</form>
+{{if .Entries}}
+<div class="table-wrap"><table>
+  <thead><tr><th>Time (UTC)</th><th>Actor</th><th>Action</th><th>Object</th><th>Detail</th></tr></thead>
+  <tbody>
+  {{range .Entries}}
+  <tr><td class="nowrap">{{datetime .Time}}</td><td>{{.Actor}}</td><td>{{.Action}}</td><td>{{.Object}}</td><td>{{.Detail}}</td></tr>
+  {{end}}
+  </tbody>
+</table></div>
+{{if .More}}<p class="hint">More entries match; raise the number of entries or narrow the search.</p>{{end}}
+{{else}}
+<p class="empty">No entries{{if .Query}} match the search{{end}}.</p>
+{{end}}
+{{end}}
+{{end}}

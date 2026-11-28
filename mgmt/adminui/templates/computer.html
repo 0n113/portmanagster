@@ -1,0 +1,44 @@
+{{define "content"}}
+{{with .Data}}
+<p class="crumbs"><a href="/computers">Computers</a> /</p>
+<h1>{{or .Hostname .ID}} <span class="badge {{.State}}">{{.State}}</span></h1>
+{{if .Attention}}<div class="msg warn-box"><strong>Needs attention:</strong> {{range $i, $a := .Attention}}{{if $i}}; {{end}}{{$a}}{{end}}</div>{{end}}
+<dl class="facts">
+  <dt>ID</dt><dd><code>{{.ID}}</code></dd>
+  <dt>Group</dt><dd><a href="/groups/{{.Group | pathEscape}}">{{.Group}}</a></dd>
+  <dt>OS</dt><dd>{{.OS}}</dd>
+  <dt>Portmaster</dt><dd>{{.CoreVersion}}</dd>
+  <dt>Enrolled</dt><dd>{{datetime .Enrolled}}</dd>
+  <dt>Last seen</dt><dd>{{datetime .LastSeen}} ({{ago $.Now .LastSeen}})</dd>
+  <dt>Last report</dt><dd>{{datetime .LastReport}}</dd>
+  <dt>Policy</dt><dd>{{if .AppliedVersion}}v{{.AppliedVersion}} {{end}}<span class="badge {{.Policy}}">{{.Policy}}</span></dd>
+  <dt>Certificate</dt><dd><code class="wrap">{{.CertFP}}</code></dd>
+</dl>
+
+{{with .Report}}
+{{if .Error}}<h2>Policy error</h2><p class="msg error">{{.Error}}</p>{{end}}
+<h2>Policy defaults changed locally</h2>
+{{if .Overridden}}<ul class="keys">{{range .Overridden}}<li><code>{{.}}</code></li>{{end}}</ul>
+{{else}}<p class="empty">None.</p>{{end}}
+<h2>Policy settings refused</h2>
+{{if .Refused}}<ul class="keys">{{range .Refused}}<li><code>{{.}}</code></li>{{end}}</ul>
+{{else}}<p class="empty">None.</p>{{end}}
+{{end}}
+
+<h2>Portmaster status</h2>
+{{with .Status}}
+<dl class="facts">
+  <dt>Ready</dt><dd>{{if .Ready}}yes{{else}}<strong>no</strong>{{end}}</dd>
+  <dt>Interception</dt><dd>{{if .Interception}}on{{else}}<strong>off</strong>{{end}}</dd>
+</dl>
+{{if .Problems}}
+<ul class="problems">{{range .Problems}}<li><strong>{{.Type}}</strong>{{if .Message}}: {{.Message}}{{end}}</li>{{end}}</ul>
+{{end}}
+{{else}}
+<p class="empty">No status reported yet.</p>
+{{end}}
+{{with .Report}}{{if .Status}}
+<details><summary>Full status as reported</summary><pre>{{prettyJSON .Status}}</pre></details>
+{{end}}{{end}}
+{{end}}
+{{end}}
