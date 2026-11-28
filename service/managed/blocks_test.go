@@ -2,6 +2,7 @@ package managed
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -16,6 +17,7 @@ const (
 	appFirefox = "Firefox"
 	listMAL    = "MAL"
 	domainEvil = "evil.example."
+	appCurl    = "Curl"
 )
 
 func TestSummarizeBlocks(t *testing.T) {
@@ -100,6 +102,9 @@ func TestReportBlocks(t *testing.T) {
 		}
 		return []netquery.BlockedConn{{App: appFirefox, Domain: domainEvil, Reason: keyLists, Lists: []string{listMAL}}}, nil
 	}
+	e.m.apps = func(_ context.Context, _, _ time.Time, _ int) ([]netquery.ConnectedApp, error) {
+		return []netquery.ConnectedApp{{Name: appFirefox, Path: "/usr/lib/firefox/firefox"}}, nil
+	}
 
 	st, err := e.m.Enroll(ctx, e.enrollReq())
 	if err != nil {
@@ -134,6 +139,16 @@ func TestReportBlocks(t *testing.T) {
 	if len(rows) != 1 || rows[0].Count != 2 || rows[0].App != appFirefox || rows[0].Target != "evil.example" {
 		t.Fatalf("blocks on the server: %+v", rows)
 	}
+	// The app list arrives with a hash instead of the path, and the
+	// malware hit raised an alert.
+	apps, err := e.srv.Store.Apps(st.ComputerID)
+	if err != nil || len(apps) != 1 || apps[0].Name != appFirefox || len(apps[0].ID) != 32 {
+		t.Fatalf("apps on the server: %+v %v", apps, err)
+	}
+	alerts, err := e.srv.Store.Alerts(server.AlertFilter{Kind: server.AlertMalware})
+	if err != nil || len(alerts) != 1 || alerts[0].Count != 2 {
+		t.Fatalf("malware alerts: %+v %v", alerts, err)
+	}
 
 	// Off again: no more summaries.
 	err = e.srv.Store.SetGroupBlockSummary("office", false, time.Now())
@@ -146,5 +161,35 @@ func TestReportBlocks(t *testing.T) {
 	}
 	if e.m.Status().BlockSummary || len(calls) != 4 {
 		t.Fatalf("summary after opt-out: %d calls", len(calls))
+	}
+}
+
+func TestSummarizeApps(t *testing.T) {
+	t.Parallel()
+
+	apps := summarizeApps([]netquery.ConnectedApp{
+		{Name: appFirefox, Path: "/usr/lib/firefox/firefox"},
+		{Name: appCurl, Path: "/usr/bin/curl"},
+		{Name: appFirefox, Path: "/opt/firefox/firefox"},
+		{Name: appCurl, Path: "/usr/bin/curl"},
+	})
+	if len(apps) != 3 || apps[0].Name != appCurl || apps[1].Name != appFirefox || apps[2].Name != appFirefox {
+		t.Fatalf("apps: %+v", apps)
+	}
+	for _, a := range apps {
+		if len(a.ID) != 32 || strings.Contains(a.ID, "/") {
+			t.Errorf("ID %q is not a short hash", a.ID)
+		}
+	}
+	if apps[1].ID == apps[2].ID {
+		t.Error("different paths have the same ID")
+	}
+
+	many := make([]netquery.ConnectedApp, policy.MaxApps+5)
+	for n := range many {
+		many[n] = netquery.ConnectedApp{Name: appFirefox, Path: strconv.Itoa(n)}
+	}
+	if got := summarizeApps(many); len(got) != policy.MaxApps {
+		t.Errorf("%d apps, want %d", len(got), policy.MaxApps)
 	}
 }

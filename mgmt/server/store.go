@@ -38,7 +38,8 @@ CREATE TABLE IF NOT EXISTS groups (
 	profiles TEXT NOT NULL DEFAULT '[]',
 	rules    TEXT NOT NULL DEFAULT '{}',
 	updated  INTEGER NOT NULL,
-	block_summary INTEGER NOT NULL DEFAULT 0
+	block_summary INTEGER NOT NULL DEFAULT 0,
+	silent_after  INTEGER NOT NULL DEFAULT 86400
 );
 CREATE TABLE IF NOT EXISTS tokens (
 	hash    TEXT PRIMARY KEY,
@@ -108,6 +109,31 @@ CREATE TABLE IF NOT EXISTS blocks (
 	PRIMARY KEY (computer, hour, app, reason, lists, target, inbound)
 );
 CREATE INDEX IF NOT EXISTS blocks_hour ON blocks (hour);
+CREATE TABLE IF NOT EXISTS alerts (
+	id       INTEGER PRIMARY KEY AUTOINCREMENT,
+	computer TEXT NOT NULL REFERENCES computers(id),
+	kind     TEXT NOT NULL,
+	subject  TEXT NOT NULL,
+	level    TEXT NOT NULL,
+	message  TEXT NOT NULL,
+	first    INTEGER NOT NULL,
+	last     INTEGER NOT NULL,
+	count    INTEGER NOT NULL,
+	state    TEXT NOT NULL,
+	acked_by TEXT NOT NULL DEFAULT '',
+	acked_at INTEGER NOT NULL DEFAULT 0,
+	resolved INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS alerts_open ON alerts (computer, kind, state);
+CREATE INDEX IF NOT EXISTS alerts_last ON alerts (last);
+CREATE TABLE IF NOT EXISTS apps (
+	computer TEXT NOT NULL REFERENCES computers(id),
+	id       TEXT NOT NULL,
+	name     TEXT NOT NULL,
+	first    INTEGER NOT NULL,
+	last     INTEGER NOT NULL,
+	PRIMARY KEY (computer, id)
+);
 `
 
 // migrations add the columns of later versions to an existing database.
@@ -121,6 +147,7 @@ var migrations = []struct{ table, column, def string }{
 	{tableComputers, "report", `TEXT NOT NULL DEFAULT ''`},
 	{tableComputers, "moved", `INTEGER NOT NULL DEFAULT 0`},
 	{"groups", "block_summary", `INTEGER NOT NULL DEFAULT 0`},
+	{"groups", "silent_after", `INTEGER NOT NULL DEFAULT 86400`},
 }
 
 // Store holds the server state in SQLite. The admin commands and the
@@ -144,6 +171,9 @@ type Group struct {
 	// BlockSummary asks the computers of the group for a summary of their
 	// blocked connections in every report.
 	BlockSummary bool `json:"blockSummary,omitempty"`
+	// SilentAfter is the time without contact after which a computer of
+	// the group raises an alert; zero turns the alert off.
+	SilentAfter time.Duration `json:"silentAfter"`
 }
 
 // Computer is an enrolled computer.
@@ -314,13 +344,14 @@ func (s *Store) Groups() ([]*Group, error) {
 	return groups, err
 }
 
-const groupColumns = `name, settings, locked, profiles, updated, rules, block_summary`
+const groupColumns = `name, settings, locked, profiles, updated, rules, block_summary, silent_after`
 
 func scanGroup(stmt *sqlite.Stmt) (*Group, error) {
 	g := &Group{
 		Name:         stmt.ColumnText(0),
 		Updated:      time.Unix(stmt.ColumnInt64(4), 0).UTC(),
 		BlockSummary: stmt.ColumnBool(6),
+		SilentAfter:  time.Duration(stmt.ColumnInt64(7)) * time.Second,
 	}
 	err := json.Unmarshal([]byte(stmt.ColumnText(1)), &g.Settings)
 	if err != nil {
@@ -499,10 +530,11 @@ func (s *Store) SetGroupRules(name string, rules *policy.Rules, now time.Time) (
 }
 
 // SaveReport stores the last report of a computer. The block summary is
-// added to the hour of now and not kept with the report.
+// added to the hour of now; it and the app list are not kept with the
+// report.
 func (s *Store) SaveReport(id string, r *policy.Report, now time.Time) (err error) {
 	stored := *r
-	stored.Blocks = nil
+	stored.Blocks, stored.Apps = nil, nil
 	data, err := json.Marshal(&stored)
 	if err != nil {
 		return err

@@ -41,6 +41,9 @@ type Managed struct {
 	// blocked returns the blocked connections for the block summary; nil
 	// in tests.
 	blocked blockSource
+	// apps returns the apps with allowed connections, sent with the block
+	// summary; nil in tests.
+	apps appSource
 	// blocksUntil is the end of the last block summary the server got.
 	blocksUntil time.Time
 
@@ -85,6 +88,9 @@ type instance interface {
 	// BlockedConnections returns the blocked connections that started in
 	// [since, until), for the block summary.
 	BlockedConnections(ctx context.Context, since, until time.Time, limit int) ([]netquery.BlockedConn, error)
+	// ConnectedApps returns the apps with allowed connections that started
+	// in [since, until), for the app list sent with the block summary.
+	ConnectedApps(ctx context.Context, since, until time.Time, limit int) ([]netquery.ConnectedApp, error)
 }
 
 var shimLoaded atomic.Bool
@@ -102,6 +108,7 @@ func New(instance instance) (*Managed, error) {
 
 		coreStatus: instance.CoreStatus,
 		blocked:    instance.BlockedConnections,
+		apps:       instance.ConnectedApps,
 	}
 	err := m.registerAPI()
 	if err != nil {
@@ -275,6 +282,14 @@ func (m *Managed) reportLocked(ctx context.Context) {
 			log.Warningf("managed: block summary: %s", err)
 		} else {
 			r.Blocks, r.BlocksSince = summarizeBlocks(conns), since
+		}
+		if m.apps != nil {
+			apps, err := m.apps(ctx, since, r.Time, maxBlockedRows)
+			if err != nil {
+				log.Warningf("managed: app list: %s", err)
+			} else {
+				r.Apps = summarizeApps(apps)
+			}
 		}
 	}
 

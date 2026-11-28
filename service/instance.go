@@ -524,6 +524,12 @@ func (i *Instance) BlockedConnections(ctx context.Context, since, until time.Tim
 	return blocked, err
 }
 
+// ConnectedApps returns the apps with allowed connections that started in
+// [since, until), for the app list of the management client.
+func (i *Instance) ConnectedApps(ctx context.Context, since, until time.Time, limit int) ([]netquery.ConnectedApp, error) {
+	return i.netquery.Store.ConnectedApps(ctx, since, until, limit)
+}
+
 // CoreStatus returns the health of the Portmaster for the reports of the
 // managed module.
 func (i *Instance) CoreStatus() any {

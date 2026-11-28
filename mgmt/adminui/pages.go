@@ -35,6 +35,7 @@ var templateFuncs = template.FuncMap{
 	"navItems": func() []navItem {
 		return []navItem{
 			{navDashboard, "/"},
+			{navAlerts, alertsPath},
 			{navComputers, "/computers"},
 			{navGroups, "/groups"},
 			{navTokens, "/tokens"},
@@ -48,7 +49,9 @@ var templateFuncs = template.FuncMap{
 		}
 		return t.UTC().Format(time.DateTime) + " UTC"
 	},
-	"ago": ago,
+	"ago":        ago,
+	"alertTable": newAlertTable,
+	"duration":   shortDuration,
 	"splitLists": func(lists string) []string {
 		if lists == "" {
 			return nil
@@ -208,6 +211,8 @@ type dashboardData struct {
 	Admins    int
 	Attention []*computerRow
 	Recent    []*server.AuditEntry
+	Alerts    []*server.Alert
+	Counts    *server.AlertCounts
 }
 
 func (ui *UI) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -252,6 +257,16 @@ func (ui *UI) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	data.Admins = len(admins)
 	data.Recent, err = ui.store.AuditLog(time.Time{}, 10)
+	if err != nil {
+		ui.internalError(w, "dashboard", err)
+		return
+	}
+	data.Counts, err = ui.store.CountAlerts()
+	if err != nil {
+		ui.internalError(w, "dashboard", err)
+		return
+	}
+	data.Alerts, err = ui.openAlerts(server.AlertFilter{})
 	if err != nil {
 		ui.internalError(w, "dashboard", err)
 		return
@@ -310,6 +325,7 @@ type computerData struct {
 	// BlockSummary tells whether the group of the computer asks for it.
 	BlockSummary bool
 	Blocks       []*server.BlockRow
+	Alerts       []*server.Alert
 }
 
 func (ui *UI) handleComputer(w http.ResponseWriter, r *http.Request) {
@@ -330,6 +346,11 @@ func (ui *UI) handleComputer(w http.ResponseWriter, r *http.Request) {
 	data := &computerData{computerRow: newComputerRow(c, g, ui.now()), Status: server.ReportStatus(c)}
 	data.BlockSummary = g != nil && g.BlockSummary
 	data.Blocks, err = ui.recent(server.BlockFilter{Computer: c.ID})
+	if err != nil {
+		ui.internalError(w, "computer", err)
+		return
+	}
+	data.Alerts, err = ui.openAlerts(server.AlertFilter{Computer: c.ID})
 	if err != nil {
 		ui.internalError(w, "computer", err)
 		return
@@ -412,6 +433,7 @@ type groupData struct {
 	Profiles    []profileRow
 	Computers   []*computerRow
 	Blocks      []*server.BlockRow
+	Alerts      []*server.Alert
 }
 
 func (ui *UI) handleGroup(w http.ResponseWriter, r *http.Request) {
@@ -461,6 +483,11 @@ func (ui *UI) renderGroup(w http.ResponseWriter, r *http.Request, status int, er
 		}
 	}
 	data.Blocks, err = ui.recent(server.BlockFilter{Group: g.Name})
+	if err != nil {
+		ui.internalError(w, "group", err)
+		return
+	}
+	data.Alerts, err = ui.openAlerts(server.AlertFilter{Group: g.Name})
 	if err != nil {
 		ui.internalError(w, "group", err)
 		return

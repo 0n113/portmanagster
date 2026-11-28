@@ -3,6 +3,8 @@ package managed
 import (
 	"cmp"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"slices"
 	"strings"
 	"time"
@@ -24,6 +26,31 @@ const (
 
 // blockSource returns the blocked connections that started in [since, until).
 type blockSource func(ctx context.Context, since, until time.Time, limit int) ([]netquery.BlockedConn, error)
+
+// appSource returns the apps with allowed connections that started in
+// [since, until).
+type appSource func(ctx context.Context, since, until time.Time, limit int) ([]netquery.ConnectedApp, error)
+
+// summarizeApps returns the apps with a hash instead of the path, sorted by
+// name, at most policy.MaxApps.
+func summarizeApps(conns []netquery.ConnectedApp) []policy.App {
+	apps := make([]policy.App, 0, len(conns))
+	for _, c := range conns {
+		sum := sha256.Sum256([]byte(c.Path))
+		apps = append(apps, policy.App{
+			Name: truncate(c.Name),
+			ID:   hex.EncodeToString(sum[:16]),
+		})
+	}
+	slices.SortFunc(apps, func(a, b policy.App) int {
+		return cmp.Or(cmp.Compare(a.Name, b.Name), cmp.Compare(a.ID, b.ID))
+	})
+	apps = slices.Compact(apps)
+	if len(apps) > policy.MaxApps {
+		apps = apps[:policy.MaxApps]
+	}
+	return apps
+}
 
 // blockWindowStart returns the start of the next summary: the end of the
 // last sent one, but not before maxBlockWindow.

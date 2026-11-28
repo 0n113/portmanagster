@@ -101,10 +101,26 @@
 {{else}}
 <p class="empty">No computer in this group.</p>
 {{end}}
+<h2>Alerts</h2>
+<p>A computer of this group raises a silent alert after <strong>{{duration .SilentAfter}}</strong> without contact{{if not .SilentAfter}} (the silent alert is off){{end}}.</p>
+{{if $.CanWrite}}
+<form class="filters" method="post" action="/groups/{{.Name | pathEscape}}/silentafter">
+  <input type="hidden" name="csrf" value="{{$.CSRF}}">
+  <label>Silent after <input name="after" value="{{if .SilentAfter}}{{duration .SilentAfter}}{{else}}0{{end}}" size="6"></label>
+  <button type="submit">Save</button>
+  <span class="hint">e.g. 24h or 90m; 0 turns the silent alert off</span>
+</form>
+{{end}}
+{{if .Alerts}}
+{{template "alerttable" (alertTable $ .Alerts (printf "/groups/%s" (.Name | pathEscape)))}}
+{{end}}
+<p class="hint"><a href="/alerts?group={{.Name | urlquery}}">Open alerts of this group</a></p>
+
 <h2>Block summary</h2>
 {{if .BlockSummary}}
 <p><strong>On.</strong> Every report of the computers counts their blocked connections per app, reason, filter
-list and domain or IP; no allowed connections, no user names. The Portmaster app on the computers shows this.</p>
+list and domain or IP, and lists the apps with allowed connections (name and a hash of the path, for the new app
+alert); no connection details, no user names. The Portmaster app on the computers shows this.</p>
 {{if .Blocks}}
 {{template "blocktable" .Blocks}}
 <p class="hint">The largest of the last 24 hours. <a href="/blocks?group={{.Name | urlquery}}">All blocks of this group</a></p>

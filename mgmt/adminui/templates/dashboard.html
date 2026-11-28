@@ -2,6 +2,8 @@
 <h1>Dashboard</h1>
 {{with .Data}}
 <div class="tiles">
+  <a class="tile{{if .Counts.New}} warn{{end}}" href="/alerts?state=new"><span class="num">{{.Counts.New}}</span><span>new alerts</span></a>
+  <a class="tile{{if .Counts.Critical}} warn{{end}}" href="/alerts?level=critical"><span class="num">{{.Counts.Critical}}</span><span>critical open alerts</span></a>
   <a class="tile" href="/computers"><span class="num">{{.Active}}</span><span>active computers</span></a>
   <a class="tile" href="/computers"><span class="num">{{.Current}}</span><span>on the current policy</span></a>
   <a class="tile{{if .Silent}} warn{{end}}" href="/computers?show=attention"><span class="num">{{.Silent}}</span><span>silent (&gt; 30 min)</span></a>
@@ -9,6 +11,14 @@
   <a class="tile" href="/groups"><span class="num">{{.Groups}}</span><span>groups</span></a>
   <a class="tile" href="/tokens"><span class="num">{{.Tokens}}</span><span>valid tokens</span></a>
 </div>
+
+<h2>Open alerts</h2>
+{{if .Alerts}}
+{{template "alerttable" (alertTable $ .Alerts "/")}}
+<p><a href="/alerts">All {{.Counts.Open}} open alerts</a></p>
+{{else}}
+<p class="empty">No open alerts.</p>
+{{end}}
 
 <h2>Needs attention</h2>
 {{if .Attention}}

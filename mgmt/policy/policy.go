@@ -226,6 +226,21 @@ type Report struct {
 	// largest counts first.
 	Blocks      []Block   `json:"blocks,omitempty"`
 	BlocksSince time.Time `json:"blocksSince,omitzero"`
+	// Apps lists the apps that had allowed connections in the same time,
+	// sent together with the block summary; at most MaxApps entries.
+	Apps []App `json:"apps,omitempty"`
+}
+
+// MaxApps is the maximum number of apps in a report.
+const MaxApps = 200
+
+// App is an app with network access. It has no path, only a hash of it.
+type App struct {
+	// Name is the name of the app profile.
+	Name string `json:"name"`
+	// ID is the hex SHA-256 of the executable path, shortened to 32
+	// characters; it tells apps with the same name apart.
+	ID string `json:"id"`
 }
 
 // MaxBlocks is the maximum number of entries of a block summary.

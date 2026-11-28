@@ -59,6 +59,14 @@
 <details><summary>Full status as reported</summary><pre>{{prettyJSON .Status}}</pre></details>
 {{end}}{{end}}
 
+<h2>Open alerts</h2>
+{{if .Alerts}}
+{{template "alerttable" (alertTable $ .Alerts (printf "/computers/%s" (.ID | pathEscape)))}}
+<p class="hint"><a href="/alerts?computer={{.ID | urlquery}}&amp;state=all">All alerts of this computer</a></p>
+{{else}}
+<p class="empty">No open alerts. <a href="/alerts?computer={{.ID | urlquery}}&amp;state=all">All alerts of this computer</a></p>
+{{end}}
+
 <h2>Recent blocks</h2>
 {{if .Blocks}}
 {{template "blocktable" .Blocks}}
