@@ -181,7 +181,12 @@ func TestLoginLogout(t *testing.T) {
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("logout without CSRF token: %d", w.Code)
 	}
-	w = h.request(http.MethodPost, "/logout", url.Values{csrfField: {"00" + csrf[2:]}}, cookie, nil)
+	// Change the first character, so the token always differs.
+	wrong := "0"
+	if csrf[0] == '0' {
+		wrong = "1"
+	}
+	w = h.request(http.MethodPost, "/logout", url.Values{csrfField: {wrong + csrf[1:]}}, cookie, nil)
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("logout with a wrong CSRF token: %d", w.Code)
 	}
