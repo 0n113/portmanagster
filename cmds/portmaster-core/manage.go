@@ -35,6 +35,10 @@ var manageEnrollCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true, // main prints the error.
 	RunE: func(cmd *cobra.Command, _ []string) error {
+		rootErr := checkRunAsRoot("enroll this computer")
+		if rootErr != nil {
+			return rootErr
+		}
 		body, err := json.Marshal(map[string]string{
 			"server":      manageServer,
 			"token":       manageToken,
@@ -66,6 +70,10 @@ var managePullCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true, // main prints the error.
 	RunE: func(cmd *cobra.Command, _ []string) error {
+		rootErr := checkRunAsRoot("pull the policy")
+		if rootErr != nil {
+			return rootErr
+		}
 		return printAPIResult(syncRequest(cmd.Context(), http.MethodPost, "managed/pull", url.Values{}, mimeJSON, []byte("{}")))
 	},
 }
@@ -77,6 +85,10 @@ var manageLeaveCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true, // main prints the error.
 	RunE: func(cmd *cobra.Command, _ []string) error {
+		rootErr := checkRunAsRoot("leave the management")
+		if rootErr != nil {
+			return rootErr
+		}
 		return printAPIResult(syncRequest(cmd.Context(), http.MethodPost, "managed/leave", url.Values{}, mimeJSON, []byte("{}")))
 	},
 }

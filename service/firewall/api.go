@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"time"
@@ -93,9 +94,13 @@ func apiAuthenticator(r *http.Request, s *http.Server) (token *api.AuthToken, er
 	log.Tracer(r.Context()).Tracef("filter: authenticating API request from %s", r.RemoteAddr)
 
 	// It is important that this works, retry 5 times: every 500ms for 2.5s.
-	var retry bool
+	var (
+		retry     bool
+		callerUID int
+		uidKnown  bool
+	)
 	for range 5 {
-		retry, err = authenticateAPIRequest(
+		retry, callerUID, uidKnown, err = authenticateAPIRequest(
 			r.Context(),
 			&packet.Info{
 				Inbound:  false, // outbound as we are looking for the process of the source address
@@ -118,22 +123,29 @@ func apiAuthenticator(r *http.Request, s *http.Server) (token *api.AuthToken, er
 		return nil, err
 	}
 
+	// Access is granted by the path of the program, whoever runs it. The user
+	// of the process is passed on for the actions that only root may
+	// perform, see api.RequireRoot.
 	return &api.AuthToken{
-		Read:  api.PermitSelf,
-		Write: api.PermitSelf,
+		Read:           api.PermitSelf,
+		Write:          api.PermitSelf,
+		CallerUID:      callerUID,
+		CallerUIDKnown: uidKnown,
 	}, nil
 }
 
-func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bool, err error) {
+// authenticateAPIRequest checks the process of the request. If access is
+// granted, it also returns the user ID of the process, if it is known.
+func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bool, callerUID int, uidKnown bool, err error) {
 	// Get authenticated path.
 	authenticatedPath := module.instance.BinaryUpdates().GetMainDir()
 	if authenticatedPath == "" {
-		return false, fmt.Errorf(deniedMsgMisconfigured, api.ErrAPIAccessDeniedMessage) //nolint:staticcheck // message for user
+		return false, 0, false, fmt.Errorf(deniedMsgMisconfigured, api.ErrAPIAccessDeniedMessage) //nolint:staticcheck // message for user
 	}
 	// Get real path.
 	authenticatedPath, err = filepath.EvalSymlinks(authenticatedPath)
 	if err != nil {
-		return false, fmt.Errorf(deniedMsgUnidentified, api.ErrAPIAccessDeniedMessage) //nolint:staticcheck // message for user
+		return false, 0, false, fmt.Errorf(deniedMsgUnidentified, api.ErrAPIAccessDeniedMessage) //nolint:staticcheck // message for user
 	}
 	// Add filepath separator to confine to directory.
 	authenticatedPath += string(filepath.Separator)
@@ -141,7 +153,7 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 	// Get process of request.
 	pid, _, _ := process.GetPidOfConnection(ctx, pktInfo)
 	if pid < 0 {
-		return false, fmt.Errorf(deniedMsgUnidentified, api.ErrAPIAccessDeniedMessage) //nolint:staticcheck // message for user
+		return false, 0, false, fmt.Errorf(deniedMsgUnidentified, api.ErrAPIAccessDeniedMessage) //nolint:staticcheck // message for user
 	}
 	trusted, originalPid, procsChecked := checkAPIProcess(ctx, pid, authenticatedPath)
 	if trusted {
@@ -149,21 +161,26 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 		// that may hold its socket. Grant access only if all of them are
 		// trusted, see checkAPISocketHolders.
 		holders, holdersErr := lookupSocketHolders(pktInfo)
-		return checkAPISocketHolders(ctx, pid, holders, holdersErr, authenticatedPath)
+		retry, err = checkAPISocketHolders(ctx, pid, holders, holdersErr, authenticatedPath)
+		if err != nil {
+			return retry, 0, false, err
+		}
+		callerUID, uidKnown = apiCallerUID(ctx, runtime.GOOS, pid, holders)
+		return false, callerUID, uidKnown, nil
 	}
 
 	switch originalPid {
 	case process.UnidentifiedProcessID:
 		log.Tracer(ctx).Warningf("filter: denying api access: failed to identify process")
-		return true, fmt.Errorf(deniedMsgUnidentified, api.ErrAPIAccessDeniedMessage) //nolint:staticcheck // message for user
+		return true, 0, false, fmt.Errorf(deniedMsgUnidentified, api.ErrAPIAccessDeniedMessage) //nolint:staticcheck // message for user
 
 	case process.SystemProcessID:
 		log.Tracer(ctx).Warningf("filter: denying api access: request by system")
-		return false, fmt.Errorf(deniedMsgSystem, api.ErrAPIAccessDeniedMessage) //nolint:staticcheck // message for user
+		return false, 0, false, fmt.Errorf(deniedMsgSystem, api.ErrAPIAccessDeniedMessage) //nolint:staticcheck // message for user
 
 	default: // normal process
 		log.Tracer(ctx).Warningf("filter: denying api access to %s - also checked %s (trusted root is %s)", procsChecked[0], strings.Join(procsChecked[1:], " "), module.instance.BinDir())
-		return false, fmt.Errorf( //nolint:staticcheck // message for user
+		return false, 0, false, fmt.Errorf( //nolint:staticcheck // message for user
 			deniedMsgUnauthorized,
 			api.ErrAPIAccessDeniedMessage,
 			strings.Join(procsChecked, "\n"),
@@ -326,6 +343,43 @@ func checkAPISocketHolders(ctx context.Context, trustedPid int, holders []int, h
 		strings.Join(untrusted, "\n"),
 		authenticatedPath,
 	)
+}
+
+// apiCallerUID returns the user ID of the process that sent an API request
+// that was granted access: pid is the process found for the connection and
+// holders are all processes that hold its socket (see
+// checkAPISocketHolders). The user ID is only known if all of these
+// processes run as the same user; the user of a trusted parent (of a webview)
+// does not count.
+//
+// The process module only records the user ID on Linux (the real user ID of
+// the process). On other systems the field is always 0 and must not be taken
+// for root, so the user ID is unknown there.
+func apiCallerUID(ctx context.Context, goos string, pid int, holders []int) (uid int, known bool) {
+	if goos != "linux" {
+		return 0, false
+	}
+
+	uid = -1
+	for _, checkPid := range append([]int{pid}, holders...) {
+		proc, err := getAPIProcess(ctx, checkPid)
+		if err != nil {
+			log.Tracer(ctx).Debugf("filter: failed to get user of api request (pid %d): %s", checkPid, err)
+			return 0, false
+		}
+		// Special processes have made up user IDs.
+		if proc.Pid <= 0 || proc.Pid != checkPid || proc.UserID < 0 {
+			return 0, false
+		}
+		switch {
+		case uid == -1:
+			uid = proc.UserID
+		case uid != proc.UserID:
+			log.Tracer(ctx).Warningf("filter: socket of api request is held by processes of different users (%d and %d)", uid, proc.UserID)
+			return 0, false
+		}
+	}
+	return uid, true
 }
 
 // embeddedWebViewProcesses are the executables of the webview runtimes that

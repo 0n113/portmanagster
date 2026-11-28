@@ -94,7 +94,8 @@ Non-goals (for now):
    certificate (checked against the database, no CRL distribution needed).
 
 `portmaster-core manage status` shows the state; `manage leave` unenrolls (local root can
-always do this, as root can always uninstall; the server sees the computer go silent).
+always do this, as root can always uninstall; the server sees the computer go silent). Only
+root can: see [Client commands](#client-commands).
 
 ### Policy
 
@@ -270,6 +271,14 @@ portmaster-core manage status
 portmaster-core manage pull    # pull and apply now, send a report
 portmaster-core manage leave   # the policy values stay as user settings
 ```
+
+`enroll`, `pull` and `leave` must run as root (e.g. with `sudo`). On Linux the Portmaster
+API enforces this: it records the user ID of the calling process when it authenticates the
+request and refuses these endpoints for any other user with "only root may …" (HTTP 403), also
+for API keys and in the development mode. While the computer is enrolled, the same applies to
+`settings import`, `profile import` and `backup restore`. `manage status` and the exports stay
+open to the programs the API trusts. On Windows the API does not check the user yet (open):
+there any user can run these commands from the installation directory.
 
 Before it sends the token, the client fetches the policy key (`GET /v1/policy-key`) and checks
 it against the pin, so a wrong pin does not use up the token.

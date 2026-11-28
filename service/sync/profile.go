@@ -240,6 +240,11 @@ func ListProfiles(source profile.ProfileSource) ([]ProfileListEntry, error) {
 }
 
 func handleImportProfile(ar *api.Request) (any, error) {
+	rootErr := checkImportAllowed(ar)
+	if rootErr != nil {
+		return nil, rootErr
+	}
+
 	var request ProfileImportRequest
 
 	// Get parameters.
