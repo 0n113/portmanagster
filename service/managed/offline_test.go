@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -68,7 +69,7 @@ func TestOfflineSigningClient(t *testing.T) {
 	// Pinned at enrollment; without a signed policy nothing is applied.
 	r.OfflineKeyFP = fp
 	st, err := e.m.Enroll(ctx, r)
-	if err == nil || !st.Enrolled || st.OfflineKeyFP != fp || st.AppliedVersion != 0 {
+	if err != nil || !st.Enrolled || st.OfflineKeyFP != fp || st.AppliedVersion != 0 || !strings.Contains(st.LastError, "no policy") {
 		t.Fatalf("enroll without signed policy: %v %+v", err, st)
 	}
 

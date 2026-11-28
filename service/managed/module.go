@@ -202,6 +202,12 @@ func (m *Managed) Enroll(ctx context.Context, r *EnrollRequest) (Status, error) 
 	}
 	log.Infof("managed: enrolled at %s", r.Server)
 	err = m.pull(ctx)
+	if errors.Is(err, errNoPolicyYet) {
+		// The enrollment worked; the policy comes with a later pull. The
+		// status keeps the error.
+		log.Infof("managed: %s", err)
+		err = nil
+	}
 	if m.puller != nil {
 		m.puller.Repeat(PullInterval)
 	}

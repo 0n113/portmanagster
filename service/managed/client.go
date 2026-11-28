@@ -40,6 +40,9 @@ var (
 	errMissingArg    = errors.New("server, token, server fingerprint and policy key fingerprint are required")
 	errNoOfflineKey  = errors.New("an offline key fingerprint is given, but the server has no offline key")
 	errKeyPin        = errors.New("key does not match the pinned fingerprint")
+	// errNoPolicyYet is returned when the server has no policy for this
+	// computer yet (offline signing on, no signed group policy published).
+	errNoPolicyYet = errors.New("the server has no policy for this computer yet")
 )
 
 // EnrollRequest holds the parameters of an enrollment.
@@ -340,6 +343,9 @@ func fetchPolicy(ctx context.Context, dir stateDir, s *State) ([]byte, error) {
 	data, err := io.ReadAll(io.LimitReader(resp.Body, maxPolicySize))
 	if err != nil {
 		return nil, err
+	}
+	if resp.StatusCode == http.StatusServiceUnavailable {
+		return nil, fmt.Errorf("%w: %s", errNoPolicyYet, strings.TrimSpace(string(data)))
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%w: %s: %s", errServerRefused, resp.Status, strings.TrimSpace(string(data)))
