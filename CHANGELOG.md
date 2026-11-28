@@ -90,6 +90,11 @@ pre-releases carry a `-rcN` suffix.
   `portmaster_app_rules` writes and imports such rule profiles per host.
 
 ### Fixed
+- With a locked filter list setting, the built-in system resolver profile could not be saved
+  ("managed by policy") and was created anew on every lookup: profiles the Portmaster creates
+  itself (built-in profiles and profiles from process tags) are exempt from the check for
+  locked settings, as the global config profile already was. Changes from the app, the API
+  and imports are still checked.
 - With a locked filter list setting, the global config profile could not be saved ("managed by
   policy"), so the app settings showed outdated global values: special profiles written by the
   Portmaster are exempt from the check for locked settings.

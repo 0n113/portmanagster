@@ -145,4 +145,21 @@ func TestCheckLockedChanges(t *testing.T) {
 	if err != nil {
 		t.Errorf("special profile refused: %v", err)
 	}
+	// Built-in profiles set locked settings in code, e.g. the system
+	// resolver profile disables the filter lists.
+	builtin := createSpecialProfile(SystemResolverProfileID, "")
+	builtin.Config = set
+	err = checkLockedProfileChanges(builtin)
+	if err != nil {
+		t.Errorf("built-in profile refused: %v", err)
+	}
+	// The same config from outside (UI, API, import) is refused.
+	external, err := EnsureProfile(&Profile{Source: SourceLocal, ID: "external", Config: set})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = checkLockedProfileChanges(external)
+	if !errors.Is(err, config.ErrLockedByPolicy) {
+		t.Errorf("external profile not refused: %v", err)
+	}
 }

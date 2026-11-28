@@ -105,10 +105,13 @@ func checkLockedChanges(oldConfig, newConfig map[string]any) error {
 // checkLockedProfileChanges compares the profile with the stored one and
 // refuses changes of locked settings.
 func checkLockedProfileChanges(p *Profile) error {
-	// Special profiles are written by the Portmaster itself: the global
+	// Profiles written by the Portmaster itself are not checked: the global
 	// config profile mirrors the values in force, including the locked
-	// ones, and the built-in profiles set their settings in code.
-	if p.Source == SourceSpecial || len(config.LockedKeys()) == 0 {
+	// ones, and built-in profiles (such as the system resolver) and
+	// profiles created by the process tags set their settings in code.
+	// Changes from the UI, the API and imports arrive as new records
+	// without the savedInternally flag and are checked.
+	if p.Source == SourceSpecial || p.savedInternally || len(config.LockedKeys()) == 0 {
 		return nil
 	}
 	var oldConfig map[string]any
