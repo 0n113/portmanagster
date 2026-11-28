@@ -8,6 +8,13 @@ pre-releases carry a `-rcN` suffix.
 ## [Unreleased]
 
 ### Added
+- Summaries of blocked connections for the management server (management phase C4), off by
+  default and turned on per group (`group block-summary NAME on`, or in the UI): every report
+  counts the blocked connections per app, reason, filter list and domain or IP (at most 200
+  entries, no allowed connections, no user names). The server keeps them per hour for
+  `serve --block-retention` (default 30 days) and shows them on the computer and group pages,
+  on a new page "Blocks" with filters, and with `portmanagster-server blocks`. The Managed panel
+  of the app tells the user when the summary is sent.
 - Write actions in the admin web UI of the management server (management phase C3): create
   and delete groups, edit their settings (with locks), endpoint rules and app profiles, create
   and revoke enrollment tokens (the UI shows the enroll command once; `serve --client-url`

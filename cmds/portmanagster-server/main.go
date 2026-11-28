@@ -74,6 +74,7 @@ var serveCmd = &cobra.Command{
 		defer func() { _ = s.Store.Close() }()
 		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
+		go pruneBlocks(ctx, s.Store, blockRetention, logger)
 		logger.Info("serving", "listen", listenAddr, "dir", dataDir)
 		if adminListen == "" {
 			return s.Serve(ctx, listenAddr)

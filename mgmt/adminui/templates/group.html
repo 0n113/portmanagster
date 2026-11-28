@@ -101,8 +101,29 @@
 {{else}}
 <p class="empty">No computer in this group.</p>
 {{end}}
+<h2>Block summary</h2>
+{{if .BlockSummary}}
+<p><strong>On.</strong> Every report of the computers counts their blocked connections per app, reason, filter
+list and domain or IP; no allowed connections, no user names. The Portmaster app on the computers shows this.</p>
+{{if .Blocks}}
+{{template "blocktable" .Blocks}}
+<p class="hint">The largest of the last 24 hours. <a href="/blocks?group={{.Name | urlquery}}">All blocks of this group</a></p>
+{{else}}
+<p class="empty">No blocked connections in the last 24 hours.</p>
+{{end}}
+{{else}}
+<p>Off. The computers send no summary of their blocked connections.</p>
+{{end}}
 {{if $.CanWrite}}
-<p><a href="/tokens?group={{.Name | pathEscape}}">Create an enrollment token for this group</a></p>
+<form method="post" action="/groups/{{.Name | pathEscape}}/blocksummary"{{if not .BlockSummary}} data-confirm="Turn on the block summary for {{.Name}}? It is personal data in many places (which apps were used, which domains were blocked); the users see that it is on."{{end}}>
+  <input type="hidden" name="csrf" value="{{$.CSRF}}">
+  <input type="hidden" name="on" value="{{if .BlockSummary}}0{{else}}1{{end}}">
+  <button type="submit">{{if .BlockSummary}}Turn block summary off{{else}}Turn block summary on{{end}}</button>
+</form>
+{{end}}
+
+{{if $.CanWrite}}
+<p><a href="/tokens?group={{.Name | urlquery}}">Create an enrollment token for this group</a></p>
 {{if not .Computers}}
 <form method="post" action="/groups/{{.Name | pathEscape}}/delete" data-confirm="Delete the group {{.Name}} and its unused tokens?">
   <input type="hidden" name="csrf" value="{{$.CSRF}}">
