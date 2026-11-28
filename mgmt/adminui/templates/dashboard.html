@@ -2,11 +2,47 @@
 <h1>Dashboard</h1>
 {{with .Data}}
 <div class="tiles">
-  <div class="tile"><span class="num">{{.Computers}}</span><span>computers</span></div>
-  <div class="tile"><span class="num">{{.Revoked}}</span><span>revoked</span></div>
-  <div class="tile"><span class="num">{{.Groups}}</span><span>groups</span></div>
-  <div class="tile"><span class="num">{{.Admins}}</span><span>accounts</span></div>
+  <a class="tile" href="/computers"><span class="num">{{.Active}}</span><span>active computers</span></a>
+  <a class="tile" href="/computers"><span class="num">{{.Current}}</span><span>on the current policy</span></a>
+  <a class="tile{{if .Silent}} warn{{end}}" href="/computers?show=attention"><span class="num">{{.Silent}}</span><span>silent (&gt; 30 min)</span></a>
+  <a class="tile" href="/computers?show=revoked"><span class="num">{{.Revoked}}</span><span>revoked</span></a>
+  <a class="tile" href="/groups"><span class="num">{{.Groups}}</span><span>groups</span></a>
+  <a class="tile" href="/tokens"><span class="num">{{.Tokens}}</span><span>valid tokens</span></a>
 </div>
+
+<h2>Needs attention</h2>
+{{if .Attention}}
+<div class="table-wrap"><table>
+  <thead><tr><th>Computer</th><th>Group</th><th>Last seen</th><th>Why</th></tr></thead>
+  <tbody>
+  {{range .Attention}}
+  <tr>
+    <td><a href="/computers/{{.ID | pathEscape}}">{{or .Hostname .ID}}</a></td>
+    <td>{{.Group}}</td>
+    <td title="{{datetime .LastSeen}}">{{ago $.Now .LastSeen}}</td>
+    <td>{{range $i, $a := .Attention}}{{if $i}}; {{end}}{{$a}}{{end}}</td>
+  </tr>
+  {{end}}
+  </tbody>
+</table></div>
+{{else}}
+<p class="empty">All active computers are fine.</p>
 {{end}}
-<p class="hint">Pages for computers, groups, tokens and the audit log follow. Until then use the command line on the server host.</p>
+
+<h2>Recent changes</h2>
+{{if .Recent}}
+<div class="table-wrap"><table>
+  <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Object</th><th>Detail</th></tr></thead>
+  <tbody>
+  {{range .Recent}}
+  <tr><td title="{{datetime .Time}}">{{ago $.Now .Time}}</td><td>{{.Actor}}</td><td>{{.Action}}</td><td>{{.Object}}</td><td>{{.Detail}}</td></tr>
+  {{end}}
+  </tbody>
+</table></div>
+<p><a href="/audit">Full audit log</a></p>
+{{else}}
+<p class="empty">No changes yet.</p>
+{{end}}
+<p class="hint">{{.Admins}} account(s). Changes are made on the server host with <code>portmanagster-server</code> until the write actions arrive.</p>
+{{end}}
 {{end}}

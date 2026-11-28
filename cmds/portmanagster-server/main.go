@@ -259,9 +259,13 @@ var computerListCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			seq, err := s.PolicySeq()
+			groups, err := s.Groups()
 			if err != nil {
 				return err
+			}
+			byName := make(map[string]*server.Group, len(groups))
+			for _, g := range groups {
+				byName[g.Name] = g
 			}
 			w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
 			_, _ = fmt.Fprintln(w, "ID\tHOSTNAME\tGROUP\tOS\tVERSION\tLAST SEEN\tPOLICY\tHEALTH\tSTATE")
@@ -275,7 +279,7 @@ var computerListCmd = &cobra.Command{
 					state = "revoked"
 				}
 				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-					c.ID, c.Hostname, c.Group, c.OS, c.CoreVersion, seen, policyState(c, seq), health(c), state)
+					c.ID, c.Hostname, c.Group, c.OS, c.CoreVersion, seen, policyState(c, byName[c.Group]), server.Health(c), state)
 			}
 			return w.Flush()
 		})
@@ -429,59 +433,6 @@ func readProfileFile(path string) (json.RawMessage, error) {
 	return out, nil
 }
 
-// policyState tells whether the computer runs the current policy.
-func policyState(c *server.Computer, seq uint64) string {
-	switch {
-	case c.Report == nil:
-		return "no report"
-	case c.Report.Error != "":
-		return fmt.Sprintf("v%d error", c.AppliedVersion)
-	case c.AppliedVersion < seq:
-		// The sequence counts all changes; an older version may still be
-		// the current one for this computer's group.
-		return fmt.Sprintf("v%d", c.AppliedVersion)
-	default:
-		return fmt.Sprintf("v%d current", c.AppliedVersion)
-	}
-}
-
-// health summarizes the core status of the last report.
-func health(c *server.Computer) string {
-	if c.Report == nil || len(c.Report.Status) == 0 {
-		return "-"
-	}
-	var st struct {
-		Ready        bool `json:"ready"`
-		Interception bool `json:"interception"`
-		Problems     []struct {
-			Type string `json:"type"`
-		} `json:"problems"`
-	}
-	if json.Unmarshal(c.Report.Status, &st) != nil {
-		return "unknown"
-	}
-	var parts []string
-	if !st.Ready {
-		parts = append(parts, "not ready")
-	}
-	if !st.Interception {
-		parts = append(parts, "no interception")
-	}
-	if len(st.Problems) > 0 {
-		parts = append(parts, fmt.Sprintf("%d problems", len(st.Problems)))
-	}
-	if len(c.Report.Overridden) > 0 {
-		parts = append(parts, fmt.Sprintf("%d overridden", len(c.Report.Overridden)))
-	}
-	if len(c.Report.Refused) > 0 {
-		parts = append(parts, fmt.Sprintf("%d refused", len(c.Report.Refused)))
-	}
-	if len(parts) == 0 {
-		return "ok"
-	}
-	return strings.Join(parts, ", ")
-}
-
 // readRulesFile reads endpoint rules (YAML or JSON) and checks their form;
 // the client validates them fully.
 func readRulesFile(path string) (*policy.Rules, error) {
@@ -504,4 +455,13 @@ func readRulesFile(path string) (*policy.Rules, error) {
 		return nil, nil //nolint:nilnil // No rules.
 	}
 	return rules, nil
+}
+
+// policyState shows the applied policy version and whether it is current.
+func policyState(c *server.Computer, g *server.Group) string {
+	state := server.PolicyState(c, g)
+	if state == server.PolicyNoReport {
+		return state
+	}
+	return fmt.Sprintf("v%d %s", c.AppliedVersion, state)
 }

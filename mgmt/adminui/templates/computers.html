@@ -1,0 +1,45 @@
+{{define "content"}}
+<h1>Computers</h1>
+{{with .Data}}
+<form class="filters" method="get" action="/computers">
+  <label>Group
+    <select name="group">
+      <option value="">All groups</option>
+      {{range .Groups}}<option value="{{.}}"{{if eq . $.Data.Group}} selected{{end}}>{{.}}</option>{{end}}
+    </select>
+  </label>
+  <label>Show
+    <select name="show">
+      <option value="">All</option>
+      <option value="attention"{{if eq .Filter "attention"}} selected{{end}}>Needs attention</option>
+      <option value="revoked"{{if eq .Filter "revoked"}} selected{{end}}>Revoked</option>
+    </select>
+  </label>
+  <button type="submit">Filter</button>
+</form>
+{{if .Rows}}
+<div class="table-wrap"><table>
+  <thead><tr><th>Hostname</th><th>Group</th><th>OS</th><th>Version</th><th>Last seen</th><th>Policy</th><th>Health</th><th>State</th></tr></thead>
+  <tbody>
+  {{range .Rows}}
+  <tr{{if not .OK}} class="attention"{{end}}>
+    <td><a href="/computers/{{.ID | pathEscape}}">{{or .Hostname .ID}}</a></td>
+    <td><a href="/groups/{{.Group | pathEscape}}">{{.Group}}</a></td>
+    <td>{{.OS}}</td>
+    <td>{{.CoreVersion}}</td>
+    <td title="{{datetime .LastSeen}}">{{ago $.Now .LastSeen}}</td>
+    <td>{{if .AppliedVersion}}v{{.AppliedVersion}} {{end}}<span class="badge {{.Policy}}">{{.Policy}}</span></td>
+    <td>{{.Health}}</td>
+    <td><span class="badge {{.State}}">{{.State}}</span></td>
+  </tr>
+  {{end}}
+  </tbody>
+</table></div>
+<p class="hint">{{len .Rows}} of {{.Total}} computers.</p>
+{{else if .Total}}
+<p class="empty">No computer matches the filter.</p>
+{{else}}
+<p class="empty">No computer is enrolled. Create a token with <code>portmanagster-server token create --group NAME</code> and run the printed command on the client.</p>
+{{end}}
+{{end}}
+{{end}}

@@ -149,6 +149,12 @@ func (ui *UI) Handler() http.Handler {
 
 	private := http.NewServeMux()
 	private.HandleFunc("GET /{$}", ui.handleDashboard)
+	private.HandleFunc("GET /computers", ui.handleComputers)
+	private.HandleFunc("GET /computers/{id}", ui.handleComputer)
+	private.HandleFunc("GET /groups", ui.handleGroups)
+	private.HandleFunc("GET /groups/{name}", ui.handleGroup)
+	private.HandleFunc("GET /tokens", ui.handleTokens)
+	private.HandleFunc("GET /audit", ui.handleAudit)
 	private.HandleFunc("POST /logout", ui.handleLogout)
 	public.Handle("/", ui.requireSession(private))
 

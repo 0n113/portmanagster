@@ -5,7 +5,8 @@ Status: phase A done: the server side of enrollment and policies (A1, see
 [Client commands](#client-commands)), profiles per group and reports (A3), and the VM tests
 on Linux and Windows (A4, step "Management" of the smoke tests). Phase B done (policy layer,
 see [Phase B plan](#phase-b-plan)). Phase C in progress (see [Phase C plan](#phase-c-plan)): C1
-done, the admin web UI with accounts, login and audit log (see [Admin web UI](#admin-web-ui)).
+and C2 done, the admin web UI with accounts, login, audit log and read-only pages (see
+[Admin web UI](#admin-web-ui)).
 This document fixes the architecture and the order of work; details of each phase are settled
 in its PR.
 
@@ -209,7 +210,28 @@ needs the same origin (`Origin`, or `Sec-Fetch-Site: same-origin`) and, with a s
 token. 5 failed logins within 15 minutes block the account name and the IP address for the
 rest of the window. A TOTP code works once. Pages are rendered on the server without inline
 scripts or styles under a strict content security policy. Logins, logouts and account changes
-are in the audit log (`admin:NAME`). Phase C1 has only the dashboard; the pages follow in C2.
+are in the audit log (`admin:NAME`).
+
+Pages (C2, read-only, for both roles):
+
+- **Dashboard:** active, silent and revoked computers, computers on the current policy, groups,
+  valid tokens; the computers that need attention with the reason; the latest changes.
+- **Computers:** list with group and state filter (all, needs attention, revoked); detail page
+  with the last report: applied policy version, policy error, policy defaults changed locally,
+  refused settings, Portmaster status with its problems and the full status as reported.
+- **Groups:** list with counts; detail page with the settings (locked or default), the
+  endpoint rules, the app profiles and the computers of the group.
+- **Tokens:** enrollment tokens with group, creation, expiry and state; only the start of the
+  token hash is shown.
+- **Audit log:** newest first, with search and size.
+
+A computer is **silent** after 30 minutes without contact (since its enrollment if it never
+pulled). Its policy is **current** when its last report came after the last change of its
+group, **pending** before, **error** when the last pull or apply failed. It **needs attention**
+when it is silent, has a policy error, has no report yet, waits more than 30 minutes for a
+policy change, or its report shows the Portmaster not ready, interception off, problems or
+refused settings. Policy defaults a local admin overrode are shown, but are no reason for
+attention. The write actions follow in C3; until then changes are made with the command line.
 
 ## Client commands
 
@@ -415,7 +437,7 @@ gateway). Each alert has a state (new, acknowledged) and is audited when acknowl
   profiles (upload, list, remove), rules editor, block summary opt-in, silent threshold.
 - **Enrollment:** create a token for a group, show the enroll command with both fingerprints,
   list and revoke unused tokens.
-- **Admins and audit log** (admin role only).
+- **Audit log** (C2, both roles) and **admins** (admin role only).
 
 ### Steps
 

@@ -1,0 +1,22 @@
+{{define "content"}}
+<h1>Enrollment tokens</h1>
+{{if .Data}}
+<div class="table-wrap"><table>
+  <thead><tr><th>ID</th><th>Group</th><th>Created</th><th>Expires</th><th>State</th></tr></thead>
+  <tbody>
+  {{range .Data}}
+  <tr>
+    <td><code>{{.ID}}</code></td>
+    <td><a href="/groups/{{.Group | pathEscape}}">{{.Group}}</a></td>
+    <td title="{{datetime .Created}}">{{ago $.Now .Created}}</td>
+    <td>{{datetime .Expires}}</td>
+    <td><span class="badge {{.Status}}">{{.Status}}</span></td>
+  </tr>
+  {{end}}
+  </tbody>
+</table></div>
+<p class="hint">The server stores only a hash of each token; the ID is its start. A token works once.</p>
+{{else}}
+<p class="empty">No tokens. Create one with <code>portmanagster-server token create --group NAME</code>.</p>
+{{end}}
+{{end}}

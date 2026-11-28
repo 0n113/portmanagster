@@ -8,6 +8,12 @@ pre-releases carry a `-rcN` suffix.
 ## [Unreleased]
 
 ### Added
+- Read-only pages in the admin web UI of the management server (management phase C2):
+  dashboard with the computers that need attention (silent, policy error, problems, refused
+  settings) and the latest changes; computers with filters and a detail page with the last
+  report; groups with settings, locks, rules, profiles and computers; enrollment tokens; audit
+  log with search. `computer list` judges the policy state per group instead of by the global
+  policy sequence.
 - Admin web UI of the management server (management phase C1): `serve` runs it on
   `127.0.0.1:8444` (`--admin-listen`, `--admin-url`, `--admin-cert/--admin-key`). Accounts
   (`portmanagster-server admin add/list/reset/remove`, roles admin and viewer) log in with a
