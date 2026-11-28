@@ -5,8 +5,9 @@ Status: phase A done: the server side of enrollment and policies (A1, see
 [Client commands](#client-commands)), profiles per group and reports (A3), and the VM tests
 on Linux and Windows (A4, step "Management" of the smoke tests). Phase B done (policy layer,
 see [Phase B plan](#phase-b-plan)). Phase C in progress (see [Phase C plan](#phase-c-plan)): C1
-to C3 done, the admin web UI with accounts, login, audit log, all pages and the write actions
-of the command line (see [Admin web UI](#admin-web-ui)).
+to C4 done, the admin web UI with accounts, login, audit log, all pages and the write actions
+of the command line (see [Admin web UI](#admin-web-ui)), and the opt-in summaries of blocked
+connections (see [Block summaries](#block-summaries)).
 This document fixes the architecture and the order of work; details of each phase are settled
 in its PR.
 
@@ -144,6 +145,7 @@ portmanagster-server group create office
 portmanagster-server group set office office-settings.yaml --lock filter/lists
 portmanagster-server group list
 portmanagster-server group delete office    # only without computers; deletes its unused tokens
+portmanagster-server group block-summary office on   # opt-in, see "Block summaries"
 
 # App profiles of a group (profile exports from `portmaster-core profile export`), e.g. the
 # backup agent rules from integrations/backup-agents; replaces the previous ones.
@@ -167,6 +169,7 @@ portmanagster-server computer list          # with policy version and health of 
 portmanagster-server computer show <id>     # last report as JSON
 portmanagster-server computer move <id> lab # gets the policy of the new group with its next pull
 portmanagster-server computer revoke <id>
+portmanagster-server blocks [--group office] [--computer <id>] [--app NAME] [--list MAL] [--target DOMAIN] [--since 24h]
 
 # Accounts of the admin web UI and the audit log (see "Admin web UI").
 portmanagster-server admin add alice [--role admin|viewer] [--url https://pm.example.lan:8444]
@@ -291,7 +294,28 @@ The app shows the policy: locked settings are read-only and marked "Managed by y
 organisation" (also in the app settings), policy defaults are marked "Default set by your
 organisation" and "Reset" returns to the policy value. The global settings start with a panel
 showing the server, group, policy version, last update, changed defaults and settings not
-applied.
+applied, and a notice when the organisation receives a summary of the blocked connections.
+
+### Block summaries
+
+Off by default; an admin turns it on per group (`group block-summary NAME on`, or the group page
+of the UI, both audited). The policy then carries `blockSummary`, and every report of the
+computers of the group adds a summary of the connections blocked since the last report: per
+app (profile name), reason (the setting that blocked, e.g. `filter/lists` or
+`filter/endpoints`), filter lists (the source lists and their categories, e.g. `AA-AD,ADS,TRAC`,
+so that `--list MAL` finds every malware list), domain (or IP without a domain) and direction, the number of
+connections. At most 200 entries, the largest first; text fields are cut at 255 bytes. No
+allowed connections, no addresses besides the target, no ports, paths or user names. The
+client reads the live connection database (netquery), which keeps ended connections for 10
+minutes, so a summary covers at most the last 10 minutes; a report that does not reach the
+server is not repeated.
+
+The server keeps the summaries only of groups with the opt-in (and drops them otherwise),
+summed per computer and hour, for `serve --block-retention` (default 720h, pruned every hour).
+Reports are limited to 512 KiB and 200 entries. The UI shows the largest blocks of the last 24
+hours on the computer and group pages and all of them on the page "Blocks", filtered by group,
+computer, app, list, domain or IP and period; `portmanagster-server blocks` shows the same on
+the command line. The Portmaster app on the computers shows that the summary is sent.
 
 ## Phases
 

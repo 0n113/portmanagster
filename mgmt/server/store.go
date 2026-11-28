@@ -37,7 +37,8 @@ CREATE TABLE IF NOT EXISTS groups (
 	locked   TEXT NOT NULL DEFAULT '[]',
 	profiles TEXT NOT NULL DEFAULT '[]',
 	rules    TEXT NOT NULL DEFAULT '{}',
-	updated  INTEGER NOT NULL
+	updated  INTEGER NOT NULL,
+	block_summary INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS tokens (
 	hash    TEXT PRIMARY KEY,
@@ -95,6 +96,18 @@ CREATE TABLE IF NOT EXISTS audit (
 	object TEXT NOT NULL,
 	detail TEXT NOT NULL DEFAULT ''
 );
+CREATE TABLE IF NOT EXISTS blocks (
+	computer TEXT NOT NULL REFERENCES computers(id),
+	hour     INTEGER NOT NULL,
+	app      TEXT NOT NULL,
+	reason   TEXT NOT NULL,
+	lists    TEXT NOT NULL,
+	target   TEXT NOT NULL,
+	inbound  INTEGER NOT NULL,
+	count    INTEGER NOT NULL,
+	PRIMARY KEY (computer, hour, app, reason, lists, target, inbound)
+);
+CREATE INDEX IF NOT EXISTS blocks_hour ON blocks (hour);
 `
 
 // migrations add the columns of later versions to an existing database.
@@ -107,6 +120,7 @@ var migrations = []struct{ table, column, def string }{
 	{tableComputers, "last_report", `INTEGER NOT NULL DEFAULT 0`},
 	{tableComputers, "report", `TEXT NOT NULL DEFAULT ''`},
 	{tableComputers, "moved", `INTEGER NOT NULL DEFAULT 0`},
+	{"groups", "block_summary", `INTEGER NOT NULL DEFAULT 0`},
 }
 
 // Store holds the server state in SQLite. The admin commands and the
@@ -127,6 +141,9 @@ type Group struct {
 	// Rules are the endpoint rules of the group's policy.
 	Rules   *policy.Rules `json:"rules,omitempty"`
 	Updated time.Time     `json:"updated"`
+	// BlockSummary asks the computers of the group for a summary of their
+	// blocked connections in every report.
+	BlockSummary bool `json:"blockSummary,omitempty"`
 }
 
 // Computer is an enrolled computer.
@@ -284,7 +301,7 @@ func (s *Store) Groups() ([]*Group, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var groups []*Group
-	err := sqlitex.Execute(s.conn, `SELECT name, settings, locked, profiles, updated, rules FROM groups ORDER BY name`, &sqlitex.ExecOptions{
+	err := sqlitex.Execute(s.conn, `SELECT `+groupColumns+` FROM groups ORDER BY name`, &sqlitex.ExecOptions{
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			g, err := scanGroup(stmt)
 			if err != nil {
@@ -297,10 +314,13 @@ func (s *Store) Groups() ([]*Group, error) {
 	return groups, err
 }
 
+const groupColumns = `name, settings, locked, profiles, updated, rules, block_summary`
+
 func scanGroup(stmt *sqlite.Stmt) (*Group, error) {
 	g := &Group{
-		Name:    stmt.ColumnText(0),
-		Updated: time.Unix(stmt.ColumnInt64(4), 0).UTC(),
+		Name:         stmt.ColumnText(0),
+		Updated:      time.Unix(stmt.ColumnInt64(4), 0).UTC(),
+		BlockSummary: stmt.ColumnBool(6),
 	}
 	err := json.Unmarshal([]byte(stmt.ColumnText(1)), &g.Settings)
 	if err != nil {
@@ -478,14 +498,18 @@ func (s *Store) SetGroupRules(name string, rules *policy.Rules, now time.Time) (
 	return s.bumpSeq()
 }
 
-// SaveReport stores the last report of a computer.
-func (s *Store) SaveReport(id string, r *policy.Report, now time.Time) error {
-	data, err := json.Marshal(r)
+// SaveReport stores the last report of a computer. The block summary is
+// added to the hour of now and not kept with the report.
+func (s *Store) SaveReport(id string, r *policy.Report, now time.Time) (err error) {
+	stored := *r
+	stored.Blocks = nil
+	data, err := json.Marshal(&stored)
 	if err != nil {
 		return err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	defer sqlitex.Save(s.conn)(&err)
 	err = s.exec(`UPDATE computers SET applied_version = ?, core_version = ?, last_report = ?, last_seen = ?, report = ? WHERE id = ?`,
 		int64(r.AppliedVersion), r.CoreVersion, now.Unix(), now.Unix(), string(data), id) //nolint:gosec // Versions are far below 2^63.
 	if err != nil {
@@ -494,7 +518,7 @@ func (s *Store) SaveReport(id string, r *policy.Report, now time.Time) error {
 	if s.conn.Changes() == 0 {
 		return fmt.Errorf("computer %s: %w", id, ErrNotFound)
 	}
-	return nil
+	return s.addBlocks(id, r.Blocks, now)
 }
 
 // Computer returns a computer.
@@ -568,7 +592,7 @@ func (s *Store) group(name string) (*Group, error) {
 		g     *Group
 		inner error
 	)
-	err := sqlitex.Execute(s.conn, `SELECT name, settings, locked, profiles, updated, rules FROM groups WHERE name = ?`, &sqlitex.ExecOptions{
+	err := sqlitex.Execute(s.conn, `SELECT `+groupColumns+` FROM groups WHERE name = ?`, &sqlitex.ExecOptions{
 		Args: []any{name},
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			g, inner = scanGroup(stmt)

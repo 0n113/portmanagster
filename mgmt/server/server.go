@@ -33,6 +33,9 @@ const (
 	FileDB         = "portmanagster.db"
 
 	maxRequestSize = 64 << 10
+	// maxReportSize leaves room for a block summary with policy.MaxBlocks
+	// entries of 255-byte fields.
+	maxReportSize = 512 << 10
 )
 
 var (
@@ -251,6 +254,8 @@ func (s *Server) PolicyFor(c *Computer, now time.Time) ([]byte, error) {
 		Locked:   g.Locked,
 		Rules:    g.Rules,
 		Profiles: g.Profiles,
+
+		BlockSummary: g.BlockSummary,
 	}, s.PolicyKey)
 }
 
@@ -363,16 +368,23 @@ func (s *Server) handleReport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "access denied")
 		return
 	}
-	body, err := io.ReadAll(io.LimitReader(r.Body, maxRequestSize))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "cannot read request")
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxReportSize+1))
+	if err != nil || len(body) > maxReportSize {
+		writeError(w, http.StatusBadRequest, "cannot read request or report too large")
 		return
 	}
 	var report policy.Report
 	err = json.Unmarshal(body, &report)
-	if err != nil || report.Type != policy.TypeReport {
+	if err != nil || report.Type != policy.TypeReport || CheckBlocks(report.Blocks) != nil {
 		writeError(w, http.StatusBadRequest, "invalid report")
 		return
+	}
+	if len(report.Blocks) > 0 {
+		// Keep block summaries only of groups that ask for them.
+		g, gerr := s.Store.Group(c.Group)
+		if gerr != nil || !g.BlockSummary {
+			report.Blocks = nil
+		}
 	}
 	now := s.Now()
 	err = s.Store.SaveReport(c.ID, &report, now)

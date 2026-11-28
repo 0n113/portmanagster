@@ -18,6 +18,8 @@ export interface ManagedStatus {
   lastReportError?: string;
   overridden?: string[];
   refused?: string[];
+  /** Set when the organisation receives a summary of the blocked connections. */
+  blockSummary?: boolean;
 }
 
 /**

@@ -58,5 +58,15 @@
 {{with .Report}}{{if .Status}}
 <details><summary>Full status as reported</summary><pre>{{prettyJSON .Status}}</pre></details>
 {{end}}{{end}}
+
+<h2>Recent blocks</h2>
+{{if .Blocks}}
+{{template "blocktable" .Blocks}}
+<p class="hint">The largest of the last 24 hours. <a href="/blocks?computer={{.ID | urlquery}}">All blocks of this computer</a></p>
+{{else if .BlockSummary}}
+<p class="empty">No blocked connections in the last 24 hours.</p>
+{{else}}
+<p class="empty">The group of this computer has no block summary.</p>
+{{end}}
 {{end}}
 {{end}}

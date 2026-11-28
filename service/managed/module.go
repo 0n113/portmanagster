@@ -19,6 +19,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/mgmt/policy"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/netquery"
 )
 
 // PullInterval is the time between two policy pulls.
@@ -37,6 +38,11 @@ type Managed struct {
 	applier  applier
 	// coreStatus returns the core/status data for the reports; nil in tests.
 	coreStatus func() any
+	// blocked returns the blocked connections for the block summary; nil
+	// in tests.
+	blocked blockSource
+	// blocksUntil is the end of the last block summary the server got.
+	blocksUntil time.Time
 
 	// lock serializes enroll, leave and pulls.
 	lock   sync.Mutex
@@ -66,6 +72,9 @@ type Status struct {
 	// Refused lists the policy settings that are not in force (invalid
 	// value or unknown setting).
 	Refused []string `json:"refused,omitempty"`
+	// BlockSummary is set when the policy asks for a summary of the
+	// blocked connections in the reports; the app shows a notice.
+	BlockSummary bool `json:"blockSummary,omitempty"`
 }
 
 type instance interface {
@@ -73,6 +82,9 @@ type instance interface {
 	// CoreStatus returns the health of the Portmaster (core/status) for
 	// the reports.
 	CoreStatus() any
+	// BlockedConnections returns the blocked connections that started in
+	// [since, until), for the block summary.
+	BlockedConnections(ctx context.Context, since, until time.Time, limit int) ([]netquery.BlockedConn, error)
 }
 
 var shimLoaded atomic.Bool
@@ -89,6 +101,7 @@ func New(instance instance) (*Managed, error) {
 		applier:  coreApplier{},
 
 		coreStatus: instance.CoreStatus,
+		blocked:    instance.BlockedConnections,
 	}
 	err := m.registerAPI()
 	if err != nil {
@@ -189,6 +202,7 @@ func (m *Managed) Leave() error {
 	}
 	m.statusLock.Lock()
 	m.status = Status{}
+	m.blocksUntil = time.Time{}
 	m.statusLock.Unlock()
 	log.Info("managed: left the management server")
 	return nil
@@ -246,11 +260,21 @@ func (m *Managed) reportLocked(ctx context.Context) {
 		Refused:        m.status.Refused,
 		Error:          m.status.LastError,
 	}
+	withBlocks := m.status.BlockSummary
 	m.statusLock.Unlock()
 	if m.coreStatus != nil {
 		data, err := json.Marshal(m.coreStatus())
 		if err == nil {
 			r.Status = data
+		}
+	}
+	if withBlocks && m.blocked != nil {
+		since := blockWindowStart(m.blocksUntil, r.Time)
+		conns, err := m.blocked(ctx, since, r.Time, maxBlockedRows)
+		if err != nil {
+			log.Warningf("managed: block summary: %s", err)
+		} else {
+			r.Blocks, r.BlocksSince = summarizeBlocks(conns), since
 		}
 	}
 
@@ -264,6 +288,9 @@ func (m *Managed) reportLocked(ctx context.Context) {
 	}
 	m.status.LastReport = r.Time
 	m.status.LastReportError = ""
+	if !r.BlocksSince.IsZero() {
+		m.blocksUntil = r.Time
+	}
 }
 
 func (m *Managed) pullLocked(ctx context.Context) error {
@@ -368,6 +395,7 @@ func (m *Managed) verifyAndApply(st *State, data []byte, store, withProfiles boo
 	m.status.Group = p.Group
 	m.status.Overridden = res.Overridden
 	m.status.Refused = res.Refused
+	m.status.BlockSummary = p.BlockSummary
 	m.statusLock.Unlock()
 	return nil
 }

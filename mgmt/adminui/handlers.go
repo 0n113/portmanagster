@@ -35,8 +35,8 @@ func (p *page) CanWrite() bool { return p.Admin != nil && p.Admin.Role == server
 
 func parsePages() (map[string]*template.Template, error) {
 	pages := make(map[string]*template.Template)
-	for _, name := range []string{"login", "setup", "dashboard", "computers", "computer", "groups", "group", "tokens", "audit", "message"} {
-		t, err := template.New(name).Funcs(templateFuncs).ParseFS(templateFS, "templates/layout.html", "templates/"+name+".html")
+	for _, name := range []string{"login", "setup", "dashboard", "computers", "computer", "groups", "group", "tokens", "blocks", "audit", "message"} {
+		t, err := template.New(name).Funcs(templateFuncs).ParseFS(templateFS, "templates/layout.html", "templates/partials.html", "templates/"+name+".html")
 		if err != nil {
 			return nil, err
 		}

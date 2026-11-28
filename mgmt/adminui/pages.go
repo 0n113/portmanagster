@@ -38,6 +38,7 @@ var templateFuncs = template.FuncMap{
 			{navComputers, "/computers"},
 			{navGroups, "/groups"},
 			{navTokens, "/tokens"},
+			{navBlocks, "/blocks"},
 			{navAudit, "/audit"},
 		}
 	},
@@ -48,6 +49,12 @@ var templateFuncs = template.FuncMap{
 		return t.UTC().Format(time.DateTime) + " UTC"
 	},
 	"ago": ago,
+	"splitLists": func(lists string) []string {
+		if lists == "" {
+			return nil
+		}
+		return strings.Split(lists, ",")
+	},
 	"json": func(v any) string {
 		b, err := json.Marshal(v)
 		if err != nil {
@@ -300,6 +307,9 @@ type computerData struct {
 
 	Status      *server.CoreStatus
 	OtherGroups []string
+	// BlockSummary tells whether the group of the computer asks for it.
+	BlockSummary bool
+	Blocks       []*server.BlockRow
 }
 
 func (ui *UI) handleComputer(w http.ResponseWriter, r *http.Request) {
@@ -318,6 +328,12 @@ func (ui *UI) handleComputer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := &computerData{computerRow: newComputerRow(c, g, ui.now()), Status: server.ReportStatus(c)}
+	data.BlockSummary = g != nil && g.BlockSummary
+	data.Blocks, err = ui.recent(server.BlockFilter{Computer: c.ID})
+	if err != nil {
+		ui.internalError(w, "computer", err)
+		return
+	}
 	groups, err := ui.store.Groups()
 	if err != nil {
 		ui.internalError(w, "computer", err)
@@ -395,6 +411,7 @@ type groupData struct {
 	Settings    []settingRow
 	Profiles    []profileRow
 	Computers   []*computerRow
+	Blocks      []*server.BlockRow
 }
 
 func (ui *UI) handleGroup(w http.ResponseWriter, r *http.Request) {
@@ -442,6 +459,11 @@ func (ui *UI) renderGroup(w http.ResponseWriter, r *http.Request, status int, er
 		if row.Group == g.Name {
 			data.Computers = append(data.Computers, row)
 		}
+	}
+	data.Blocks, err = ui.recent(server.BlockFilter{Group: g.Name})
+	if err != nil {
+		ui.internalError(w, "group", err)
+		return
 	}
 	groups, err := ui.store.Groups()
 	if err != nil {

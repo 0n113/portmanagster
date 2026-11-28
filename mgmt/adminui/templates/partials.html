@@ -1,0 +1,18 @@
+{{define "blocktable"}}
+<div class="table-wrap"><table>
+  <thead><tr><th>Blocked</th><th>Computers</th><th>App</th><th>Domain or IP</th><th>Reason</th><th>Lists</th><th>Last (hour, UTC)</th></tr></thead>
+  <tbody>
+  {{range .}}
+  <tr>
+    <td class="num">{{.Count}}</td>
+    <td class="num">{{.Computers}}</td>
+    <td><a href="/blocks?app={{.App | urlquery}}">{{or .App "(unknown)"}}</a></td>
+    <td><a href="/blocks?target={{.Target | urlquery}}">{{.Target}}</a>{{if .Inbound}} <span class="badge">incoming</span>{{end}}</td>
+    <td>{{if .Reason}}<code>{{.Reason}}</code>{{end}}</td>
+    <td>{{range $i, $l := splitLists .Lists}}{{if $i}}, {{end}}<a href="/blocks?list={{$l | urlquery}}">{{$l}}</a>{{end}}</td>
+    <td class="nowrap">{{datetime .Last}}</td>
+  </tr>
+  {{end}}
+  </tbody>
+</table></div>
+{{end}}

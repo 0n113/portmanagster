@@ -1,0 +1,34 @@
+{{define "content"}}
+<h1>Blocked connections</h1>
+<p class="hint">Summaries of the computers whose group has the block summary on: blocked connections per app,
+reason, filter list and domain or IP, counted per hour. No allowed connections and no user names.</p>
+{{with .Data}}
+<form class="filters" method="get" action="/blocks">
+  <label>Group
+    <select name="group"><option value="">All groups</option>
+      {{range .Groups}}<option value="{{.}}"{{if eq . $.Data.Filter.Group}} selected{{end}}>{{.}}</option>{{end}}
+    </select>
+  </label>
+  <label>Computer
+    <select name="computer"><option value="">All computers</option>
+      {{range .Computers}}<option value="{{.ID}}"{{if eq .ID $.Data.Filter.Computer}} selected{{end}}>{{or .Hostname .ID}}</option>{{end}}
+    </select>
+  </label>
+  <label>App <input name="app" value="{{.Filter.App}}"></label>
+  <label>List <input name="list" value="{{.Filter.List}}" placeholder="e.g. MAL" size="8"></label>
+  <label>Domain or IP <input name="target" value="{{.Filter.Target}}" placeholder="contains"></label>
+  <label>Period
+    <select name="period">
+      {{range .Periods}}<option value="{{.Value}}"{{if eq .Value $.Data.Period}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+  </label>
+  <button type="submit">Show</button>
+</form>
+{{if .Rows}}
+{{template "blocktable" .Rows}}
+{{if .More}}<p class="hint">Only the {{.Filter.Limit}} largest are shown; narrow the filter to see more.</p>{{end}}
+{{else}}
+<p class="empty">No blocked connections match.</p>
+{{end}}
+{{end}}
+{{end}}

@@ -512,7 +512,18 @@ func (i *Instance) Sync() *sync.Sync {
 	return i.sync
 }
 
-// Managed returns the management client module.
+// BlockedConnections returns the blocked connections that started in
+// [since, until), for the block summary of the management client.
+func (i *Instance) BlockedConnections(ctx context.Context, since, until time.Time, limit int) ([]netquery.BlockedConn, error) {
+	blocked, err := i.netquery.Store.Blocked(ctx, since, until, limit)
+	for n := range blocked {
+		// The connections name the source lists; add their categories,
+		// e.g. "MAL", so that the server can filter by them.
+		blocked[n].Lists = filterlists.WithCategories(blocked[n].Lists)
+	}
+	return blocked, err
+}
+
 // CoreStatus returns the health of the Portmaster for the reports of the
 // managed module.
 func (i *Instance) CoreStatus() any {

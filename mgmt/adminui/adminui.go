@@ -164,6 +164,8 @@ func (ui *UI) Handler() http.Handler {
 	private.HandleFunc("GET /groups/{name}", ui.handleGroup)
 	private.HandleFunc("GET /tokens", ui.handleTokens)
 	private.HandleFunc("GET /audit", ui.handleAudit)
+	private.HandleFunc("GET /blocks", ui.handleBlocks)
+	private.HandleFunc("POST /groups/{name}/blocksummary", ui.handleGroupBlockSummary)
 	private.HandleFunc("POST /groups", ui.handleGroupCreate)
 	private.HandleFunc("POST /groups/{name}/delete", ui.handleGroupDelete)
 	private.HandleFunc("POST /groups/{name}/settings", ui.handleGroupSettings)

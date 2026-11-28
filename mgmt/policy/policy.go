@@ -54,6 +54,9 @@ type Policy struct {
 	Rules *Rules `json:"rules,omitempty"`
 	// Profiles are app profiles in the format of the profile export.
 	Profiles []json.RawMessage `json:"profiles,omitempty"`
+	// BlockSummary asks the client to add a summary of its blocked
+	// connections to every report (opt-in per group).
+	BlockSummary bool `json:"blockSummary,omitempty"`
 }
 
 // Rules are the endpoint rules of a policy, in the format of the
@@ -218,4 +221,29 @@ type Report struct {
 	Error string `json:"error,omitempty"`
 	// Status is the health of the Portmaster, as returned by core/status.
 	Status json.RawMessage `json:"status,omitempty"`
+	// Blocks summarizes the connections blocked from BlocksSince until
+	// Time, if the policy asks for it; at most MaxBlocks entries, the
+	// largest counts first.
+	Blocks      []Block   `json:"blocks,omitempty"`
+	BlocksSince time.Time `json:"blocksSince,omitzero"`
+}
+
+// MaxBlocks is the maximum number of entries of a block summary.
+const MaxBlocks = 200
+
+// Block counts the blocked connections of an app with the same reason and
+// destination. It has no connection details and no user names.
+type Block struct {
+	// App is the name of the app profile.
+	App string `json:"app"`
+	// Reason is the setting that blocked, e.g. "filter/lists" or
+	// "filter/endpoints", or the reason message if there is none.
+	Reason string `json:"reason,omitempty"`
+	// Lists are the filter lists that matched, comma-separated, e.g. "MAL".
+	Lists string `json:"lists,omitempty"`
+	// Target is the domain, or the IP address if there is no domain.
+	Target string `json:"target"`
+	// Inbound is set for blocked incoming connections.
+	Inbound bool `json:"inbound,omitempty"`
+	Count   int  `json:"count"`
 }

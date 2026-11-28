@@ -24,6 +24,8 @@ const (
 // the redirect; the parameter never carries text into the page.
 var notices = map[string]string{ //nolint:gosec // Message keys, no credentials.
 	"group-created":       "Group created.",
+	"block-summary-on":    "Block summary on. The computers of the group send it from their next pull; the Portmaster app shows this to the users.",
+	"block-summary-off":   "Block summary off. The computers of the group stop sending it with their next pull.",
 	"group-deleted":       "Group deleted.",
 	"settings-saved":      "Settings saved. The computers of the group get them with their next pull.",
 	"rules-saved":         "Rules saved. The computers of the group get them with their next pull.",

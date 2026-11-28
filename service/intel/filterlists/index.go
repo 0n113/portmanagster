@@ -273,6 +273,45 @@ func ResolveListIDs(ids []string) ([]string, error) {
 	return resolved, nil
 }
 
+// WithCategories returns the source IDs together with the IDs of the
+// categories they belong to, including the parent categories, e.g. "TRAC"
+// for a tracker list. Unknown IDs are kept as they are; without an index the
+// IDs are returned unchanged.
+func WithCategories(ids []string) []string {
+	if len(ids) == 0 {
+		return ids
+	}
+	index, err := getListIndexFromCache()
+	if err != nil {
+		return ids
+	}
+	return index.withCategories(ids)
+}
+
+func (index *ListIndexFile) withCategories(ids []string) []string {
+	index.RLock()
+	defer index.RUnlock()
+
+	parents := make(map[string]string, len(index.Categories))
+	for _, c := range index.Categories {
+		parents[c.ID] = c.Parent
+	}
+	categoryOf := make(map[string]string, len(index.Sources))
+	for _, s := range index.Sources {
+		categoryOf[s.ID] = s.Category
+	}
+
+	all := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		all[id] = struct{}{}
+		// Walk up the category tree; the depth limit guards against loops.
+		for c, depth := categoryOf[id], 0; c != "" && depth < 10; c, depth = parents[c], depth+1 {
+			all[c] = struct{}{}
+		}
+	}
+	return mapKeys(all)
+}
+
 var (
 	unbreakCategoryIDs = []string{"UNBREAK"}
 

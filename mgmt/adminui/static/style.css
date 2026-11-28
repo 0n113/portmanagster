@@ -91,3 +91,4 @@ button.danger-link { color: var(--err); }
 .new-token { margin-bottom: 20px; border-color: var(--ok); }
 pre.copy { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px; white-space: pre-wrap; word-break: break-all; }
 input[type="file"] { padding: 6px; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
