@@ -39,7 +39,10 @@ CREATE TABLE IF NOT EXISTS groups (
 	rules    TEXT NOT NULL DEFAULT '{}',
 	updated  INTEGER NOT NULL,
 	block_summary INTEGER NOT NULL DEFAULT 0,
-	silent_after  INTEGER NOT NULL DEFAULT 86400
+	silent_after  INTEGER NOT NULL DEFAULT 86400,
+	signed         TEXT NOT NULL DEFAULT '',
+	signed_version INTEGER NOT NULL DEFAULT 0,
+	signed_at      INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS tokens (
 	hash    TEXT PRIMARY KEY,
@@ -148,6 +151,9 @@ var migrations = []struct{ table, column, def string }{
 	{tableComputers, "moved", `INTEGER NOT NULL DEFAULT 0`},
 	{"groups", "block_summary", `INTEGER NOT NULL DEFAULT 0`},
 	{"groups", "silent_after", `INTEGER NOT NULL DEFAULT 86400`},
+	{"groups", "signed", `TEXT NOT NULL DEFAULT ''`},
+	{"groups", "signed_version", `INTEGER NOT NULL DEFAULT 0`},
+	{"groups", "signed_at", `INTEGER NOT NULL DEFAULT 0`},
 }
 
 // Store holds the server state in SQLite. The admin commands and the
@@ -174,6 +180,12 @@ type Group struct {
 	// SilentAfter is the time without contact after which a computer of
 	// the group raises an alert; zero turns the alert off.
 	SilentAfter time.Duration `json:"silentAfter"`
+	// Signed is the published group policy signed with the offline key;
+	// with offline signing, the computers get only it, and the settings
+	// above are the draft for the next signing.
+	Signed        []byte    `json:"-"`
+	SignedVersion uint64    `json:"signedVersion,omitempty"`
+	SignedAt      time.Time `json:"signedAt,omitzero"`
 }
 
 // Computer is an enrolled computer.
@@ -344,7 +356,7 @@ func (s *Store) Groups() ([]*Group, error) {
 	return groups, err
 }
 
-const groupColumns = `name, settings, locked, profiles, updated, rules, block_summary, silent_after`
+const groupColumns = `name, settings, locked, profiles, updated, rules, block_summary, silent_after, signed, signed_version, signed_at`
 
 func scanGroup(stmt *sqlite.Stmt) (*Group, error) {
 	g := &Group{
@@ -353,6 +365,7 @@ func scanGroup(stmt *sqlite.Stmt) (*Group, error) {
 		BlockSummary: stmt.ColumnBool(6),
 		SilentAfter:  time.Duration(stmt.ColumnInt64(7)) * time.Second,
 	}
+	scanSigned(g, stmt, 8)
 	err := json.Unmarshal([]byte(stmt.ColumnText(1)), &g.Settings)
 	if err != nil {
 		return nil, fmt.Errorf("group %s settings: %w", g.Name, err)

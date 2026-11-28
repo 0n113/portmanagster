@@ -38,6 +38,11 @@ var (
 	errServerRefused = errors.New("server refused")
 	errAlreadyEnroll = errors.New("this computer is already enrolled, leave first")
 	errMissingArg    = errors.New("server, token, server fingerprint and policy key fingerprint are required")
+	errNoOfflineKey  = errors.New("an offline key fingerprint is given, but the server has no offline key")
+	errKeyPin        = errors.New("key does not match the pinned fingerprint")
+	// errNoPolicyYet is returned when the server has no policy for this
+	// computer yet (offline signing on, no signed group policy published).
+	errNoPolicyYet = errors.New("the server has no policy for this computer yet")
 )
 
 // EnrollRequest holds the parameters of an enrollment.
@@ -46,6 +51,9 @@ type EnrollRequest struct {
 	Token       string `json:"token"`
 	ServerFP    string `json:"serverFp"`
 	PolicyKeyFP string `json:"policyKeyFp"`
+	// OfflineKeyFP optionally pins the offline key at enrollment; the
+	// computer then applies only offline-signed policies.
+	OfflineKeyFP string `json:"offlineKeyFp,omitempty"`
 }
 
 // pinnedTLS returns a TLS config that accepts only the server certificate
@@ -156,6 +164,14 @@ func enroll(ctx context.Context, dir stateDir, r *EnrollRequest, now time.Time) 
 	if err != nil {
 		return err
 	}
+	err = matchOfflineKey(er.OfflineKey, r.OfflineKeyFP)
+	if err != nil {
+		return err
+	}
+	var offlineKey string
+	if r.OfflineKeyFP != "" {
+		offlineKey = er.OfflineKey
+	}
 
 	keyDER, err := x509.MarshalPKCS8PrivateKey(key)
 	if err != nil {
@@ -166,6 +182,7 @@ func enroll(ctx context.Context, dir stateDir, r *EnrollRequest, now time.Time) 
 		ComputerID: er.ComputerID,
 		Enrolled:   now.UTC().Truncate(time.Second),
 		PolicyKey:  er.PolicyKey,
+		Pins:       policy.Pins{OfflineKey: offlineKey},
 	}
 	files := []struct {
 		name string
@@ -192,6 +209,22 @@ func enroll(ctx context.Context, dir stateDir, r *EnrollRequest, now time.Time) 
 }
 
 // matchPolicyKey checks a policy key in jess text format against the pin.
+// matchKey checks a key in jess text format against a pinned fingerprint.
+func matchKey(textKey, pin string) error {
+	key, err := jess.RecipientFromTextFormat(textKey)
+	if err != nil {
+		return err
+	}
+	fp, err := policy.KeyFingerprint(key)
+	if err != nil {
+		return err
+	}
+	if fp != pin {
+		return errKeyPin
+	}
+	return nil
+}
+
 func matchPolicyKey(textKey, pin string) error {
 	pk, err := jess.RecipientFromTextFormat(textKey)
 	if err != nil {
@@ -231,13 +264,34 @@ func checkPolicyKey(ctx context.Context, client *http.Client, r *EnrollRequest) 
 		return fmt.Errorf("%w: %s: %s", errServerRefused, resp.Status, strings.TrimSpace(string(data)))
 	}
 	var pk struct {
-		PolicyKey string `json:"policyKey"`
+		PolicyKey  string `json:"policyKey"`
+		OfflineKey string `json:"offlineKey"`
 	}
 	err = json.Unmarshal(data, &pk)
 	if err != nil {
 		return fmt.Errorf("parse policy key: %w", err)
 	}
-	return matchPolicyKey(pk.PolicyKey, r.PolicyKeyFP)
+	err = matchPolicyKey(pk.PolicyKey, r.PolicyKeyFP)
+	if err != nil {
+		return err
+	}
+	return matchOfflineKey(pk.OfflineKey, r.OfflineKeyFP)
+}
+
+// matchOfflineKey checks the offline key of the server against the
+// optional pin and returns nil if there is no pin.
+func matchOfflineKey(textKey, pin string) error {
+	if pin == "" {
+		return nil
+	}
+	if textKey == "" {
+		return errNoOfflineKey
+	}
+	err := matchKey(textKey, pin)
+	if err != nil {
+		return fmt.Errorf("offline key: %w", err)
+	}
+	return nil
 }
 
 // mtlsClient returns a client that authenticates with the client
@@ -289,6 +343,9 @@ func fetchPolicy(ctx context.Context, dir stateDir, s *State) ([]byte, error) {
 	data, err := io.ReadAll(io.LimitReader(resp.Body, maxPolicySize))
 	if err != nil {
 		return nil, err
+	}
+	if resp.StatusCode == http.StatusServiceUnavailable {
+		return nil, fmt.Errorf("%w: %s", errNoPolicyYet, strings.TrimSpace(string(data)))
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%w: %s: %s", errServerRefused, resp.Status, strings.TrimSpace(string(data)))

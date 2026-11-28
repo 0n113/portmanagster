@@ -75,6 +75,9 @@ type Config struct {
 	// ServerFP and PolicyKeyFP are the fingerprints clients pin.
 	ServerFP    string
 	PolicyKeyFP string
+	// DataDir is the data directory of the server, for the offline key;
+	// empty turns the offline signing pages off.
+	DataDir string
 }
 
 // UI is the admin web UI.
@@ -168,6 +171,8 @@ func (ui *UI) Handler() http.Handler {
 	private.HandleFunc("GET /alerts", ui.handleAlerts)
 	private.HandleFunc("POST /alerts/ack", ui.handleAlertAck)
 	private.HandleFunc("POST /groups/{name}/silentafter", ui.handleGroupSilentAfter)
+	private.HandleFunc("GET /groups/{name}/export", ui.handleGroupExport)
+	private.HandleFunc("POST /groups/{name}/publish", ui.handleGroupPublish)
 	private.HandleFunc("POST /groups/{name}/blocksummary", ui.handleGroupBlockSummary)
 	private.HandleFunc("POST /groups", ui.handleGroupCreate)
 	private.HandleFunc("POST /groups/{name}/delete", ui.handleGroupDelete)

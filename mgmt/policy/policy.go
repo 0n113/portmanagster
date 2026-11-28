@@ -57,6 +57,14 @@ type Policy struct {
 	// BlockSummary asks the client to add a summary of its blocked
 	// connections to every report (opt-in per group).
 	BlockSummary bool `json:"blockSummary,omitempty"`
+
+	// Signed is a group policy signed with the offline key (see
+	// GroupPolicy). When it is set, the content fields above are empty
+	// and the content comes from it; see Open.
+	Signed []byte `json:"signed,omitempty"`
+	// OfflineKey is the public offline key in jess text format, sent with
+	// Signed so that a client can pin it.
+	OfflineKey string `json:"offlineKey,omitempty"`
 }
 
 // Rules are the endpoint rules of a policy, in the format of the
@@ -100,7 +108,11 @@ func Sign(p *Policy, key *jess.Signet) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("serialize: %w", err)
 	}
+	return signJSON(data, key)
+}
 
+// signJSON adds a jess signature of the key to a JSON document.
+func signJSON(data []byte, key *jess.Signet) ([]byte, error) {
 	pub, err := key.AsRecipient()
 	if err != nil {
 		return nil, err
@@ -125,12 +137,7 @@ func Sign(p *Policy, key *jess.Signet) ([]byte, error) {
 // key and that it is for the given computer, and returns the policy. The
 // caller compares the version with the applied one, see CheckVersion.
 func Verify(data []byte, policyKey *jess.Signet, computer string) (*Policy, error) {
-	trustStore := jess.NewMemTrustStore()
-	err := trustStore.StoreSignet(policyKey)
-	if err != nil {
-		return nil, err
-	}
-	err = filesig.VerifyJSONSignature(data, trustStore)
+	err := verifyJSON(data, policyKey)
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +154,16 @@ func Verify(data []byte, policyKey *jess.Signet, computer string) (*Policy, erro
 		return nil, ErrWrongComputer
 	}
 	return p, nil
+}
+
+// verifyJSON checks the jess signature of a JSON document against the key.
+func verifyJSON(data []byte, key *jess.Signet) error {
+	trustStore := jess.NewMemTrustStore()
+	err := trustStore.StoreSignet(key)
+	if err != nil {
+		return err
+	}
+	return filesig.VerifyJSONSignature(data, trustStore)
 }
 
 // CheckVersion returns ErrRollback if p is older than the applied version.
@@ -199,6 +216,9 @@ type EnrollResponse struct {
 	CA string `json:"ca"`
 	// PolicyKey is the public policy key in jess text format.
 	PolicyKey string `json:"policyKey"`
+	// OfflineKey is the public offline key in jess text format, if the
+	// server uses offline signing; a client may pin it at enrollment.
+	OfflineKey string `json:"offlineKey,omitempty"`
 }
 
 // TypeReport is the value of Report.Type.

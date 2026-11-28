@@ -21,6 +21,7 @@ var (
 	manageToken    string
 	manageServerFP string
 	manageKeyFP    string
+	manageOffFP    string
 )
 
 var manageCmd = &cobra.Command{
@@ -36,10 +37,11 @@ var manageEnrollCmd = &cobra.Command{
 	SilenceErrors: true, // main prints the error.
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		body, err := json.Marshal(map[string]string{
-			"server":      manageServer,
-			"token":       manageToken,
-			"serverFp":    manageServerFP,
-			"policyKeyFp": manageKeyFP,
+			"server":       manageServer,
+			"token":        manageToken,
+			"serverFp":     manageServerFP,
+			"policyKeyFp":  manageKeyFP,
+			"offlineKeyFp": manageOffFP,
 		})
 		if err != nil {
 			return err
@@ -87,6 +89,7 @@ func init() {
 	manageEnrollCmd.Flags().StringVar(&manageToken, "token", "", "one-time enrollment token")
 	manageEnrollCmd.Flags().StringVar(&manageServerFP, "server-fp", "", "fingerprint of the server certificate (sha256:...)")
 	manageEnrollCmd.Flags().StringVar(&manageKeyFP, "policy-key-fp", "", "fingerprint of the policy key (sha256:...)")
+	manageEnrollCmd.Flags().StringVar(&manageOffFP, "offline-key-fp", "", "optional: fingerprint of the offline key (sha256:...); then only offline-signed policies are applied")
 	for _, f := range []string{"server", "token", "server-fp", "policy-key-fp"} {
 		_ = manageEnrollCmd.MarkFlagRequired(f)
 	}

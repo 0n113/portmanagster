@@ -255,6 +255,25 @@ func (s *Server) PolicyFor(c *Computer, now time.Time) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	offlineKey, err := s.OfflineKey()
+	if err != nil {
+		return nil, err
+	}
+	if offlineKey != "" {
+		// Offline signing: only the signed group policy, whose content the
+		// server cannot change, wrapped for the computer.
+		if len(g.Signed) == 0 {
+			return nil, fmt.Errorf("group %s: %w", g.Name, ErrNoSignedPolicy)
+		}
+		return policy.Sign(&policy.Policy{
+			Version:    seq,
+			Issued:     now.UTC().Truncate(time.Second),
+			Computer:   c.ID,
+			Group:      g.Name,
+			Signed:     g.Signed,
+			OfflineKey: offlineKey,
+		}, s.PolicyKey)
+	}
 	return policy.Sign(&policy.Policy{
 		Version:  seq,
 		Issued:   now.UTC().Truncate(time.Second),
@@ -332,11 +351,18 @@ func (s *Server) handleEnroll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.Log.Info("computer enrolled", "id", c.ID, "hostname", c.Hostname, "group", c.Group, "remote", r.RemoteAddr)
+	offlineKey, err := s.OfflineKey()
+	if err != nil {
+		// The computer is enrolled; it gets the offline key with its first
+		// signed policy.
+		s.Log.Error("read offline key", "err", err)
+	}
 	writeJSON(w, http.StatusOK, &policy.EnrollResponse{
 		ComputerID:  c.ID,
 		Certificate: string(certPEM(certDER)),
 		CA:          string(certPEM(s.CA.Cert.Raw)),
 		PolicyKey:   s.PolicyPub,
+		OfflineKey:  offlineKey,
 	})
 }
 
@@ -373,6 +399,11 @@ func (s *Server) handlePolicy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	signed, err := s.PolicyFor(c, now)
+	if errors.Is(err, ErrNoSignedPolicy) {
+		s.Log.Warn("no offline-signed policy for the group of a computer", "id", c.ID, "group", c.Group)
+		writeError(w, http.StatusServiceUnavailable, err.Error())
+		return
+	}
 	if err != nil {
 		s.Log.Error("build policy", "id", c.ID, "err", err)
 		writeError(w, http.StatusInternalServerError, "cannot build policy")
@@ -432,8 +463,19 @@ func (s *Server) handleReport(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// handlePolicyKey returns the public policy key, so that a client can check
-// it against its pin before it uses the enrollment token.
+// handlePolicyKey returns the public policy key and the offline key, if set,
+// so that a client can check them against its pins before it uses the
+// enrollment token.
 func (s *Server) handlePolicyKey(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"policyKey": s.PolicyPub})
+	keys := map[string]string{"policyKey": s.PolicyPub}
+	offlineKey, err := s.OfflineKey()
+	if err != nil {
+		s.Log.Error("read offline key", "err", err)
+		writeError(w, http.StatusInternalServerError, "cannot read the offline key")
+		return
+	}
+	if offlineKey != "" {
+		keys["offlineKey"] = offlineKey
+	}
+	writeJSON(w, http.StatusOK, keys)
 }

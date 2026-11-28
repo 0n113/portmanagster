@@ -26,6 +26,7 @@ const (
 
 	ruleEvil = "- evil.example"
 	listTRAC = "TRAC"
+	wrongFP  = "sha256:00"
 )
 
 var errInvalidRule = errors.New("invalid rule")
@@ -300,7 +301,7 @@ func TestEnrollPins(t *testing.T) {
 
 	// A wrong server certificate fingerprint fails before the token is sent.
 	r := e.enrollReq()
-	r.ServerFP = "sha256:00"
+	r.ServerFP = wrongFP
 	_, err := e.m.Enroll(ctx, r)
 	if err == nil {
 		t.Fatal("want an error for a wrong server fingerprint")
@@ -308,7 +309,7 @@ func TestEnrollPins(t *testing.T) {
 	// A wrong policy key fingerprint fails before the token is used and
 	// stores nothing.
 	r = e.enrollReq()
-	r.PolicyKeyFP = "sha256:00"
+	r.PolicyKeyFP = wrongFP
 	_, err = e.m.Enroll(ctx, r)
 	if err == nil || !strings.Contains(err.Error(), "policy key") {
 		t.Fatalf("want a policy key pin error, got %v", err)

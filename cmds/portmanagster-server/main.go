@@ -89,7 +89,7 @@ var serveCmd = &cobra.Command{
 		}
 		ui, err := adminui.New(adminui.Config{
 			Store: s.Store, URL: adminURL, Logger: logger.With("part", "admin-ui"),
-			ClientURL: clientURL, ServerFP: certFP, PolicyKeyFP: keyFP,
+			ClientURL: clientURL, ServerFP: certFP, PolicyKeyFP: keyFP, DataDir: dataDir,
 		})
 		if err != nil {
 			return err
@@ -252,8 +252,20 @@ var tokenCreateCmd = &cobra.Command{
 			return err
 		}
 		_, _ = fmt.Fprintf(os.Stdout, "token (valid %s, one use): %s\n\nOn the client, as root:\n", tokenValid, token)
-		_, _ = fmt.Fprintf(os.Stdout, "  portmaster-core manage enroll --server %s --token %s \\\n    --server-fp %s \\\n    --policy-key-fp %s\n",
+		_, _ = fmt.Fprintf(os.Stdout, "  portmaster-core manage enroll --server %s --token %s \\\n    --server-fp %s \\\n    --policy-key-fp %s",
 			serverURL, token, certFP, keyFP)
+		offline, err := srv.OfflineKey()
+		if err != nil {
+			return err
+		}
+		if offline != "" {
+			_, offlineFP, err := server.ParseOfflineKey(offline)
+			if err != nil {
+				return err
+			}
+			_, _ = fmt.Fprintf(os.Stdout, " \\\n    --offline-key-fp %s", offlineFP)
+		}
+		_, _ = fmt.Fprintln(os.Stdout)
 		return nil
 	},
 }

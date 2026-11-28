@@ -57,7 +57,7 @@ change, offline computers that apply the policy when they come back.
 
 Design and phases: [management-server.md](management-server.md). Phase A: server with
 enrollment, signed policies, drift correction and status reports; B: locked policy layer in the
-core; C: web UI and alerts (done); D: offline signing and hardening.
+core; C: web UI and alerts (done); D: offline signing (D1 done) and hardening.
 
 - Pull model: each Portmaster asks the server for its policy; no open port on the clients.
 - Enrollment with a one-time token, then mutual TLS with a per-computer certificate.
