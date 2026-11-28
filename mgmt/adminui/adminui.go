@@ -27,6 +27,7 @@ import (
 )
 
 const (
+	schemeHTTPS = "https"
 	// SessionMaxAge is the lifetime of a session after the login.
 	SessionMaxAge = 12 * time.Hour
 	// SessionIdle ends a session that was not used for this long.
@@ -44,7 +45,7 @@ const (
 	csrfHeader   = "X-Csrf-Token"
 	issuer       = "Portmanagster"
 	actorPrefix  = "admin:"
-	maxBodyBytes = 64 << 10
+	maxBodyBytes = 1 << 20
 )
 
 var (
@@ -68,10 +69,17 @@ type Config struct {
 	Logger *slog.Logger
 	// Now returns the current time; tests replace it.
 	Now func() time.Time
+	// ClientURL is the address of the client API for the enroll command
+	// shown with a new token, e.g. https://pm.example.lan:8443.
+	ClientURL string
+	// ServerFP and PolicyKeyFP are the fingerprints clients pin.
+	ServerFP    string
+	PolicyKeyFP string
 }
 
 // UI is the admin web UI.
 type UI struct {
+	cfg     Config
 	store   *server.Store
 	wa      *webauthn.WebAuthn
 	origin  string
@@ -97,7 +105,7 @@ type ceremony struct {
 // New creates the admin UI.
 func New(cfg Config) (*UI, error) {
 	u, err := url.Parse(cfg.URL)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || (u.Path != "" && u.Path != "/") {
+	if err != nil || (u.Scheme != "http" && u.Scheme != schemeHTTPS) || u.Host == "" || (u.Path != "" && u.Path != "/") {
 		return nil, fmt.Errorf("%q: %w", cfg.URL, errBadURL)
 	}
 	origin := u.Scheme + "://" + u.Host
@@ -114,10 +122,11 @@ func New(cfg Config) (*UI, error) {
 		return nil, err
 	}
 	ui := &UI{
+		cfg:     cfg,
 		store:   cfg.Store,
 		wa:      wa,
 		origin:  origin,
-		secure:  u.Scheme == "https",
+		secure:  u.Scheme == schemeHTTPS,
 		log:     cfg.Logger,
 		now:     cfg.Now,
 		limit:   newLimiter(loginFailures, loginWindow),
@@ -155,6 +164,16 @@ func (ui *UI) Handler() http.Handler {
 	private.HandleFunc("GET /groups/{name}", ui.handleGroup)
 	private.HandleFunc("GET /tokens", ui.handleTokens)
 	private.HandleFunc("GET /audit", ui.handleAudit)
+	private.HandleFunc("POST /groups", ui.handleGroupCreate)
+	private.HandleFunc("POST /groups/{name}/delete", ui.handleGroupDelete)
+	private.HandleFunc("POST /groups/{name}/settings", ui.handleGroupSettings)
+	private.HandleFunc("POST /groups/{name}/rules", ui.handleGroupRules)
+	private.HandleFunc("POST /groups/{name}/profiles", ui.handleProfileAdd)
+	private.HandleFunc("POST /groups/{name}/profiles/remove", ui.handleProfileRemove)
+	private.HandleFunc("POST /tokens", ui.handleTokenCreate)
+	private.HandleFunc("POST /tokens/{id}/revoke", ui.handleTokenRevoke)
+	private.HandleFunc("POST /computers/{id}/move", ui.handleComputerMove)
+	private.HandleFunc("POST /computers/{id}/revoke", ui.handleComputerRevoke)
 	private.HandleFunc("POST /logout", ui.handleLogout)
 	public.Handle("/", ui.requireSession(private))
 

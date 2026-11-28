@@ -107,3 +107,9 @@
     if (setupBtn) setupBtn.addEventListener("click", function () { if (supported()) setup(setupBtn); });
   });
 })();
+
+// Forms with data-confirm ask before they are sent.
+document.addEventListener("submit", function (ev) {
+  const msg = ev.target.dataset && ev.target.dataset.confirm;
+  if (msg && !window.confirm(msg)) ev.preventDefault();
+});

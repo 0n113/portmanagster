@@ -5,8 +5,8 @@ Status: phase A done: the server side of enrollment and policies (A1, see
 [Client commands](#client-commands)), profiles per group and reports (A3), and the VM tests
 on Linux and Windows (A4, step "Management" of the smoke tests). Phase B done (policy layer,
 see [Phase B plan](#phase-b-plan)). Phase C in progress (see [Phase C plan](#phase-c-plan)): C1
-and C2 done, the admin web UI with accounts, login, audit log and read-only pages (see
-[Admin web UI](#admin-web-ui)).
+to C3 done, the admin web UI with accounts, login, audit log, all pages and the write actions
+of the command line (see [Admin web UI](#admin-web-ui)).
 This document fixes the architecture and the order of work; details of each phase are settled
 in its PR.
 
@@ -143,6 +143,7 @@ portmanagster-server fingerprints
 portmanagster-server group create office
 portmanagster-server group set office office-settings.yaml --lock filter/lists
 portmanagster-server group list
+portmanagster-server group delete office    # only without computers; deletes its unused tokens
 
 # App profiles of a group (profile exports from `portmaster-core profile export`), e.g. the
 # backup agent rules from integrations/backup-agents; replaces the previous ones.
@@ -157,11 +158,14 @@ portmanagster-server group rules office --clear
 
 # One-time enrollment token; prints the enroll command for the client.
 portmanagster-server token create --group office --valid 24h --url https://pm.example.lan:8443
+portmanagster-server token list
+portmanagster-server token revoke <id>      # the ID from token list (start of the hash); unused tokens only
 
 # Client API on :8443 (mutual TLS); computers and revocation.
 portmanagster-server serve --listen :8443
 portmanagster-server computer list          # with policy version and health of the last report
 portmanagster-server computer show <id>     # last report as JSON
+portmanagster-server computer move <id> lab # gets the policy of the new group with its next pull
 portmanagster-server computer revoke <id>
 
 # Accounts of the admin web UI and the audit log (see "Admin web UI").
@@ -197,6 +201,8 @@ http://localhost:8444). Flags:
   bound to its host name, so changing the host later needs new passkeys (`admin reset`).
 - `--admin-cert FILE --admin-key FILE`: TLS for the UI when it listens on the network; the
   session cookie is then `Secure`. Plain HTTP is meant for localhost only.
+- `--client-url URL`: the client API address the UI puts into the enroll command of a new
+  token (prefilled, can be changed per token).
 
 Accounts are created on the server host: `admin add NAME` prints a one-time setup link (15
 minutes). Opening it sets up a passkey (recommended) or an authenticator app (TOTP, RFC 6238,
@@ -212,7 +218,7 @@ rest of the window. A TOTP code works once. Pages are rendered on the server wit
 scripts or styles under a strict content security policy. Logins, logouts and account changes
 are in the audit log (`admin:NAME`).
 
-Pages (C2, read-only, for both roles):
+Pages (C2, for both roles):
 
 - **Dashboard:** active, silent and revoked computers, computers on the current policy, groups,
   valid tokens; the computers that need attention with the reason; the latest changes.
@@ -231,7 +237,25 @@ group, **pending** before, **error** when the last pull or apply failed. It **ne
 when it is silent, has a policy error, has no report yet, waits more than 30 minutes for a
 policy change, or its report shows the Portmaster not ready, interception off, problems or
 refused settings. Policy defaults a local admin overrode are shown, but are no reason for
-attention. The write actions follow in C3; until then changes are made with the command line.
+attention.
+
+Write actions (C3, role admin), with the same validation as the command line (shared in
+`mgmt/server`), each recorded in the audit log as `admin:NAME`:
+
+| Command line | UI |
+| --- | --- |
+| `group create` | Groups: "New group" |
+| `group set` (`--lock`, `--lock-all`) | Group: "Edit settings", settings export as text, locked keys one per line or "Lock all" |
+| `group profiles` (`--clear`) | Group: "Add a profile" (file or pasted; same name replaces), "Remove profile" per profile |
+| `group rules` (`--clear`) | Group: "Edit rules", one rule per line, `#` comments; empty clears |
+| `group delete` | Group: "Delete group" (only without computers) |
+| `token create` | Tokens: "New token"; shows the token and the enroll command with both fingerprints once |
+| `token revoke` | Tokens: "Revoke" on an unused token |
+| `computer move` | Computer: "Move to group" |
+| `computer revoke` | Computer: "Revoke computer" |
+
+Removing, revoking and deleting ask for confirmation. Accounts (`admin`), `init`,
+`fingerprints` and `audit` stay on the command line.
 
 ## Client commands
 

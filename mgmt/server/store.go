@@ -58,7 +58,8 @@ CREATE TABLE IF NOT EXISTS computers (
 	revoked      INTEGER NOT NULL DEFAULT 0,
 	applied_version INTEGER NOT NULL DEFAULT 0,
 	last_report  INTEGER NOT NULL DEFAULT 0,
-	report       TEXT NOT NULL DEFAULT ''
+	report       TEXT NOT NULL DEFAULT '',
+	moved        INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS admins (
 	name      TEXT PRIMARY KEY,
@@ -105,6 +106,7 @@ var migrations = []struct{ table, column, def string }{
 	{tableComputers, "applied_version", `INTEGER NOT NULL DEFAULT 0`},
 	{tableComputers, "last_report", `INTEGER NOT NULL DEFAULT 0`},
 	{tableComputers, "report", `TEXT NOT NULL DEFAULT ''`},
+	{tableComputers, "moved", `INTEGER NOT NULL DEFAULT 0`},
 }
 
 // Store holds the server state in SQLite. The admin commands and the
@@ -141,6 +143,8 @@ type Computer struct {
 	// AppliedVersion is the policy version in force according to the last report.
 	AppliedVersion uint64    `json:"appliedVersion,omitempty"`
 	LastReport     time.Time `json:"lastReport,omitzero"`
+	// Moved is the time the computer was moved to its group, zero if never.
+	Moved time.Time `json:"moved,omitzero"`
 	// Report is the last report of the computer, nil if none arrived yet.
 	Report *policy.Report `json:"report,omitempty"`
 }
@@ -219,9 +223,13 @@ func (s *Store) PolicySeq() (uint64, error) {
 
 // CreateGroup creates an empty group.
 func (s *Store) CreateGroup(name string, now time.Time) error {
+	err := CheckGroupName(name)
+	if err != nil {
+		return err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	_, err := s.group(name)
+	_, err = s.group(name)
 	if err == nil {
 		return fmt.Errorf("group %s: %w", name, ErrExists)
 	}
@@ -237,6 +245,11 @@ func (s *Store) SetGroupPolicy(name string, settings map[string]any, locked []st
 	}
 	if locked == nil {
 		locked = []string{}
+	}
+	for _, key := range locked {
+		if _, ok := settings[key]; !ok {
+			return fmt.Errorf("%s: %w", key, ErrLockNotSet)
+		}
 	}
 	settingsJSON, err := json.Marshal(settings)
 	if err != nil {
@@ -387,7 +400,7 @@ func (s *Store) Enroll(token string, c *Computer, now time.Time, issue func(id s
 	return s.bumpSeq()
 }
 
-const computerColumns = `id, grp, hostname, os, core_version, cert_fp, enrolled, last_seen, revoked, applied_version, last_report, report`
+const computerColumns = `id, grp, hostname, os, core_version, cert_fp, enrolled, last_seen, revoked, applied_version, last_report, report, moved`
 
 func scanComputer(stmt *sqlite.Stmt) *Computer {
 	c := &Computer{
@@ -407,6 +420,9 @@ func scanComputer(stmt *sqlite.Stmt) *Computer {
 	}
 	if reported := stmt.ColumnInt64(10); reported > 0 {
 		c.LastReport = time.Unix(reported, 0).UTC()
+	}
+	if moved := stmt.ColumnInt64(12); moved > 0 {
+		c.Moved = time.Unix(moved, 0).UTC()
 	}
 	if text := stmt.ColumnText(11); text != "" {
 		r := &policy.Report{}

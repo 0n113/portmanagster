@@ -2,7 +2,7 @@
 {{with .Data}}
 <p class="crumbs"><a href="/groups">Groups</a> /</p>
 <h1>{{.Name}}</h1>
-<p class="hint">Changed {{datetime .Updated}} ({{ago $.Now .Updated}}).</p>
+<p class="hint">Changed {{datetime .Updated}} ({{ago $.Now .Updated}}). Changes reach the computers of the group with their next pull (within about 5 minutes).</p>
 
 <h2>Settings</h2>
 {{if .Settings}}
@@ -19,6 +19,19 @@
 {{else}}
 <p class="empty">No settings.</p>
 {{end}}
+{{if $.CanWrite}}
+<details class="edit"{{if $.Error}} open{{end}}><summary>Edit settings</summary>
+<form method="post" action="/groups/{{.Name | pathEscape}}/settings">
+  <input type="hidden" name="csrf" value="{{$.CSRF}}">
+  <label>Settings (a settings export in YAML or JSON, as from <code>portmaster-core settings export</code>; replaces all settings)
+    <textarea name="settings" rows="12" spellcheck="false">{{.Form.Settings}}</textarea></label>
+  <label>Locked keys, one per line (others are defaults a local admin may override)
+    <textarea name="locked" rows="4" spellcheck="false">{{.Form.Locked}}</textarea></label>
+  <label class="check"><input type="checkbox" name="lockall" value="1"> Lock all keys of the settings</label>
+  <button type="submit" class="primary-inline">Save settings</button>
+</form>
+</details>
+{{end}}
 
 <h2>Endpoint rules</h2>
 {{with .Rules}}
@@ -28,14 +41,45 @@
 {{else}}
 <p class="empty">No rules.</p>
 {{end}}
+{{if $.CanWrite}}
+<details class="edit"{{if $.Error}} open{{end}}><summary>Edit rules</summary>
+<form method="post" action="/groups/{{.Name | pathEscape}}/rules">
+  <input type="hidden" name="csrf" value="{{$.CSRF}}">
+  <p class="hint">One rule per line, starting with <code>+ </code> (allow) or <code>- </code> (block), e.g. <code>- ads.example.com</code> or <code>- MAL</code>. Empty fields remove the rules.</p>
+  <label>Outgoing <textarea name="endpoints" rows="5" spellcheck="false">{{.Form.Endpoints}}</textarea></label>
+  <label>Incoming <textarea name="serviceEndpoints" rows="3" spellcheck="false">{{.Form.ServiceEndpoints}}</textarea></label>
+  <button type="submit" class="primary-inline">Save rules</button>
+</form>
+</details>
+{{end}}
 
 <h2>App profiles</h2>
 {{if .Profiles}}
 {{range .Profiles}}
-<details><summary>{{or .Name "(no name)"}} · {{.Settings}} setting(s)</summary><pre>{{prettyJSON .JSON}}</pre></details>
+<details><summary>{{or .Name "(no name)"}} · {{.Settings}} setting(s)</summary>
+<pre>{{prettyJSON .JSON}}</pre>
+{{if $.CanWrite}}
+<form method="post" action="/groups/{{$.Data.Name | pathEscape}}/profiles/remove" data-confirm="Remove the profile {{.Name}} from the group?">
+  <input type="hidden" name="csrf" value="{{$.CSRF}}">
+  <input type="hidden" name="profile" value="{{.Name}}">
+  <button type="submit" class="danger">Remove profile</button>
+</form>
+{{end}}
+</details>
 {{end}}
 {{else}}
 <p class="empty">No profiles.</p>
+{{end}}
+{{if $.CanWrite}}
+<details class="edit"><summary>Add a profile</summary>
+<form method="post" action="/groups/{{.Name | pathEscape}}/profiles" enctype="multipart/form-data">
+  <input type="hidden" name="csrf" value="{{$.CSRF}}">
+  <p class="hint">A profile export (YAML or JSON, from <code>portmaster-core profile export</code>); a profile with the same name is replaced.</p>
+  <label>File <input type="file" name="file" accept=".yaml,.yml,.json"></label>
+  <label>or paste it <textarea name="profile" rows="6" spellcheck="false"></textarea></label>
+  <button type="submit" class="primary-inline">Save profile</button>
+</form>
+</details>
 {{end}}
 
 <h2>Computers</h2>
@@ -56,6 +100,15 @@
 </table></div>
 {{else}}
 <p class="empty">No computer in this group.</p>
+{{end}}
+{{if $.CanWrite}}
+<p><a href="/tokens?group={{.Name | pathEscape}}">Create an enrollment token for this group</a></p>
+{{if not .Computers}}
+<form method="post" action="/groups/{{.Name | pathEscape}}/delete" data-confirm="Delete the group {{.Name}} and its unused tokens?">
+  <input type="hidden" name="csrf" value="{{$.CSRF}}">
+  <button type="submit" class="danger">Delete group</button>
+</form>
+{{end}}
 {{end}}
 {{end}}
 {{end}}

@@ -30,6 +30,9 @@ type page struct {
 	Data   any
 }
 
+// CanWrite tells whether the admin may change things; viewers see no forms.
+func (p *page) CanWrite() bool { return p.Admin != nil && p.Admin.Role == server.RoleAdmin }
+
 func parsePages() (map[string]*template.Template, error) {
 	pages := make(map[string]*template.Template)
 	for _, name := range []string{"login", "setup", "dashboard", "computers", "computer", "groups", "group", "tokens", "audit", "message"} {

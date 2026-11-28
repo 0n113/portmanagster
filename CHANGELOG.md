@@ -8,6 +8,13 @@ pre-releases carry a `-rcN` suffix.
 ## [Unreleased]
 
 ### Added
+- Write actions in the admin web UI of the management server (management phase C3): create
+  and delete groups, edit their settings (with locks), endpoint rules and app profiles, create
+  and revoke enrollment tokens (the UI shows the enroll command once; `serve --client-url`
+  sets the address in it), move and revoke computers; every change is in the audit log. New
+  commands `group delete`, `token list`, `token revoke` and `computer move`. Settings, profile
+  and rule files are checked by the same code in the command line and the UI; locked keys must
+  be in the settings. Moving a computer marks its policy as pending until its next report.
 - Read-only pages in the admin web UI of the management server (management phase C2):
   dashboard with the computers that need attention (silent, policy error, problems, refused
   settings) and the latest changes; computers with filters and a detail page with the last

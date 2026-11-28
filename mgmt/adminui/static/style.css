@@ -78,3 +78,16 @@ pre { overflow-x: auto; font-size: 13px; }
   .facts dd { margin-bottom: 8px; }
 }
 td:first-child, td.nowrap { white-space: nowrap; }
+textarea { display: block; width: 100%; margin-top: 4px; padding: 8px; font: 13px/1.45 ui-monospace, monospace; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; resize: vertical; }
+label.check { display: flex; gap: 8px; align-items: center; color: var(--fg); }
+label.check input { width: auto; margin: 0; }
+details.edit { margin-top: 10px; }
+details.edit form { margin-top: 8px; }
+button.primary-inline { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+button.danger { color: var(--err); border-color: var(--err); }
+button.danger-link { color: var(--err); }
+.actions { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; margin: 16px 0; }
+.actions form { margin: 0; }
+.new-token { margin-bottom: 20px; border-color: var(--ok); }
+pre.copy { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px; white-space: pre-wrap; word-break: break-all; }
+input[type="file"] { padding: 6px; }
