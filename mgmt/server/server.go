@@ -56,6 +56,16 @@ type Server struct {
 	PolicyPub string
 	Log       *slog.Logger
 	Now       func() time.Time
+	// Notify gets the raised and resolved alerts, e.g. Webhook.Notify; nil
+	// if there are no notifications.
+	Notify func([]AlertEvent)
+}
+
+// CheckSilent raises and resolves the silent alerts and notifies them.
+func (s *Server) CheckSilent() error {
+	events, err := s.Store.CheckSilent(s.Now())
+	s.notify(events)
+	return err
 }
 
 // Init creates the CA, the server certificate for hosts, the policy signing
@@ -259,6 +269,17 @@ func (s *Server) PolicyFor(c *Computer, now time.Time) ([]byte, error) {
 	}, s.PolicyKey)
 }
 
+// notify passes alert events to Notify and logs them.
+func (s *Server) notify(events []AlertEvent) {
+	for _, ev := range events {
+		s.Log.Info("alert "+ev.Event, "id", ev.Alert.ID, "computer", ev.Alert.Computer,
+			"hostname", ev.Alert.Hostname, "kind", ev.Alert.Kind, "level", ev.Alert.Level)
+	}
+	if s.Notify != nil && len(events) > 0 {
+		s.Notify(events)
+	}
+}
+
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -375,15 +396,16 @@ func (s *Server) handleReport(w http.ResponseWriter, r *http.Request) {
 	}
 	var report policy.Report
 	err = json.Unmarshal(body, &report)
-	if err != nil || report.Type != policy.TypeReport || CheckBlocks(report.Blocks) != nil {
+	if err != nil || report.Type != policy.TypeReport || CheckBlocks(report.Blocks) != nil || CheckApps(report.Apps) != nil {
 		writeError(w, http.StatusBadRequest, "invalid report")
 		return
 	}
-	if len(report.Blocks) > 0 {
-		// Keep block summaries only of groups that ask for them.
+	if len(report.Blocks) > 0 || len(report.Apps) > 0 {
+		// Keep block summaries and app lists only of groups that ask for
+		// them.
 		g, gerr := s.Store.Group(c.Group)
 		if gerr != nil || !g.BlockSummary {
-			report.Blocks = nil
+			report.Blocks, report.Apps = nil, nil
 		}
 	}
 	now := s.Now()
@@ -393,6 +415,11 @@ func (s *Server) handleReport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "cannot store report")
 		return
 	}
+	events, err := s.Store.EvaluateReport(c, &report, now)
+	if err != nil {
+		s.Log.Error("evaluate alerts", "id", c.ID, "err", err)
+	}
+	s.notify(events)
 	if len(report.Overridden) > 0 {
 		s.Log.Info("policy defaults overridden locally", "id", c.ID, "hostname", c.Hostname, "settings", report.Overridden)
 	}

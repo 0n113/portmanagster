@@ -28,9 +28,10 @@ var groupBlockSummaryCmd = &cobra.Command{
 	Long: `Turn the summary of blocked connections in the reports of a group on or off.
 
 When it is on, every report of the computers of the group counts the blocked
-connections per app, reason, filter list and domain (or IP). No allowed
-connections and no user names. The Portmaster app on the computers shows that
-the summary is sent.`,
+connections per app, reason, filter list and domain (or IP), and lists the apps
+with allowed connections (name and a hash of the path, for the new app alert).
+No single connections, no paths and no user names. The Portmaster app on the
+computers shows that the summary is sent.`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(_ *cobra.Command, args []string) error {
 		var on bool

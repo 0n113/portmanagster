@@ -92,3 +92,6 @@ button.danger-link { color: var(--err); }
 pre.copy { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px; white-space: pre-wrap; word-break: break-all; }
 input[type="file"] { padding: 6px; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.badge.critical { color: var(--err); border-color: var(--err); }
+.badge.warning, .badge.new { color: var(--warn); border-color: var(--warn); }
+.badge.info, .badge.acknowledged, .badge.resolved { color: var(--muted); }

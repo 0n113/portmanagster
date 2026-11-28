@@ -1,0 +1,40 @@
+{{define "content"}}
+<h1>Alerts</h1>
+<p class="hint">Raised from the reports and block summaries of the computers and by the silent check every
+5 minutes. Condition alerts (silent, interception, problems, refused, error, overridden) are resolved when the
+condition ends; malware and new app alerts are done when acknowledged.</p>
+{{with .Data}}
+<form class="filters" method="get" action="/alerts">
+  <label>State
+    <select name="state">{{range .States}}<option value="{{.}}"{{if eq . $.Data.Filter.State}} selected{{end}}>{{.}}</option>{{end}}</select>
+  </label>
+  <label>Level
+    <select name="level"><option value="">All levels</option>
+      {{range .Levels}}<option value="{{.}}"{{if eq . $.Data.Filter.MinLevel}} selected{{end}}>{{.}} and above</option>{{end}}
+    </select>
+  </label>
+  <label>Kind
+    <select name="kind"><option value="">All kinds</option>
+      {{range .Kinds}}<option value="{{.}}"{{if eq . $.Data.Filter.Kind}} selected{{end}}>{{.}}</option>{{end}}
+    </select>
+  </label>
+  <label>Group
+    <select name="group"><option value="">All groups</option>
+      {{range .Groups}}<option value="{{.}}"{{if eq . $.Data.Filter.Group}} selected{{end}}>{{.}}</option>{{end}}
+    </select>
+  </label>
+  <label>Computer
+    <select name="computer"><option value="">All computers</option>
+      {{range .Computers}}<option value="{{.ID}}"{{if eq .ID $.Data.Filter.Computer}} selected{{end}}>{{or .Hostname .ID}}</option>{{end}}
+    </select>
+  </label>
+  <button type="submit">Show</button>
+</form>
+{{if .Alerts}}
+{{template "alerttable" (alertTable $ .Alerts .Back)}}
+{{if .More}}<p class="hint">Only the {{.Filter.Limit}} last changed are shown; narrow the filter to see more.</p>{{end}}
+{{else}}
+<p class="empty">No alerts match.</p>
+{{end}}
+{{end}}
+{{end}}

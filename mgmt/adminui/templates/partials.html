@@ -16,3 +16,36 @@
   </tbody>
 </table></div>
 {{end}}
+
+{{define "alerttable"}}
+<div class="table-wrap"><table>
+  <thead><tr><th>Level</th><th>Computer</th><th>Alert</th><th>Count</th><th>Last</th><th>State</th>{{if .Page.CanWrite}}<th></th>{{end}}</tr></thead>
+  <tbody>
+  {{range .Alerts}}
+  <tr>
+    <td><span class="badge {{.Level}}">{{.Level}}</span></td>
+    <td><a href="/computers/{{.Computer | pathEscape}}">{{or .Hostname .Computer}}</a><br><span class="hint">{{.Group}}</span></td>
+    <td>{{.Message}}</td>
+    <td class="num">{{.Count}}</td>
+    <td class="nowrap" title="first {{datetime .First}}, last {{datetime .Last}}">{{ago $.Page.Now .Last}}</td>
+    <td class="nowrap"><span class="badge {{.State}}">{{.State}}</span>{{if .AckedBy}}<br><span class="hint" title="{{datetime .AckedAt}}">{{.AckedBy}}</span>{{end}}</td>
+    {{if $.Page.CanWrite}}<td>{{if eq .State "new"}}
+      <form method="post" action="/alerts/ack">
+        <input type="hidden" name="csrf" value="{{$.Page.CSRF}}">
+        <input type="hidden" name="back" value="{{$.Back}}">
+        <input type="hidden" name="id" value="{{.ID}}">
+        <button type="submit">Acknowledge</button>
+      </form>{{end}}</td>{{end}}
+  </tr>
+  {{end}}
+  </tbody>
+</table></div>
+{{if and .Page.CanWrite (gt (len .NewIDs) 1)}}
+<form method="post" action="/alerts/ack">
+  <input type="hidden" name="csrf" value="{{.Page.CSRF}}">
+  <input type="hidden" name="back" value="{{.Back}}">
+  {{range .NewIDs}}<input type="hidden" name="id" value="{{.}}">{{end}}
+  <button type="submit">Acknowledge all {{len .NewIDs}} new alerts shown</button>
+</form>
+{{end}}
+{{end}}

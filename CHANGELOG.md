@@ -8,6 +8,14 @@ pre-releases carry a `-rcN` suffix.
 ## [Unreleased]
 
 ### Added
+- Alerts on the management server (management phase C5): silent computers (threshold per group,
+  `group silent-after`, default 24h), interception off, Portmaster problems, refused settings,
+  policy errors, locally changed defaults, hits on malware lists (`MAL`) and new apps with
+  network access (from an app list sent with the block summary: name and a hash of the path).
+  Shown on the dashboard, a new page "Alerts" and the computer and group pages, acknowledged
+  there or with `alert ack` (audited), listed with `portmanagster-server alerts`. With
+  `serve --alert-webhook URL` every raised and resolved alert is posted as JSON (with a
+  one-line `text` for chat tools); `alert test-webhook URL` tests the receiver.
 - Summaries of blocked connections for the management server (management phase C4), off by
   default and turned on per group (`group block-summary NAME on`, or in the UI): every report
   counts the blocked connections per app, reason, filter list and domain or IP (at most 200

@@ -4,10 +4,11 @@ Status: phase A done: the server side of enrollment and policies (A1, see
 [Server commands](#server-commands)) and the client module in portmaster-core (A2, see
 [Client commands](#client-commands)), profiles per group and reports (A3), and the VM tests
 on Linux and Windows (A4, step "Management" of the smoke tests). Phase B done (policy layer,
-see [Phase B plan](#phase-b-plan)). Phase C in progress (see [Phase C plan](#phase-c-plan)): C1
-to C4 done, the admin web UI with accounts, login, audit log, all pages and the write actions
-of the command line (see [Admin web UI](#admin-web-ui)), and the opt-in summaries of blocked
-connections (see [Block summaries](#block-summaries)).
+see [Phase B plan](#phase-b-plan)). Phase C done (see [Phase C plan](#phase-c-plan)): the admin web UI
+with accounts, login, audit log, all pages and the write actions of the command line (see
+[Admin web UI](#admin-web-ui)), the opt-in summaries of blocked connections (see
+[Block summaries](#block-summaries)), and alerts with a webhook (see
+[Alerts and webhook](#alerts-and-webhook)).
 This document fixes the architecture and the order of work; details of each phase are settled
 in its PR.
 
@@ -146,6 +147,7 @@ portmanagster-server group set office office-settings.yaml --lock filter/lists
 portmanagster-server group list
 portmanagster-server group delete office    # only without computers; deletes its unused tokens
 portmanagster-server group block-summary office on   # opt-in, see "Block summaries"
+portmanagster-server group silent-after office 2h    # silent alert after 2h without contact (default 24h, 0 = off)
 
 # App profiles of a group (profile exports from `portmaster-core profile export`), e.g. the
 # backup agent rules from integrations/backup-agents; replaces the previous ones.
@@ -170,6 +172,12 @@ portmanagster-server computer show <id>     # last report as JSON
 portmanagster-server computer move <id> lab # gets the policy of the new group with its next pull
 portmanagster-server computer revoke <id>
 portmanagster-server blocks [--group office] [--computer <id>] [--app NAME] [--list MAL] [--target DOMAIN] [--since 24h]
+
+# Alerts (see "Alerts and webhook").
+portmanagster-server serve --alert-webhook https://hooks.example.lan/portmanagster/<secret> [--alert-webhook-level warning]
+portmanagster-server alerts [--state open|new|acknowledged|resolved|all] [--level warning] [--kind malware] [--group office]
+portmanagster-server alert ack 12 13        # audited
+portmanagster-server alert test-webhook https://hooks.example.lan/portmanagster/<secret>
 
 # Accounts of the admin web UI and the audit log (see "Admin web UI").
 portmanagster-server admin add alice [--role admin|viewer] [--url https://pm.example.lan:8444]
@@ -316,6 +324,61 @@ Reports are limited to 512 KiB and 200 entries. The UI shows the largest blocks 
 hours on the computer and group pages and all of them on the page "Blocks", filtered by group,
 computer, app, list, domain or IP and period; `portmanagster-server blocks` shows the same on
 the command line. The Portmaster app on the computers shows that the summary is sent.
+
+With the summary the client also sends the apps that had allowed connections in the same time
+(at most 200): the profile name and the first 32 hex characters of the SHA-256 of the
+executable path, no path. The server keeps them per computer for the new app alert; they are
+not part of the stored report.
+
+### Alerts and webhook
+
+The server raises alerts from the reports, the block summaries and a check of the last contact
+every 5 minutes:
+
+| Kind | Level | Raised when | Ends |
+|---|---|---|---|
+| `silent` | warning | no contact for the threshold of the group (`group silent-after`, default 24h, 0 = off) | resolved at the next contact |
+| `interception` | critical | the report says the network interception is off | resolved when it is on again |
+| `problems` | warning | the core is not ready or reports module problems | resolved when they are gone |
+| `refused` | warning | the client refused policy settings | resolved when none are refused |
+| `error` | warning | the client could not pull or apply the policy | resolved after a good pull |
+| `overridden` | info | a local admin changed a policy default | resolved when the defaults are back |
+| `malware` | critical | a block summary entry has the list category `MAL`; one alert per app and target, counting the blocked connections | acknowledged by an admin |
+| `new-app` | info | an app not seen before on the computer had allowed connections (needs the block summary; no alerts in the first 24 hours after the first app list, which only holds the apps that happened to be used) | acknowledged by an admin |
+
+Alerts are `new`, `acknowledged` or `resolved`. A condition alert keeps one open alert per
+computer and kind and updates its message and time; acknowledging it hides it from the "new"
+count but it stays open until the condition ends. A malware hit after the alert was
+acknowledged raises a new one. Acknowledging is audited (`alert.ack`). Resolved alerts and
+acknowledged malware and new app alerts are deleted after `serve --alert-retention` (default
+2160h, 90 days). Revoked computers get their condition alerts resolved.
+
+The dashboard shows the number of new and critical alerts and the latest open ones; the page
+"Alerts" lists them with filters (state, level and above, kind, group, computer) and buttons to
+acknowledge; the computer and group pages show their open alerts; the group page sets the
+silent threshold. `portmanagster-server alerts` and `alert ack` do the same on the command
+line.
+
+With `serve --alert-webhook URL` the server posts every raised and resolved alert as JSON,
+from `--alert-webhook-level` up (info, warning or critical; default info):
+
+```json
+{
+  "event": "raised",
+  "text": "[critical] pc-17 (office): Firefox: connection to evil.example blocked by a malware list (MAL,UHB)",
+  "alert": {"id": 12, "computer": "<id>", "hostname": "pc-17", "group": "office", "kind": "malware",
+            "subject": "Firefox evil.example", "level": "critical", "message": "…",
+            "first": "2026-11-28T10:00:00Z", "last": "2026-11-28T10:05:00Z", "count": 3, "state": "new"},
+  "time": "2026-11-28T10:05:00Z"
+}
+```
+
+`event` is `raised` or `resolved`; `text` is a one-line summary for chat tools (Matrix, Slack
+and Mattermost incoming webhooks show the `text` field). A delivery that fails (no 2xx answer
+within 10 seconds) is tried again after 5 seconds, 30 seconds and 2 minutes, then logged and
+dropped. There is no header option: put a secret into the URL path or query if the receiver
+needs one; the server logs only the host of the URL. `alert test-webhook URL` sends a test
+alert.
 
 ## Phases
 
@@ -531,8 +594,9 @@ C5 after C4.
 
 ## Privacy
 
-Default report: version, health, policy state. Blocked-connection summaries and connection
-lines are opt-in per group and documented, so works councils and GDPR reviews can see what is
+Default report: version, health, policy state. Blocked-connection summaries (with the names
+and path hashes of the apps that used the network) and connection lines are opt-in per group
+and documented, so works councils and GDPR reviews can see what is
 collected. No data leaves the self-hosted server.
 
 ## Open questions
