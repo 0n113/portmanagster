@@ -130,8 +130,8 @@ func newComputerRow(c *server.Computer, g *server.Group, now time.Time) *compute
 		row.Attention = append(row.Attention, "no report yet")
 	case server.PolicyPending:
 		// The next pull brings the change; only a long wait is a problem.
-		if g != nil && now.Sub(g.Updated) > server.SilentAfter {
-			row.Attention = append(row.Attention, "policy change not applied since "+ago(now, g.Updated))
+		if g != nil && now.Sub(server.PolicyChanged(c, g)) > server.SilentAfter {
+			row.Attention = append(row.Attention, "policy change not applied since "+ago(now, server.PolicyChanged(c, g)))
 		}
 	}
 	// Overridden defaults are allowed and only shown in the health.
@@ -186,7 +186,7 @@ func (ui *UI) notFound(w http.ResponseWriter, r *http.Request, nav, msg string) 
 
 func (ui *UI) sessionPage(r *http.Request, title, nav string, data any) *page {
 	sess := ui.currentSession(r)
-	return &page{Title: title, Nav: nav, Admin: sess.Admin, CSRF: sess.CSRF, Data: data}
+	return &page{Title: title, Nav: nav, Admin: sess.Admin, CSRF: sess.CSRF, Data: data, Notice: notices[r.URL.Query().Get("msg")]}
 }
 
 // --- Dashboard ---
@@ -298,7 +298,8 @@ func (ui *UI) handleComputers(w http.ResponseWriter, r *http.Request) {
 type computerData struct {
 	*computerRow
 
-	Status *server.CoreStatus
+	Status      *server.CoreStatus
+	OtherGroups []string
 }
 
 func (ui *UI) handleComputer(w http.ResponseWriter, r *http.Request) {
@@ -317,6 +318,16 @@ func (ui *UI) handleComputer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := &computerData{computerRow: newComputerRow(c, g, ui.now()), Status: server.ReportStatus(c)}
+	groups, err := ui.store.Groups()
+	if err != nil {
+		ui.internalError(w, "computer", err)
+		return
+	}
+	for _, other := range groups {
+		if other.Name != c.Group {
+			data.OtherGroups = append(data.OtherGroups, other.Name)
+		}
+	}
 	title := c.Hostname
 	if title == "" {
 		title = c.ID
@@ -333,6 +344,16 @@ type groupRow struct {
 }
 
 func (ui *UI) handleGroups(w http.ResponseWriter, r *http.Request) {
+	ui.renderGroups(w, r, http.StatusOK, "", "")
+}
+
+type groupsData struct {
+	Groups []*groupRow
+	// NewName is the submitted name after a failed create.
+	NewName string
+}
+
+func (ui *UI) renderGroups(w http.ResponseWriter, r *http.Request, status int, errMsg, newName string) {
 	rows, groups, err := ui.loadComputers()
 	if err != nil {
 		ui.internalError(w, "groups", err)
@@ -349,7 +370,9 @@ func (ui *UI) handleGroups(w http.ResponseWriter, r *http.Request) {
 		list = append(list, &groupRow{Group: g, Computers: count[g.Name]})
 	}
 	slices.SortFunc(list, func(a, b *groupRow) int { return strings.Compare(a.Name, b.Name) })
-	ui.render(w, http.StatusOK, "groups", ui.sessionPage(r, navGroups, navGroups, list))
+	p := ui.sessionPage(r, navGroups, navGroups, &groupsData{Groups: list, NewName: newName})
+	p.Error = errMsg
+	ui.render(w, status, "groups", p)
 }
 
 type settingRow struct {
@@ -367,12 +390,20 @@ type profileRow struct {
 type groupData struct {
 	*server.Group
 
-	Settings  []settingRow
-	Profiles  []profileRow
-	Computers []*computerRow
+	Form        *groupForm
+	OtherGroups []string
+	Settings    []settingRow
+	Profiles    []profileRow
+	Computers   []*computerRow
 }
 
 func (ui *UI) handleGroup(w http.ResponseWriter, r *http.Request) {
+	ui.renderGroup(w, r, http.StatusOK, "", nil)
+}
+
+// renderGroup shows the group of the path; with an error it shows the
+// message and the submitted form instead of the stored values.
+func (ui *UI) renderGroup(w http.ResponseWriter, r *http.Request, status int, errMsg string, form *groupForm) {
 	g, err := ui.store.Group(r.PathValue("name"))
 	if errors.Is(err, server.ErrNotFound) {
 		ui.notFound(w, r, navGroups, "There is no group with this name.")
@@ -382,7 +413,14 @@ func (ui *UI) handleGroup(w http.ResponseWriter, r *http.Request) {
 		ui.internalError(w, "group", err)
 		return
 	}
-	data := &groupData{Group: g}
+	if form == nil {
+		form, err = newGroupForm(g)
+		if err != nil {
+			ui.internalError(w, "group", err)
+			return
+		}
+	}
+	data := &groupData{Group: g, Form: form}
 	for key, value := range g.Settings {
 		data.Settings = append(data.Settings, settingRow{Key: key, Value: value, Locked: slices.Contains(g.Locked, key)})
 	}
@@ -405,7 +443,19 @@ func (ui *UI) handleGroup(w http.ResponseWriter, r *http.Request) {
 			data.Computers = append(data.Computers, row)
 		}
 	}
-	ui.render(w, http.StatusOK, "group", ui.sessionPage(r, "Group "+g.Name, navGroups, data))
+	groups, err := ui.store.Groups()
+	if err != nil {
+		ui.internalError(w, "group", err)
+		return
+	}
+	for _, other := range groups {
+		if other.Name != g.Name {
+			data.OtherGroups = append(data.OtherGroups, other.Name)
+		}
+	}
+	p := ui.sessionPage(r, "Group "+g.Name, navGroups, data)
+	p.Error = errMsg
+	ui.render(w, status, "group", p)
 }
 
 // --- Tokens ---
@@ -417,17 +467,45 @@ type tokenRow struct {
 }
 
 func (ui *UI) handleTokens(w http.ResponseWriter, r *http.Request) {
+	ui.renderTokens(w, r, http.StatusOK, "", nil)
+}
+
+type tokensData struct {
+	Tokens    []*tokenRow
+	Groups    []string
+	New       *newToken
+	ClientURL string
+	// Selected is the group preselected in the form.
+	Selected string
+}
+
+func (ui *UI) renderTokens(w http.ResponseWriter, r *http.Request, status int, errMsg string, created *newToken) {
 	tokens, err := ui.store.Tokens()
 	if err != nil {
 		ui.internalError(w, "tokens", err)
 		return
 	}
-	now := ui.now()
-	rows := make([]*tokenRow, 0, len(tokens))
-	for _, t := range tokens {
-		rows = append(rows, &tokenRow{Token: t, Status: t.Status(now)})
+	groups, err := ui.store.Groups()
+	if err != nil {
+		ui.internalError(w, "tokens", err)
+		return
 	}
-	ui.render(w, http.StatusOK, "tokens", ui.sessionPage(r, navTokens, navTokens, rows))
+	now := ui.now()
+	data := &tokensData{New: created, ClientURL: ui.cfg.ClientURL, Selected: r.URL.Query().Get("group")}
+	if created != nil {
+		data.Selected = created.Group
+	} else if g := r.PostFormValue("group"); g != "" {
+		data.Selected = g
+	}
+	for _, t := range tokens {
+		data.Tokens = append(data.Tokens, &tokenRow{Token: t, Status: t.Status(now)})
+	}
+	for _, g := range groups {
+		data.Groups = append(data.Groups, g.Name)
+	}
+	p := ui.sessionPage(r, navTokens, navTokens, data)
+	p.Error = errMsg
+	ui.render(w, status, "tokens", p)
 }
 
 // --- Audit log ---

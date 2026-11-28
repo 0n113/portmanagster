@@ -10,18 +10,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"os"
 	"os/signal"
-	"slices"
-	"sort"
-	"strings"
 	"syscall"
 	"text/tabwriter"
 	"time"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 
 	"github.com/safing/portmaster/mgmt/adminui"
 	"github.com/safing/portmaster/mgmt/policy"
@@ -41,11 +36,8 @@ var (
 	clearProfs bool
 	clearRules bool
 
-	errNoConfig     = errors.New("the file has no config section")
-	errNoProfile    = errors.New("the file is not a profile export (type: profile, name)")
 	errProfileFiles = errors.New("give profile files or --clear")
 	errRulesFile    = errors.New("give a rules file or --clear")
-	errRuleFormat   = errors.New(`a rule must start with "+ " (allow) or "- " (block)`)
 )
 
 var rootCmd = &cobra.Command{
@@ -86,7 +78,14 @@ var serveCmd = &cobra.Command{
 		if adminListen == "" {
 			return s.Serve(ctx, listenAddr)
 		}
-		ui, err := adminui.New(adminui.Config{Store: s.Store, URL: adminURL, Logger: logger.With("part", "admin-ui")})
+		certFP, keyFP, err := s.Fingerprints()
+		if err != nil {
+			return err
+		}
+		ui, err := adminui.New(adminui.Config{
+			Store: s.Store, URL: adminURL, Logger: logger.With("part", "admin-ui"),
+			ClientURL: clientURL, ServerFP: certFP, PolicyKeyFP: keyFP,
+		})
 		if err != nil {
 			return err
 		}
@@ -138,11 +137,7 @@ var groupSetCmd = &cobra.Command{
 		}
 		locked := lockKeys
 		if lockAll {
-			locked = make([]string, 0, len(settings))
-			for k := range settings {
-				locked = append(locked, k)
-			}
-			sort.Strings(locked)
+			locked = server.SortedKeys(settings)
 		}
 		detail := fmt.Sprintf("%d settings, %d locked", len(settings), len(locked))
 		return audited("group.set", args[0], detail, func(s *server.Store) error {
@@ -200,6 +195,17 @@ var groupRulesCmd = &cobra.Command{
 	},
 }
 
+var groupDeleteCmd = &cobra.Command{
+	Use:   "delete NAME",
+	Short: "Delete a group without computers, with its unused tokens",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(_ *cobra.Command, args []string) error {
+		return audited("group.delete", args[0], "", func(s *server.Store) error {
+			return s.DeleteGroup(args[0])
+		})
+	},
+}
+
 var groupListCmd = &cobra.Command{
 	Use:   useList,
 	Short: "List the groups with their settings as JSON",
@@ -247,7 +253,55 @@ var tokenCreateCmd = &cobra.Command{
 	},
 }
 
-var computerCmd = &cobra.Command{Use: "computer", Short: "List, show and revoke computers"}
+var tokenListCmd = &cobra.Command{
+	Use:   useList,
+	Short: "List the enrollment tokens (ID, group, expiry, state)",
+	Args:  cobra.NoArgs,
+	RunE: func(_ *cobra.Command, _ []string) error {
+		return withStore(func(s *server.Store) error {
+			list, err := s.Tokens()
+			if err != nil {
+				return err
+			}
+			now := time.Now()
+			w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+			_, _ = fmt.Fprintln(w, "ID\tGROUP\tCREATED (UTC)\tEXPIRES (UTC)\tSTATE")
+			for _, t := range list {
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", t.ID, t.Group,
+					t.Created.UTC().Format(time.DateTime), t.Expires.UTC().Format(time.DateTime), t.Status(now))
+			}
+			return w.Flush()
+		})
+	},
+}
+
+var tokenRevokeCmd = &cobra.Command{
+	Use:   "revoke ID",
+	Short: "Delete an unused enrollment token (ID from token list)",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(_ *cobra.Command, args []string) error {
+		return withStore(func(s *server.Store) error {
+			group, err := s.RevokeToken(args[0])
+			if err != nil {
+				return err
+			}
+			return s.Audit(cliActor, "token.revoke", group, "token "+args[0], time.Now())
+		})
+	},
+}
+
+var computerCmd = &cobra.Command{Use: "computer", Short: "List, show, move and revoke computers"}
+
+var computerMoveCmd = &cobra.Command{
+	Use:   "move ID GROUP",
+	Short: "Move a computer to another group; its next pull brings the new policy",
+	Args:  cobra.ExactArgs(2),
+	RunE: func(_ *cobra.Command, args []string) error {
+		return audited("computer.move", args[0], "to "+args[1], func(s *server.Store) error {
+			return s.MoveComputer(args[0], args[1], time.Now())
+		})
+	},
+}
 
 var computerListCmd = &cobra.Command{
 	Use:   useList,
@@ -327,9 +381,9 @@ func init() {
 	tokenCreateCmd.Flags().DurationVar(&tokenValid, "valid", 24*time.Hour, "validity of the token")
 	tokenCreateCmd.Flags().StringVar(&serverURL, "url", "https://<server>:8443", "server URL for the printed enroll command")
 
-	groupCmd.AddCommand(groupCreateCmd, groupSetCmd, groupProfilesCmd, groupRulesCmd, groupListCmd)
-	tokenCmd.AddCommand(tokenCreateCmd)
-	computerCmd.AddCommand(computerListCmd, computerShowCmd, computerRevokeCmd)
+	groupCmd.AddCommand(groupCreateCmd, groupSetCmd, groupProfilesCmd, groupRulesCmd, groupListCmd, groupDeleteCmd)
+	tokenCmd.AddCommand(tokenCreateCmd, tokenListCmd, tokenRevokeCmd)
+	computerCmd.AddCommand(computerListCmd, computerShowCmd, computerMoveCmd, computerRevokeCmd)
 	rootCmd.AddCommand(initCmd, serveCmd, fingerprintsCmd, groupCmd, tokenCmd, computerCmd)
 }
 
@@ -377,35 +431,11 @@ func readSettingsFile(path string) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	var export struct {
-		Config map[string]any `json:"config" yaml:"config"`
-	}
-	// YAML is a superset of JSON.
-	err = yaml.Unmarshal(data, &export)
+	settings, err := server.ParseSettings(data)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	if export.Config == nil {
-		return nil, fmt.Errorf("%s: %w", path, errNoConfig)
-	}
-	return flatten(export.Config, ""), nil
-}
-
-// flatten turns nested maps into slash-joined keys; lists are values.
-func flatten(m map[string]any, prefix string) map[string]any {
-	out := make(map[string]any)
-	for k, v := range m {
-		key := k
-		if prefix != "" {
-			key = prefix + "/" + k
-		}
-		if sub, ok := v.(map[string]any); ok && !strings.Contains(k, "/") {
-			maps.Copy(out, flatten(sub, key))
-			continue
-		}
-		out[key] = v
-	}
-	return out
+	return settings, nil
 }
 
 // readProfileFile reads a profile export (YAML or JSON) and returns it as
@@ -415,22 +445,11 @@ func readProfileFile(path string) (json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	var export map[string]any
-	// YAML is a superset of JSON.
-	err = yaml.Unmarshal(data, &export)
+	profile, err := server.ParseProfile(data)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	if export["type"] != "profile" || export["name"] == nil || export["name"] == "" {
-		return nil, fmt.Errorf("%s: %w", path, errNoProfile)
-	}
-	// The checksum of a JSON export does not match the re-encoded JSON.
-	delete(export, "_jess-checksum")
-	out, err := json.Marshal(export)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
-	}
-	return out, nil
+	return profile, nil
 }
 
 // readRulesFile reads endpoint rules (YAML or JSON) and checks their form;
@@ -440,19 +459,9 @@ func readRulesFile(path string) (*policy.Rules, error) {
 	if err != nil {
 		return nil, err
 	}
-	rules := &policy.Rules{}
-	// YAML is a superset of JSON.
-	err = yaml.Unmarshal(data, rules)
+	rules, err := server.ParseRules(data)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
-	}
-	for _, rule := range append(slices.Clone(rules.Endpoints), rules.ServiceEndpoints...) {
-		if !strings.HasPrefix(rule, "+ ") && !strings.HasPrefix(rule, "- ") {
-			return nil, fmt.Errorf("%s: %q: %w", path, rule, errRuleFormat)
-		}
-	}
-	if rules.Empty() {
-		return nil, nil //nolint:nilnil // No rules.
 	}
 	return rules, nil
 }

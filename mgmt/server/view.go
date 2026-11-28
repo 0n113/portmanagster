@@ -73,11 +73,20 @@ func PolicyState(c *Computer, g *Group) string {
 		return PolicyNoReport
 	case c.Report.Error != "":
 		return PolicyError
-	case g != nil && !c.LastReport.After(g.Updated):
+	case g != nil && !c.LastReport.After(PolicyChanged(c, g)):
 		return PolicyPending
 	default:
 		return PolicyCurrent
 	}
+}
+
+// PolicyChanged is the last time the policy of the computer changed: the
+// last change of its group or its move into the group.
+func PolicyChanged(c *Computer, g *Group) time.Time {
+	if c.Moved.After(g.Updated) {
+		return c.Moved
+	}
+	return g.Updated
 }
 
 // Silent tells whether an active computer has not contacted the server for

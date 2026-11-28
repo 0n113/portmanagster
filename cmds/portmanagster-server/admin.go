@@ -28,6 +28,7 @@ var (
 	adminListen string
 	adminCert   string
 	adminKey    string
+	clientURL   string
 )
 
 var adminCmd = &cobra.Command{Use: "admin", Short: "Manage the accounts of the admin web UI"}
@@ -145,6 +146,7 @@ func init() {
 	serveCmd.Flags().StringVar(&adminURL, "admin-url", "http://localhost:8444", "URL under which admins open the admin UI; passkeys are bound to its host")
 	serveCmd.Flags().StringVar(&adminCert, "admin-cert", "", "TLS certificate of the admin UI (PEM; without it the UI uses plain HTTP)")
 	serveCmd.Flags().StringVar(&adminKey, "admin-key", "", "TLS key of the admin UI (PEM)")
+	serveCmd.Flags().StringVar(&clientURL, "client-url", "", "URL of the client API for enroll commands shown by the admin UI, e.g. https://pm.example.lan:8443")
 
 	adminCmd.AddCommand(adminAddCmd, adminListCmd, adminRemoveCmd, adminResetCmd)
 	rootCmd.AddCommand(adminCmd, auditCmd)

@@ -15,6 +15,24 @@
   <dt>Certificate</dt><dd><code class="wrap">{{.CertFP}}</code></dd>
 </dl>
 
+{{if and $.CanWrite (not .Revoked)}}
+<div class="actions">
+  {{if .OtherGroups}}
+  <form class="filters" method="post" action="/computers/{{.ID | pathEscape}}/move">
+    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+    <label>Move to group
+      <select name="group">{{range .OtherGroups}}<option value="{{.}}">{{.}}</option>{{end}}</select>
+    </label>
+    <button type="submit">Move</button>
+  </form>
+  {{end}}
+  <form method="post" action="/computers/{{.ID | pathEscape}}/revoke" data-confirm="Revoke {{or .Hostname .ID}}? The server rejects its certificate from then on; to manage it again it must enroll anew.">
+    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+    <button type="submit" class="danger">Revoke computer</button>
+  </form>
+</div>
+{{end}}
+
 {{with .Report}}
 {{if .Error}}<h2>Policy error</h2><p class="msg error">{{.Error}}</p>{{end}}
 <h2>Policy defaults changed locally</h2>
