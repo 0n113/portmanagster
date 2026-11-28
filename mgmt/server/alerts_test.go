@@ -139,6 +139,26 @@ func TestConditionAlerts(t *testing.T) {
 	}
 }
 
+func TestProblemLevels(t *testing.T) {
+	t.Parallel()
+	now := time.Unix(1_800_000_000, 0).UTC()
+	s, c := alertStore(t, now)
+	warnOnly := json.RawMessage(`{"ready":true,"interception":true,"problems":[{"type":"warning","message":"lists downloading"}]}`)
+	events, err := s.EvaluateReport(c, &policy.Report{Type: policy.TypeReport, Status: warnOnly}, now)
+	if err != nil || len(events) != 1 || events[0].Alert.Level != LevelInfo {
+		t.Fatalf("warning only: %+v %v", events, err)
+	}
+	// An error raises the level of the open alert.
+	_, err = s.EvaluateReport(c, &policy.Report{Type: policy.TypeReport, Status: statusJSON(true, true, "error")}, now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	open, _ := s.Alerts(AlertFilter{Kind: AlertProblems})
+	if len(open) != 1 || open[0].Level != LevelWarning || !strings.Contains(open[0].Message, "error: broken") {
+		t.Fatalf("error: %+v", open)
+	}
+}
+
 func TestMalwareAlerts(t *testing.T) {
 	t.Parallel()
 	now := time.Unix(1_800_000_000, 0).UTC()

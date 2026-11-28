@@ -339,7 +339,7 @@ every 5 minutes:
 |---|---|---|---|
 | `silent` | warning | no contact for the threshold of the group (`group silent-after`, default 24h, 0 = off) | resolved at the next contact |
 | `interception` | critical | the report says the network interception is off | resolved when it is on again |
-| `problems` | warning | the core is not ready or reports module problems | resolved when they are gone |
+| `problems` | warning, info for module warnings only | the core is not ready or reports module errors or warnings (e.g. while the filter lists are downloaded after the start) | resolved when they are gone |
 | `refused` | warning | the client refused policy settings | resolved when none are refused |
 | `error` | warning | the client could not pull or apply the policy | resolved after a good pull |
 | `overridden` | info | a local admin changed a policy default | resolved when the defaults are back |

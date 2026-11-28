@@ -271,12 +271,20 @@ func (s *Store) EvaluateReport(c *Computer, r *policy.Report, now time.Time) (ev
 	if err != nil {
 		return nil, err
 	}
+	// Errors and a core that is not ready are warnings; module warnings
+	// alone, e.g. while the filter lists are downloaded after the start,
+	// are info.
 	var problems []string
+	problemLevel := LevelInfo
 	if st != nil {
 		if !st.Ready {
 			problems = append(problems, "not ready")
+			problemLevel = LevelWarning
 		}
 		for _, p := range st.Problems {
+			if p.Type != "warning" {
+				problemLevel = LevelWarning
+			}
 			if p.Message != "" {
 				problems = append(problems, p.Type+": "+p.Message)
 			} else {
@@ -284,7 +292,7 @@ func (s *Store) EvaluateReport(c *Computer, r *policy.Report, now time.Time) (ev
 			}
 		}
 	}
-	events, err = s.condition(events, len(problems) > 0, c.ID, AlertProblems, LevelWarning,
+	events, err = s.condition(events, len(problems) > 0, c.ID, AlertProblems, problemLevel,
 		"Portmaster problems: "+strings.Join(problems, "; "), now)
 	if err != nil {
 		return nil, err
