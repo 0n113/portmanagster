@@ -43,6 +43,9 @@ start_qemu() {
 		-name portmaster-vmtest-windows \
 		-machine q35,smm=on,accel=kvm \
 		-cpu host -smp "$WINDOWS_CPUS" -m "$WINDOWS_MEM" \
+		`# Windows reads the hardware clock as local time; in UTC it is off` \
+		`# by the time zone offset, and certificates of the host look invalid.` \
+		-rtc base=localtime \
 		-global driver=cfi.pflash01,property=secure,value=on \
 		-drive "if=pflash,format=raw,unit=0,readonly=on,file=$OVMF_DIR/OVMF_CODE.secboot.fd" \
 		-drive "if=pflash,format=raw,unit=1,file=$VARS" \
