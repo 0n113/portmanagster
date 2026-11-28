@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/safing/jess"
+
+	"github.com/safing/portmaster/mgmt/policy"
 )
 
 // Files in the state directory <data>/managed.
@@ -34,6 +36,10 @@ var (
 
 // State is the enrollment state of this computer.
 type State struct {
+	// Pins are the pinned offline key and the versions of the applied
+	// offline-signed group policies.
+	policy.Pins
+
 	Server     string    `json:"server"`
 	ComputerID string    `json:"computerId"`
 	Enrolled   time.Time `json:"enrolled"`

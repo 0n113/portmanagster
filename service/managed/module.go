@@ -14,6 +14,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/safing/jess"
+
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/info"
 	"github.com/safing/portmaster/base/log"
@@ -78,6 +80,9 @@ type Status struct {
 	// BlockSummary is set when the policy asks for a summary of the
 	// blocked connections in the reports; the app shows a notice.
 	BlockSummary bool `json:"blockSummary,omitempty"`
+	// OfflineKeyFP is the fingerprint of the pinned offline key; the
+	// computer applies only policies signed with it.
+	OfflineKeyFP string `json:"offlineKeyFp,omitempty"`
 }
 
 type instance interface {
@@ -156,6 +161,23 @@ func (m *Managed) Stop() error {
 	return nil
 }
 
+// offlineKeyFP returns the fingerprint of an offline key in jess text
+// format, or "" if there is none or it cannot be read.
+func offlineKeyFP(text string) string {
+	if text == "" {
+		return ""
+	}
+	key, err := jess.RecipientFromTextFormat(text)
+	if err != nil {
+		return ""
+	}
+	fp, err := policy.KeyFingerprint(key)
+	if err != nil {
+		return ""
+	}
+	return fp
+}
+
 // Status returns the current status.
 func (m *Managed) Status() Status {
 	m.statusLock.Lock()
@@ -165,6 +187,7 @@ func (m *Managed) Status() Status {
 	st, err := m.dir.loadState()
 	if err == nil {
 		s.Server, s.ComputerID, s.AppliedVersion = st.Server, st.ComputerID, st.AppliedVersion
+		s.OfflineKeyFP = offlineKeyFP(st.OfflineKey)
 	}
 	return s
 }
@@ -361,7 +384,12 @@ func (m *Managed) storedPolicy() (*policy.Policy, error) {
 	if err != nil {
 		return nil, fmt.Errorf("pinned policy key: %w", err)
 	}
-	return policy.Verify(data, pk, st.ComputerID)
+	p, err := policy.Verify(data, pk, st.ComputerID)
+	if err != nil {
+		return nil, err
+	}
+	p, _, err = policy.Open(p, st.Pins)
+	return p, err
 }
 
 func (m *Managed) verifyAndApply(st *State, data []byte, store, withProfiles bool) error {
@@ -374,6 +402,12 @@ func (m *Managed) verifyAndApply(st *State, data []byte, store, withProfiles boo
 		return fmt.Errorf("policy refused: %w", err)
 	}
 	err = policy.CheckVersion(p, st.AppliedVersion)
+	if err != nil {
+		return fmt.Errorf("policy refused: %w", err)
+	}
+	// With offline signing the content comes from the group policy signed
+	// with the offline key; the server cannot change it.
+	p, pins, err := policy.Open(p, st.Pins)
 	if err != nil {
 		return fmt.Errorf("policy refused: %w", err)
 	}
@@ -398,6 +432,10 @@ func (m *Managed) verifyAndApply(st *State, data []byte, store, withProfiles boo
 		}
 	}
 	st.AppliedVersion = p.Version
+	if pins.OfflineKey != "" && st.OfflineKey == "" {
+		log.Infof("managed: pinned the offline key %s", offlineKeyFP(pins.OfflineKey))
+	}
+	st.Pins = pins
 	if withProfiles {
 		st.AppliedProfilesHash = hash
 	}

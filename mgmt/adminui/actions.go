@@ -25,6 +25,7 @@ const (
 var notices = map[string]string{ //nolint:gosec // Message keys, no credentials.
 	"group-created":       "Group created.",
 	"alerts-acked":        "Alerts acknowledged.",
+	"policy-published":    "Signed policy published. The computers of the group get it with their next pull.",
 	"silent-after-saved":  "Silent threshold saved; it applies from the next check (every 5 minutes).",
 	"block-summary-on":    "Block summary on. The computers of the group send it from their next pull; the Portmaster app shows this to the users.",
 	"block-summary-off":   "Block summary off. The computers of the group stop sending it with their next pull.",
@@ -312,6 +313,13 @@ func (ui *UI) handleTokenCreate(w http.ResponseWriter, r *http.Request) {
 	ui.audit(r, "token.create", group, "valid "+valid.String())
 	command := fmt.Sprintf("portmaster-core manage enroll --server %s --token %s \\\n  --server-fp %s \\\n  --policy-key-fp %s",
 		serverURL, token, ui.cfg.ServerFP, ui.cfg.PolicyKeyFP)
+	offlineFP, err := ui.offlineKeyFP()
+	if err != nil {
+		ui.log.Error("read offline key", "err", err)
+	}
+	if offlineFP != "" {
+		command += " \\\n  --offline-key-fp " + offlineFP
+	}
 	ui.renderTokens(w, r, http.StatusOK, "", &newToken{Token: token, Group: group, Expires: now.Add(valid), Command: command})
 }
 

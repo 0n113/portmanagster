@@ -8,6 +8,13 @@ pre-releases carry a `-rcN` suffix.
 ## [Unreleased]
 
 ### Added
+- Offline signing of the group policies on the management server (management phase D1): with
+  an offline key (`offline-key create` on an admin computer, `offline-key set` on the server)
+  the computers apply only group policies signed with it, so a taken-over server cannot change
+  the firewalls. Export the draft (`group export` or the group page), sign it on the admin
+  computer (`sign`, which shows what is signed) and publish it (`group publish` or upload on
+  the group page, audited). Clients pin the key at enrollment (`--offline-key-fp`) or on the
+  first signed policy and refuse unsigned, foreign or older group policies.
 - Alerts on the management server (management phase C5): silent computers (threshold per group,
   `group silent-after`, default 24h), interception off, Portmaster problems, refused settings,
   policy errors, locally changed defaults, hits on malware lists (`MAL`) and new apps with

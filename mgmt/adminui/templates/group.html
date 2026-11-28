@@ -101,6 +101,28 @@
 {{else}}
 <p class="empty">No computer in this group.</p>
 {{end}}
+{{with .Offline}}
+<h2>Offline signing</h2>
+<p>Offline signing is on (key <code class="wrap">{{.KeyFP}}</code>). The computers apply only the group policy
+signed with the offline key; the settings, rules and profiles on this page are the draft for the next signing.</p>
+{{if .Signed}}
+<p>Published: version {{.Signed.Version}}, signed {{datetime .Signed.Signed}}.</p>
+{{else}}
+<p class="msg warn-box"><strong>No signed policy yet.</strong> The computers of this group keep their last policy until one is published.</p>
+{{end}}
+{{if and .Signed .DraftDiffers}}<p class="msg warn-box">The draft differs from the published policy; sign and publish it to apply the changes.</p>{{end}}
+{{if and .Signed (not .DraftDiffers)}}<p class="hint">The draft is the same as the published policy.</p>{{end}}
+<p><a href="/groups/{{$.Data.Name | pathEscape}}/export">Download the draft for signing</a>, then on the admin computer:
+<code>portmanagster-server sign --key offline.key {{$.Data.Name}}.json</code></p>
+{{if $.CanWrite}}
+<form class="filters" method="post" action="/groups/{{$.Data.Name | pathEscape}}/publish" enctype="multipart/form-data">
+  <input type="hidden" name="csrf" value="{{$.CSRF}}">
+  <label>Signed file <input type="file" name="file" accept=".json,application/json" required></label>
+  <button type="submit">Publish signed policy</button>
+</form>
+{{end}}
+{{end}}
+
 <h2>Alerts</h2>
 <p>A computer of this group raises a silent alert after <strong>{{duration .SilentAfter}}</strong> without contact{{if not .SilentAfter}} (the silent alert is off){{end}}.</p>
 {{if $.CanWrite}}

@@ -434,6 +434,7 @@ type groupData struct {
 	Computers   []*computerRow
 	Blocks      []*server.BlockRow
 	Alerts      []*server.Alert
+	Offline     *offlineState
 }
 
 func (ui *UI) handleGroup(w http.ResponseWriter, r *http.Request) {
@@ -488,6 +489,11 @@ func (ui *UI) renderGroup(w http.ResponseWriter, r *http.Request, status int, er
 		return
 	}
 	data.Alerts, err = ui.openAlerts(server.AlertFilter{Group: g.Name})
+	if err != nil {
+		ui.internalError(w, "group", err)
+		return
+	}
+	data.Offline, err = ui.groupOffline(g)
 	if err != nil {
 		ui.internalError(w, "group", err)
 		return

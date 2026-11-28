@@ -8,7 +8,9 @@ see [Phase B plan](#phase-b-plan)). Phase C done (see [Phase C plan](#phase-c-pl
 with accounts, login, audit log, all pages and the write actions of the command line (see
 [Admin web UI](#admin-web-ui)), the opt-in summaries of blocked connections (see
 [Block summaries](#block-summaries)), and alerts with a webhook (see
-[Alerts and webhook](#alerts-and-webhook)).
+[Alerts and webhook](#alerts-and-webhook)). Phase D in progress (see
+[Phase D plan](#phase-d-plan)): D1, offline signing of the group policies, is done (see
+[Offline signing](#offline-signing)).
 This document fixes the architecture and the order of work; details of each phase are settled
 in its PR.
 
@@ -179,6 +181,15 @@ portmanagster-server alerts [--state open|new|acknowledged|resolved|all] [--leve
 portmanagster-server alert ack 12 13        # audited
 portmanagster-server alert test-webhook https://hooks.example.lan/portmanagster/<secret>
 
+# Offline signing (see "Offline signing"): create the key on the admin computer, set the
+# public key on the server, then export, sign (admin computer) and publish per group.
+portmanagster-server offline-key create --out offline.key      # admin computer; writes offline.key.pub
+portmanagster-server offline-key set offline.key.pub           # server
+portmanagster-server offline-key show
+portmanagster-server group export office --out office.json      # server
+portmanagster-server sign --key offline.key office.json         # admin computer; shows the content, asks
+portmanagster-server group publish office office.signed.json    # server; audited
+
 # Accounts of the admin web UI and the audit log (see "Admin web UI").
 portmanagster-server admin add alice [--role admin|viewer] [--url https://pm.example.lan:8444]
 portmanagster-server admin list
@@ -280,7 +291,8 @@ portmaster-core manage leave   # the policy values stay as user settings
 ```
 
 Before it sends the token, the client fetches the policy key (`GET /v1/policy-key`) and checks
-it against the pin, so a wrong pin does not use up the token.
+it against the pin, so a wrong pin does not use up the token. With offline signing on the
+server, the enroll command also has `--offline-key-fp sha256:...`, checked the same way.
 
 The client keeps its state in `<data dir>/managed/` (0700, files 0600): `state.json`,
 `client.key`, `client.crt`, `ca.crt` and the last verified `policy.json`. When the core is
@@ -379,6 +391,48 @@ within 10 seconds) is tried again after 5 seconds, 30 seconds and 2 minutes, the
 dropped. There is no header option: put a secret into the URL path or query if the receiver
 needs one; the server logs only the host of the URL. `alert test-webhook URL` sends a test
 alert.
+
+### Offline signing
+
+The policy key lives on the server, so whoever takes over the server can sign any policy and
+change every firewall. With offline signing, the group policies are signed with a second key
+that never touches the server; the server only distributes them.
+
+1. On an admin computer (not the server): `offline-key create --out offline.key` writes the
+   secret key (0600) and `offline.key.pub` and prints the fingerprint. Keep the secret key
+   offline and backed up; without it no policy can be changed any more (key rotation is
+   phase D2).
+2. On the server: `offline-key set offline.key.pub` (refuses a secret key and a second,
+   different key). From now on the server sends computers only signed group policies; the
+   settings, rules and profiles of a group are a draft.
+3. For every group: `group export NAME` (or "Download the draft for signing" on the group
+   page), copy the file to the admin computer, `sign --key offline.key NAME.json` (shows the
+   settings, locks, rules, profiles and block summary state and asks before it signs; `--yes`
+   for scripts), copy `NAME.signed.json` back and `group publish NAME NAME.signed.json` (or
+   upload it on the group page). Every publish is audited (`group.publish`).
+
+The signed group policy holds the group name, the content and its version, the signing time
+in Unix seconds. The server refuses a file signed with another key, for another group or not
+newer than the published one, and still wraps it in its own signature for each computer (so
+the computer binding and the version sequence stay as before). The client:
+
+- pins the offline key at enrollment (`--offline-key-fp`, printed by `token create` and the UI)
+  or, for computers enrolled before, on the first signed policy it gets (trust on first use,
+  logged);
+- applies only the content of the signed group policy; whatever else the server puts into its
+  policy is ignored;
+- refuses, once the key is pinned, an unsigned policy, a policy signed with another key or for
+  another group than the one the server names, and an older version of a group policy than
+  the one applied (per group, so moving a computer between groups works). The previous policy
+  stays in force and the report carries the error, which raises the `error` alert.
+
+A group without a signed policy gets none: the server answers 503 and its computers keep their
+last policy. The group page shows the key, the published version, whether the draft differs
+from it and the forms for download and upload (admins only); the Managed status of the client
+(`manage status`) shows the pinned key. What stays with the server: it picks which signed
+group policy a computer gets (a computer can be moved to another group with its own signed
+policy), it can withhold policies, and it sees the reports. Turning offline signing off again
+needs the clients to drop the pin (phase D2).
 
 ## Phases
 
@@ -578,10 +632,21 @@ C5 after C4.
 - **SQLite growth:** summaries are aggregated per hour and pruned by retention in the existing
   database; no second database.
 
+## Phase D plan
+
+Phase D hardens the management against a compromised server and makes it easier to run.
+
+| Step | Content | Done when |
+|---|---|---|
+| D1 | Offline signing of the group policies: offline key on an admin computer, `offline-key`, `group export`, `sign`, `group publish`, upload in the UI; the clients pin the key and apply only signed group policies. | Unit tests; VM test: an enrolled computer applies a signed policy, a draft change on the server does not reach it, a server without the offline key cannot push an unsigned policy |
+| D2 | Key rotation: a new offline key signed by the old one; a new policy key and server certificate rolled out through the signed policy; turning offline signing off with the old key's consent. | Unit tests and VM test of a rotation without re-enrolling |
+| D3 | Certificate renewal: client certificates renewed before expiry, server certificate renewal with overlap, clear errors for a clock far off. | Unit tests for each edge case |
+| D4 | Operations: backup and restore of the data directory (documented and tested), packages (systemd unit, deb/rpm), upgrade notes. | Restore on a fresh host, computers keep working |
+
 ## Security considerations
 
 - **The server controls every firewall.** Mitigations: clients verify the policy signature
-  (phase A), optional offline signing key (phase D), admin access only on the server host
+  (phase A), optional offline signing key (phase D1, see [Offline signing](#offline-signing)), admin access only on the server host
   until phase C, audit log of every policy change on the server.
 - **Network attacker**: mutual TLS with pinned server certificate; policies are signed on top,
   so even a TLS break does not allow changing the firewall.
